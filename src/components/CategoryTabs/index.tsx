@@ -33,8 +33,8 @@ const CategoryTabs: React.FC<CategoryTabsProps> = () => {
         navigation.navigate('Batches');
         break;
       case 'live':
-        // Navigate to ClassStreamsScreen
-        navigation.navigate('ClassStreamsScreen');
+        // Navigate to ClassStreams screen
+        navigation.navigate('ClassStreams');
         break;
       case 'notes':
         // Navigate to Notes screen

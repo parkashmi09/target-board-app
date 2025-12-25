@@ -24,10 +24,16 @@
     "react-native": "0.83.1",
     "react-native-gesture-handler": "^2.18.1",
     "react-native-localize": "^3.2.1",
+    "react-native-modal": "^14.0.0-rc.1",
+    "react-native-orientation-locker": "^1.7.0",
+    "react-native-qrcode-svg": "^6.3.21",
+    "react-native-razorpay": "^2.3.1",
+    "react-native-render-html": "^6.3.4",
     "react-native-safe-area-context": "^5.5.2",
     "react-native-screens": "^4.19.0",
     "react-native-svg": "^15.7.1",
     "react-native-video": "^6.18.0",
+    "react-native-webview": "^13.16.0",
     "zustand": "^5.0.2"
   },
   "devDependencies": {

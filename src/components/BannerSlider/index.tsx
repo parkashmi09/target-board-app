@@ -164,9 +164,11 @@ const BannerSlider: React.FC<BannerSliderProps> = ({
     }
   };
 
-  const renderItem = (item: SliderItem, index: number) => {
+  // Banner Item Component with video error handling
+  const BannerItem: React.FC<{ item: SliderItem; index: number; cardWidth: number; cardHeight: number; screenWidth: number; fallbackItems: SliderItem[]; onPress: () => void }> = ({ item, index, cardWidth, cardHeight, screenWidth, fallbackItems, onPress }) => {
+    const [videoError, setVideoError] = useState(false);
     const isFallbackItem = (item as any).localSource;
-    const mediaType = item.mediaType || 'image'; // Default to image if not specified
+    const mediaType = item.mediaType || 'image';
     const mediaUrl = item.mediaUrl || item.image || '';
     const hasValidMedia = mediaUrl && mediaUrl.trim().startsWith('http');
     let imageSource;
@@ -177,19 +179,17 @@ const BannerSlider: React.FC<BannerSliderProps> = ({
     const isVideoByExtension = hasValidMedia && /\.(mp4|mov|webm|avi|m4v)(\?|$)/i.test(mediaUrl);
 
     // Determine if this is a video
-    if ((mediaType === 'video' || isVideoByExtension) && hasValidMedia) {
+    if ((mediaType === 'video' || isVideoByExtension) && hasValidMedia && !videoError) {
       isVideo = true;
-      isTouchable = !!item.link; // Only touchable if there's a link
+      isTouchable = !!item.link;
     } else if (isFallbackItem) {
       imageSource = (item as any).localSource || Images.TB_LOGO;
       isTouchable = false;
     } else if (!item || !hasValidMedia) {
-      // Fallback for invalid item
-      const fallbackIndex = index % fallbackSliderItems.length;
-      imageSource = (fallbackSliderItems[fallbackIndex] as any).localSource || Images.TB_LOGO;
+      const fallbackIndex = index % fallbackItems.length;
+      imageSource = (fallbackItems[fallbackIndex] as any).localSource || Images.TB_LOGO;
       isTouchable = false;
     } else {
-      // Image case
       imageSource = { uri: mediaUrl };
     }
 
@@ -203,7 +203,7 @@ const BannerSlider: React.FC<BannerSliderProps> = ({
           },
         ]}
       >
-        {isVideo ? (
+        {isVideo && !videoError ? (
           <Video
             source={{ uri: mediaUrl }}
             style={styles.cardVideo}
@@ -214,15 +214,15 @@ const BannerSlider: React.FC<BannerSliderProps> = ({
             playWhenInactive={true}
             ignoreSilentSwitch="ignore"
             allowsExternalPlayback={false}
-            onError={(error) => {
-              if (__DEV__) {
-                console.warn('Video playback error:', error);
-              }
+            resizeMode="cover"
+            onError={() => {
+              // Silently fallback to image on video error
+              setVideoError(true);
             }}
           />
         ) : (
           <Image
-            source={imageSource}
+            source={imageSource || (hasValidMedia ? { uri: mediaUrl } : Images.TB_LOGO)}
             style={styles.cardImage}
             resizeMode="cover"
             defaultSource={Images.TB_LOGO}
@@ -231,13 +231,12 @@ const BannerSlider: React.FC<BannerSliderProps> = ({
       </View>
     );
 
-    // If it's a valid remote item with link/action, wrap in Touchable
     if (isTouchable && !isFallbackItem && (item.link || item.action)) {
       return (
-        <View key={item.id || index} style={{ width: screenWidth, alignItems: 'center' }}>
+        <View style={{ width: screenWidth, alignItems: 'center' }}>
           <TouchableOpacity
             activeOpacity={0.9}
-            onPress={() => handlePress(item)}
+            onPress={onPress}
           >
             {Content}
           </TouchableOpacity>
@@ -246,9 +245,24 @@ const BannerSlider: React.FC<BannerSliderProps> = ({
     }
 
     return (
-      <View key={item.id || index} style={{ width: screenWidth, alignItems: 'center' }}>
+      <View style={{ width: screenWidth, alignItems: 'center' }}>
         {Content}
       </View>
+    );
+  };
+
+  const renderItem = (item: SliderItem, index: number) => {
+    return (
+      <BannerItem
+        key={item.id || index}
+        item={item}
+        index={index}
+        cardWidth={cardWidth}
+        cardHeight={cardHeight}
+        screenWidth={screenWidth}
+        fallbackItems={fallbackSliderItems}
+        onPress={() => handlePress(item)}
+      />
     );
   };
 

@@ -1,6 +1,6 @@
 import { useQuery, UseQueryResult } from '@tanstack/react-query';
-import { fetchSliderData } from '../../services/home';
-import { SliderItem, UseSlidersOptions } from '../../types/slider';
+import { fetchSliders, SliderItem } from '../../services/api';
+import { UseSlidersOptions } from '../../types/slider';
 
 export const sliderKeys = {
     all: ['sliders'] as const,
@@ -20,7 +20,7 @@ export const useSliders = (
 
   return useQuery<SliderItem[], Error>({
     queryKey,
-    queryFn: fetchSliderData,
+    queryFn: fetchSliders,
     enabled,
     select: (data) => {
       let filteredData = data;

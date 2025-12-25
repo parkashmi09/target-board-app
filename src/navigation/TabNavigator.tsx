@@ -110,7 +110,7 @@ const TabNavigator: React.FC = () => {
       }
     }
     
-    const isStreamPlayer = focusedRouteName === 'StreamPlayerScreen';
+    const isStreamPlayer = focusedRouteName === 'StreamPlayer';
     
     if (isStreamPlayer) {
       return {

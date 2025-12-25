@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { MainStackParamList } from '../../navigation/MainStack';
 import { useTheme, ThemeContext } from '../../theme/theme';
 import { moderateScale, getSpacing } from '../../utils/responsive';
 import SVGIcon from '../SVGIcon';
@@ -43,7 +44,7 @@ interface UserData {
 const Drawer: React.FC = () => {
   const theme = useTheme();
   const isDark = theme.isDark;
-  const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
 
   // Safely get toggleTheme from context
   const themeContext = useContext(ThemeContext);

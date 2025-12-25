@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { StatusBar, View } from 'react-native';
+import { StatusBar, View, LogBox } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -12,11 +12,17 @@ import { ThemeProvider, useTheme } from './src/theme/theme';
 import { useAuthStore } from './src/store';
 import SplashScreen from './src/screens/SplashScreen';
 import AuthStack from './src/navigation/AuthStack';
-import TabNavigator from './src/navigation/TabNavigator';
+import MainStack from './src/navigation/MainStack';
 import { ToastProvider } from './src/components/Toast';
 import { GlobalLoaderProvider } from './src/components/GlobalLoader';
 import { queryClient } from './src/services/queryClient';
 import './src/i18n';
+
+// Suppress InteractionManager deprecation warning from react-native-modal
+// This is a third-party library issue and will be fixed when the library is updated
+LogBox.ignoreLogs([
+  'InteractionManager has been deprecated',
+]);
 
 function App() {
   return (
@@ -99,7 +105,7 @@ function AppContent() {
       {showSplash ? (
         <SplashScreen />
       ) : isLoggedIn ? (
-        <TabNavigator />
+        <MainStack />
       ) : (
         <AuthStack />
       )}

@@ -1,12 +1,16 @@
-import React, { memo } from 'react';
+import React, { memo, useRef } from 'react';
 import { View, TouchableOpacity, StyleSheet, Text, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronRight } from 'lucide-react-native';
+import LottieView from 'lottie-react-native';
+import notificationAnimation from '../../assets/lotties/notification.json';
+import downloadAnimation from '../../assets/lotties/download.json';
 import SVGIcon from '../SVGIcon';
 import { moderateScale, getSpacing } from '../../utils/responsive';
 import { Theme } from '../../theme/theme';
 import { Images } from '../../assets/images';
+import { useToast } from '../Toast';
 
 interface HomeHeaderProps {
     theme: Theme;
@@ -29,6 +33,14 @@ const HomeHeader = memo(({
 }: HomeHeaderProps) => {
     const { top } = useSafeAreaInsets();
     const navigation = useNavigation<any>();
+    const toast = useToast();
+    const lottieRef = useRef<LottieView>(null);
+    const iconColor = theme.isDark ? theme.colors.accent : theme.colors.text;
+
+    const handleNotificationPress = () => {
+        lottieRef.current?.play();
+        toast.show({ text: 'Notification feature coming soon', type: 'info' });
+    };
 
     const selectedClass = classes.find(c => String(c.value) === String(categoryId));
     const displayClass = className || (selectedClass ? selectedClass.label : 'Select Class');
@@ -99,6 +111,51 @@ const HomeHeader = memo(({
                         </View>
                     </TouchableOpacity>
                 </View>
+
+                {/* Right Side - Icons */}
+                <View style={styles.rightIconsContainer}>
+                    {/* <TouchableOpacity
+                        style={styles.iconButton}
+                        activeOpacity={0.7}
+                        onPress={() => {
+                            // Navigate to Downloads screen
+                            (navigation as any).navigate('Downloads');
+                        }}
+                    >
+                        <LottieView
+                            source={downloadAnimation}
+                            style={{ width: moderateScale(28), height: moderateScale(28) }}
+                            loop={true}
+                            autoPlay={true}
+                            colorFilters={[
+                                {
+                                    keypath: "**",
+                                    color: iconColor,
+                                },
+                            ]}
+                        />
+                    </TouchableOpacity> */}
+
+                    <TouchableOpacity
+                        style={styles.iconButton}
+                        activeOpacity={0.7}
+                        onPress={handleNotificationPress}
+                    >
+                        <LottieView
+                            ref={lottieRef}
+                            source={notificationAnimation}
+                            style={{ width: moderateScale(28), height: moderateScale(28) }}
+                            loop={false}
+                            autoPlay={false}
+                            colorFilters={[
+                                {
+                                    keypath: "**",
+                                    color: theme.colors.text,
+                                },
+                            ]}
+                        />
+                    </TouchableOpacity>
+                </View>
             </View>
         </View>
     );
@@ -132,7 +189,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     selectionButton: {
-        flex: 1,
+        flex: 0.8,
         marginHorizontal: getSpacing(2),
         height: moderateScale(42),
         borderRadius: moderateScale(8),
@@ -163,6 +220,17 @@ const styles = StyleSheet.create({
         fontSize: moderateScale(11),
         fontWeight: '400',
         lineHeight: moderateScale(14),
+    },
+    rightIconsContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: getSpacing(1),
+    },
+    iconButton: {
+        width: moderateScale(40),
+        height: moderateScale(40),
+        justifyContent: 'center',
+        alignItems: 'center',
     },
 });
 

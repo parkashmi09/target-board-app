@@ -76,7 +76,7 @@ const HomeScreen: React.FC = () => {
     setRefreshing(true);
     try {
       await Promise.all([
-        refetchSliders(),
+        // refetchSliders(),
         refetchTeachers(),
         refetchCourses(),
         refetchStickyBanners(),

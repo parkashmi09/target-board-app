@@ -1,19 +1,23 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, RefreshControl, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, FlatList, RefreshControl, ActivityIndicator, Linking } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from '../theme/theme';
 import { moderateScale, getSpacing } from '../utils/responsive';
-import ResponsiveView from '../components/ResponsiveView';
 import GradientBackground from '../components/GradientBackground';
-import CourseCard from '../components/CourseCard';
+import ScreenHeader from '../components/ScreenHeader';
+import CourseDetailCard from '../components/CourseDetailCard';
 import { useUserCourses } from '../hooks/queries/useUserCourses';
-import { Images } from '../assets/images';
+import { MainStackParamList } from '../navigation/MainStack';
+
+type MyCourseScreenNavigationProp = NativeStackNavigationProp<MainStackParamList>;
 
 const MyCourseScreen: React.FC = () => {
   const theme = useTheme();
-  const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const { colors } = theme;
+  const navigation = useNavigation<MyCourseScreenNavigationProp>();
   const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
   // Fetch user's purchased courses
   const { data: coursesData, isLoading, refetch } = useUserCourses({
@@ -26,6 +30,54 @@ const MyCourseScreen: React.FC = () => {
       refetch();
     }, [refetch])
   );
+
+  // Transform API courses data - extract course from purchasedCourse structure
+  const transformedCourses = React.useMemo(() => {
+    if (!coursesData || !Array.isArray(coursesData) || coursesData.length === 0) {
+      return [];
+    }
+
+    return coursesData.map((purchasedCourse: any) => {
+      // Extract course data from nested structure
+      const course = purchasedCourse.course || purchasedCourse;
+      
+      // Merge purchase info with course data
+      return {
+        ...course,
+        _id: course._id || course.id,
+        id: course._id || course.id,
+        // Add purchase-specific fields
+        purchasedAt: purchasedCourse.purchasedAt,
+        expiryDate: purchasedCourse.expiryDate,
+        status: purchasedCourse.status || 'active',
+        packageId: purchasedCourse.packageId,
+        // Use expiryDate for batchInfo.endDate if available
+        batchInfo: {
+          ...course.batchInfo,
+          endDate: purchasedCourse.expiryDate || course.batchInfo?.endDate,
+        },
+      };
+    });
+  }, [coursesData]);
+
+  // Filter courses based on search query
+  const filteredCourses = React.useMemo(() => {
+    if (!searchQuery.trim()) return transformedCourses;
+    
+    const query = searchQuery.toLowerCase();
+    return transformedCourses.filter((course: any) => {
+      const name = course?.name || course?.title || '';
+      const description = course?.courseDescription || course?.description || '';
+      return (
+        name.toLowerCase().includes(query) ||
+        description.toLowerCase().includes(query)
+      );
+    });
+  }, [transformedCourses, searchQuery]);
+
+  const handleSearch = useCallback((searchText: string) => {
+    setSearchQuery(searchText);
+  }, []);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -40,119 +92,83 @@ const MyCourseScreen: React.FC = () => {
     }
   }, [refetch]);
 
-  // Transform API courses data to match CourseCard expected format
-  const transformedCourses = React.useMemo(() => {
-    if (!coursesData || !Array.isArray(coursesData) || coursesData.length === 0) {
-      return [];
-    }
-
-    return coursesData.map((course: any) => {
-      // Calculate discount percentage
-      const originalPrice = course.strikeoutPrice || course.coursePrice || course.originalPrice || 0;
-      const currentPrice = course.coursePrice || course.currentPrice || 0;
-      const discount = originalPrice > currentPrice
-        ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100)
-        : 0;
-
-      return {
-        id: course._id || course.id,
-        title: course.name || course.title || 'Course',
-        subtitle: course.courseDescription || course.description || '',
-        medium: course.class?.name || course.medium || 'All Classes',
-        board: course.stateBoardId ? 'State Board' : 'CBSE',
-        targetAudience: course.class?.name || course.targetAudience || 'All Students',
-        originalPrice: originalPrice,
-        currentPrice: currentPrice,
-        discount: discount,
-        startDate: course.batchInfo?.startDate || course.createdAt || new Date().toISOString(),
-        endDate: course.batchInfo?.endDate || course.updatedAt || new Date().toISOString(),
-        batchType: course.courseType?.name || course.batchType || 'Regular',
-        bannerImage: course.courseImage ? { uri: course.courseImage } : Images.TB_LOGO,
-        gradientColors: ['#FFFACD', '#FFE4B5'] as [string, string],
-        _raw: course,
-      };
+  const handleWhatsAppPress = useCallback(() => {
+    const phoneNumber = '8114532021';
+    const message = 'Hello, I am interested in your courses.';
+    const url = `whatsapp://send?phone=${phoneNumber}&text=${encodeURIComponent(message)}`;
+    Linking.openURL(url).catch(() => {
+      // Fallback to web WhatsApp if app is not installed
+      Linking.openURL(`https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`);
     });
-  }, [coursesData]);
+  }, []);
 
-  const handlePress = useCallback((courseId: string) => {
+  const handleDetailsPress = useCallback((courseId: string) => {
+    // Navigation handled by CourseDetailCard component
+  }, []);
+
+  const handleContentPress = useCallback((courseId: string, courseName?: string) => {
+    // Navigate to CourseDetails for now - can be updated when Categories screen is added
     navigation.navigate('CourseDetails', { courseId });
   }, [navigation]);
 
+  const renderCourseCard = useCallback(({ item }: { item: any }) => (
+    <CourseDetailCard
+      course={item}
+      onWhatsAppPress={handleWhatsAppPress}
+      onDetailsPress={() => handleDetailsPress(item._id || item.id)}
+      onContentPress={() => handleContentPress(item._id || item.id, item.name)}
+    />
+  ), [handleWhatsAppPress, handleDetailsPress, handleContentPress]);
+
   return (
     <GradientBackground>
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={[theme.colors.accent]}
-            tintColor={theme.colors.accent}
-          />
-        }
-      >
-        <ResponsiveView padding={2}>
-          <Text
-            style={[
-              styles.title,
-              {
-                color: theme.colors.text,
-                fontSize: moderateScale(24),
-                fontFamily: theme.typography.h1.fontFamily,
-              },
-            ]}
-          >
-            My Courses
+      <ScreenHeader
+        title="My Courses"
+        placeholder="Search courses..."
+        onSearch={handleSearch}
+        defaultValue={searchQuery}
+        showSearch={true}
+      />
+      {isLoading && !refreshing ? (
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color={colors.accent} />
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+            Loading courses...
           </Text>
-
-          {isLoading && !refreshing ? (
-            <ActivityIndicator size="large" color={theme.colors.primary} style={{ marginTop: 20 }} />
-          ) : (
-            <View style={styles.coursesContainer}>
-              {transformedCourses.length > 0 ? (
-                transformedCourses.map((item) => (
-                  <CourseCard
-                    key={item.id}
-                    title={item.title}
-                    subtitle={item.subtitle}
-                    medium={item.medium}
-                    board={item.board}
-                    targetAudience={item.targetAudience}
-                    originalPrice={item.originalPrice}
-                    currentPrice={item.currentPrice}
-                    discount={item.discount}
-                    startDate={item.startDate}
-                    endDate={item.endDate}
-                    batchType={item.batchType}
-                    bannerImage={item.bannerImage}
-                    gradientColors={item.gradientColors}
-                    courseId={item.id}
-                    onPress={() => handlePress(item.id)}
-                    onExplore={() => handlePress(item.id)}
-                    // onBuyNow is handled internally by CourseCard to open the modal
-                  />
-                ))
-              ) : (
-                <Text
-                  style={[
-                    styles.subtitle,
-                    {
-                      color: theme.colors.textSecondary,
-                      fontSize: moderateScale(16),
-                      fontFamily: theme.typography.body.fontFamily,
-                      textAlign: 'center',
-                      marginTop: 20,
-                    },
-                  ]}
-                >
-                  No courses available at the moment.
-                </Text>
-              )}
-            </View>
-          )}
-        </ResponsiveView>
-      </ScrollView>
+        </View>
+      ) : filteredCourses && filteredCourses.length > 0 ? (
+        <FlatList
+          data={filteredCourses}
+          renderItem={renderCourseCard}
+          keyExtractor={(item) => item._id || item.id || Math.random().toString()}
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.accent}
+              colors={[colors.accent]}
+            />
+          }
+          showsVerticalScrollIndicator={false}
+        />
+      ) : (
+        <ScrollView
+          contentContainerStyle={styles.emptyContainer}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.accent}
+              colors={[colors.accent]}
+            />
+          }
+        >
+          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+            {searchQuery ? 'No courses found matching your search' : 'No courses available'}
+          </Text>
+        </ScrollView>
+      )}
     </GradientBackground>
   );
 };
@@ -160,21 +176,34 @@ const MyCourseScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingBottom: getSpacing(12),
   },
-  scrollContent: {
-    flexGrow: 1,
-    paddingTop: getSpacing(2),
-    paddingBottom: moderateScale(100), // Add padding for tab bar
+  listContent: {
+    padding: getSpacing(2),
+    marginTop: getSpacing(4),
+    paddingBottom: getSpacing(18),
   },
-  title: {
-    fontWeight: 'bold',
-    marginBottom: getSpacing(2),
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: getSpacing(4),
   },
-  subtitle: {
-    marginTop: getSpacing(1),
+  loadingText: {
+    marginTop: getSpacing(2),
+    fontSize: moderateScale(14),
   },
-  coursesContainer: {
-    gap: getSpacing(2),
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: getSpacing(4),
+    minHeight: moderateScale(400),
+    paddingBottom: getSpacing(4),
+  },
+  emptyText: {
+    fontSize: moderateScale(16),
+    textAlign: 'center',
   },
 });
 

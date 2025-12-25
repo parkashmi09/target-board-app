@@ -24,6 +24,15 @@ const CourseSection = memo(({ courses, theme }: CourseSectionProps) => {
             }
         };
 
+        const handleBuyNow = () => {
+            if (item?.id || item?._id) {
+                navigation.navigate('CourseDetails', {
+                    courseId: String(item.id || item._id),
+                    openPurchaseModal: true,
+                });
+            }
+        };
+
         return (
             <View style={styles.courseCardWrapper}>
                 <CourseCard
@@ -42,6 +51,7 @@ const CourseSection = memo(({ courses, theme }: CourseSectionProps) => {
                     gradientColors={item?.gradientColors || ['#FFFACD', '#FFE4B5']}
                     courseId={item?.id || item?._id}
                     onExplore={handlePress}
+                    onBuyNow={handleBuyNow}
                 />
             </View>
         );

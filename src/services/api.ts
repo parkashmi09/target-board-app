@@ -139,9 +139,21 @@ export const updateUserProfile = (payload: { city?: string; classId: string; sta
 
 export const fetchUserCourses = async (): Promise<any[]> => {
   try {
+    if (__DEV__) {
+      console.log('[API] fetchUserCourses called');
+    }
     const url = '/purchase/user/courses';
     const response = await api.get<any>(url);
     
+    if (__DEV__) {
+      console.log('[API] fetchUserCourses response:', response);
+    }
+    
+    // Handle new response structure with purchasedCourses
+    if (response && response.success && Array.isArray(response.purchasedCourses)) {
+      return response.purchasedCourses;
+    }
+
     // Ensure we always return an array
     if (Array.isArray(response)) {
       return response;
@@ -157,9 +169,14 @@ export const fetchUserCourses = async (): Promise<any[]> => {
     }
 
     // Fallback to empty array if data structure is unexpected
+    if (__DEV__) {
+      console.warn('[fetchUserCourses] Unexpected response structure:', response);
+    }
     return [];
   } catch (error: any) {
-    console.error('[fetchUserCourses] Error:', error?.message);
+    if (__DEV__) {
+      console.error('[fetchUserCourses] Error:', error?.message);
+    }
     // Return empty array instead of throwing to prevent React Query errors
     return [];
   }
@@ -225,6 +242,380 @@ export const fetchCourses = async (
       console.error('[fetchCourses] Error:', error?.message);
     }
     return [];
+  }
+};
+
+export const fetchCourseDetails = async (courseId: string | number) => {
+  try {
+    const url = `/courses/${courseId}`;
+    const response = await api.get<any>(url);
+
+    // Handle different response structures
+    let courseData;
+
+    // If response is an array, take the first item
+    if (Array.isArray(response)) {
+      courseData = response[0];
+    }
+    // If response has a data property, use it
+    else if (response?.data) {
+      courseData = response.data;
+    }
+    // Otherwise use response directly
+    else {
+      courseData = response;
+    }
+
+    if (!courseData) {
+      throw new Error('No course data found in response');
+    }
+
+    return courseData;
+  } catch (error: any) {
+    if (__DEV__) {
+      console.error('[fetchCourseDetails] Error:', error?.message);
+    }
+    throw error;
+  }
+};
+
+/**
+ * Create Razorpay order for course purchase
+ * Endpoint: POST /purchase/create-order
+ */
+export const createPurchaseOrder = async (courseId: string, packageId?: string, discountCode?: string) => {
+  try {
+    if (__DEV__) {
+      console.log('[API] createPurchaseOrder called', { courseId, packageId, discountCode });
+    }
+    const url = '/purchase/create-order';
+    
+    const payload: any = { courseId };
+    if (packageId) {
+      payload.packageId = packageId;
+    }
+    if (discountCode) {
+      payload.discountCode = discountCode;
+    }
+
+    const response = await api.post<any>(url, payload);
+    if (__DEV__) {
+      console.log('[API] createPurchaseOrder response:', response);
+    }
+
+    if (response?.success && response?.order) {
+      return response.order;
+    }
+
+    throw new Error(response?.message || 'Failed to create order');
+  } catch (error: any) {
+    if (__DEV__) {
+      console.error('[createPurchaseOrder] Error:', error?.message);
+    }
+    throw error;
+  }
+};
+
+/**
+ * Verify Razorpay payment
+ * Endpoint: POST /purchase/verify
+ */
+export const verifyPurchasePayment = async (
+  razorpayOrderId: string,
+  razorpayPaymentId: string,
+  razorpaySignature: string
+) => {
+  try {
+    if (__DEV__) {
+      console.log('[API] verifyPurchasePayment called', {
+        razorpayOrderId,
+        razorpayPaymentId,
+        razorpaySignature: razorpaySignature.substring(0, 20) + '...',
+      });
+    }
+    const url = '/purchase/verify';
+    
+    const payload = {
+      razorpay_order_id: razorpayOrderId,
+      razorpay_payment_id: razorpayPaymentId,
+      razorpay_signature: razorpaySignature,
+    };
+
+    const response = await api.post<any>(url, payload);
+    if (__DEV__) {
+      console.log('[API] verifyPurchasePayment response:', response);
+    }
+
+    if (response?.success) {
+      return response;
+    }
+
+    throw new Error(response?.message || 'Payment verification failed');
+  } catch (error: any) {
+    if (__DEV__) {
+      console.error('[verifyPurchasePayment] Error:', error?.message);
+    }
+    throw error;
+  }
+};
+
+/**
+ * Create Razorpay payment link for QR code payment
+ * Endpoint: POST /payments/create-qr-code
+ */
+export const createPaymentLink = async (courseId: string, packageId?: string, discountCode?: string) => {
+  try {
+    // Validate courseId
+    if (!courseId || courseId.trim() === '') {
+      throw new Error('Course ID is required');
+    }
+
+    // Normalize optional parameters - filter out empty strings
+    const normalizedPackageId = packageId?.trim();
+    const normalizedDiscountCode = discountCode?.trim();
+
+    if (__DEV__) {
+      console.log('[API] createPaymentLink called', { 
+        courseId, 
+        packageId: normalizedPackageId, 
+        discountCode: normalizedDiscountCode 
+      });
+    }
+    const url = '/payments/create-qr-code';
+    const fullUrl = `${BASE_URL}${url}`;
+    
+    const payload: any = { courseId: courseId.trim() };
+    // Only add packageId if it's a non-empty string
+    if (normalizedPackageId && normalizedPackageId !== '') {
+      payload.packageId = normalizedPackageId;
+    }
+    // Only add discountCode if it's a non-empty string
+    if (normalizedDiscountCode && normalizedDiscountCode !== '') {
+      payload.discountCode = normalizedDiscountCode;
+    }
+
+    // Log API endpoint URL and payload
+    console.log('[QR Code Generation] API Endpoint URL:', fullUrl);
+    console.log('[QR Code Generation] API Payload:', JSON.stringify(payload, null, 2));
+
+    const response = await api.post<any>(url, payload);
+    console.log('[QR Code Generation] API Response:', response);
+    if (__DEV__) {
+      console.log('[API] createPaymentLink response:', response);
+    }
+
+    // Handle response - check for qrImageUrl (new format) or qrUrl (old format)
+    const qrImageUrl = response?.qrImageUrl;
+    const qrUrl = response?.qrUrl || response?.paymentLink?.qrUrl || response?.paymentLink?.short_url;
+    const shortUrl = response?.short_url || response?.paymentLink?.short_url || qrUrl;
+
+    if (response?.success && (qrImageUrl || response?.paymentLink || qrUrl)) {
+      return {
+        paymentLink: response.paymentLink,
+        qrImageUrl: qrImageUrl, // New format - direct image URL
+        qrUrl: qrImageUrl || qrUrl || shortUrl, // Use qrImageUrl if available, fallback to qrUrl
+        short_url: shortUrl || qrImageUrl || qrUrl,
+        qrCodeId: response?.qrCodeId, // Store qrCodeId if available
+      };
+    }
+
+    // Also handle case where response might not have success flag but has qrImageUrl or qrUrl
+    if (qrImageUrl || qrUrl) {
+      return {
+        paymentLink: response.paymentLink,
+        qrImageUrl: qrImageUrl,
+        qrUrl: qrImageUrl || qrUrl,
+        short_url: shortUrl || qrImageUrl || qrUrl,
+        qrCodeId: response?.qrCodeId,
+      };
+    }
+
+    throw new Error(response?.message || 'Failed to create payment link');
+  } catch (error: any) {
+    if (__DEV__) {
+      console.error('[createPaymentLink] Error:', error?.message);
+    }
+    throw error;
+  }
+};
+
+// TPStreams Types
+export interface Stream {
+  _id: string;
+  id?: string;
+  title: string;
+  description?: string;
+  courseId: string | {
+    _id: string;
+    class: string;
+  };
+  categoryId?: string;
+  tpAssetId?: string;
+  hlsUrl?: string;
+  chatEmbedUrl?: string | null;
+  tpStatus?: 'NOT_STARTED' | 'STARTED' | 'STOPPED' | 'COMPLETED' | 'STREAMING';
+  status: 'live' | 'upcoming' | 'completed' | 'scheduled';
+  enableDrmForRecording?: boolean;
+  latency?: string;
+  transcodeRecordedVideo?: boolean;
+  resolutions?: string[];
+  startTime?: string;
+  scheduled_start?: string;
+  isServerStarted?: boolean;
+  vodResolutions?: string[];
+  bannerUrl?: string;
+  thumbnail?: string;
+  isPaid?: boolean;
+  isUserPurchased?: boolean;
+  activities?: Array<{
+    status: string;
+    event: string;
+    timestamp: string;
+    _id: string;
+  }>;
+  createdAt?: string;
+  updatedAt?: string;
+  __v?: number;
+  courseSelections?: Array<{
+    course?: {
+      _id: string;
+      name: string;
+      class?: string;
+    };
+    category?: {
+      _id: string;
+      name: string;
+    };
+    _id?: string;
+  }>;
+  actualStartTime?: string;
+}
+
+/**
+ * Fetch streams for a specific course
+ * @param courseId - Course ID
+ * @param type - Optional filter: 'live' | 'upcoming'
+ */
+export const getCourseStreams = async (courseId: string, type?: 'live' | 'upcoming'): Promise<Stream[]> => {
+  try {
+    if (__DEV__) {
+      console.log('[API] getCourseStreams called', { courseId, type });
+    }
+    const url = type ? `/streams/course/${courseId}?type=${type}` : `/streams/course/${courseId}`;
+    const response = await api.get<any>(url);
+    
+    if (__DEV__) {
+      console.log('[API] getCourseStreams response:', response);
+    }
+    
+    // Handle different response structures
+    let streams: any[] = [];
+    if (response && (response as any).streams && Array.isArray((response as any).streams)) {
+      streams = (response as any).streams;
+    } else if (Array.isArray(response)) {
+      streams = response;
+    }
+    
+    return streams.map((item: any) => {
+      const stream = item.stream || item;
+      const isUserPurchased = item.isUserPurchased !== undefined 
+        ? Boolean(item.isUserPurchased) 
+        : (stream.isUserPurchased !== undefined ? Boolean(stream.isUserPurchased) : false);
+      
+      return {
+        ...stream,
+        isUserPurchased,
+        id: stream._id || stream.id,
+      };
+    });
+  } catch (error: any) {
+    if (__DEV__) {
+      console.error('[getCourseStreams] Error:', error?.message);
+    }
+    throw error;
+  }
+};
+
+/**
+ * Fetch streams for a user's class
+ * GET /user/streams?classId=:classId
+ */
+export const getUserStreams = async (classId: string, type?: 'live' | 'upcoming'): Promise<Stream[]> => {
+  try {
+    if (__DEV__) {
+      console.log('[API] getUserStreams called', { classId, type });
+    }
+    const typeParam = type ? `&type=${type}` : '';
+    const response = await api.get<any>(`/user/streams?classId=${classId}${typeParam}`);
+    
+    if (__DEV__) {
+      console.log('[API] getUserStreams response:', response);
+    }
+    
+    // Handle response structure: { total: number, streams: [...] }
+    let streams: any[] = [];
+    if (response && (response as any).streams && Array.isArray((response as any).streams)) {
+      streams = (response as any).streams;
+    } else if (Array.isArray(response)) {
+      streams = response;
+    }
+    
+    return streams.map((item: any) => {
+      const stream = item.stream || item;
+      const isUserPurchased = item.isUserPurchased !== undefined 
+        ? Boolean(item.isUserPurchased) 
+        : (stream.isUserPurchased !== undefined ? Boolean(stream.isUserPurchased) : false);
+      
+      return {
+        ...stream,
+        id: stream._id || stream.id,
+        thumbnail: stream.bannerUrl || stream.thumbnail,
+        scheduled_start: stream.startTime || stream.scheduled_start,
+        courseId: typeof stream.courseId === 'object' ? stream.courseId._id : stream.courseId,
+        isUserPurchased,
+      };
+    });
+  } catch (error: any) {
+    if (__DEV__) {
+      console.error('[getUserStreams] Error:', error?.message);
+    }
+    return [];
+  }
+};
+
+/**
+ * Fetch a single stream by ID with purchase status
+ * GET /streams/:streamId
+ */
+export const getStreamById = async (streamId: string): Promise<{ stream: Stream; isUserPurchased: boolean }> => {
+  try {
+    if (__DEV__) {
+      console.log('[API] getStreamById called for streamId:', streamId);
+    }
+    const response = await api.get<{ stream: Stream; isUserPurchased: boolean }>(`/streams/${streamId}`);
+    
+    if (__DEV__) {
+      console.log('[API] getStreamById response:', response);
+    }
+    
+    // Handle response structure: { stream: {...}, isUserPurchased: true }
+    const stream = response.stream || (response as any);
+    const isUserPurchased = response.isUserPurchased !== undefined 
+      ? Boolean(response.isUserPurchased) 
+      : false;
+    
+    return {
+      stream: {
+        ...stream,
+        id: stream._id || stream.id,
+      },
+      isUserPurchased,
+    };
+  } catch (error: any) {
+    if (__DEV__) {
+      console.error('[getStreamById] Error:', error?.message);
+    }
+    throw error;
   }
 };
 
@@ -330,6 +721,64 @@ export const fetchBanners = async (): Promise<any[]> => {
   return banners.filter((banner: any) => banner.isActive !== false);
 };
 
+// Downloads Types
+export interface Download {
+  _id: string;
+  userId: string;
+  content: string | ContentDownload;
+  assetType: 'video' | 'pdf';
+  assetUrl: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ContentDownload {
+  _id: string;
+  title: string;
+  type: string;
+  pdf?: {
+    url: string;
+  };
+  video?: {
+    assetId: string;
+  };
+  category?: {
+    _id: string;
+    name: string;
+  };
+  course?: {
+    _id: string;
+    title: string;
+  };
+}
+
+export interface DownloadsResponse {
+  count: number;
+  downloads: Download[];
+}
+
+/**
+ * Get all downloads for authenticated user
+ * GET /downloads
+ */
+export const getDownloads = async (): Promise<DownloadsResponse> => {
+  try {
+    if (__DEV__) {
+      console.log('[API] getDownloads called');
+    }
+    const response = await api.get<DownloadsResponse>('/downloads');
+    if (__DEV__) {
+      console.log('[API] getDownloads response:', response);
+    }
+    return response;
+  } catch (error: any) {
+    if (__DEV__) {
+      console.error('[getDownloads] Error:', error?.message);
+    }
+    throw error;
+  }
+};
+
 export const fetchStickyBanners = async (): Promise<any[]> => {
   const token = await AsyncStorage.getItem('token');
 
@@ -349,5 +798,144 @@ export const fetchStickyBanners = async (): Promise<any[]> => {
   }
 
   return Array.isArray(response) ? response : [];
+};
+
+/**
+ * Add content to downloads
+ * POST /download/:contentId
+ */
+export interface AddDownloadResponse {
+  message?: string;
+  download?: Download;
+}
+
+export const addDownload = async (contentId: string): Promise<AddDownloadResponse> => {
+  try {
+    if (__DEV__) {
+      console.log('[API] addDownload called for contentId:', contentId);
+    }
+    const response = await api.post<AddDownloadResponse>(`/download/${contentId}`, undefined);
+    if (__DEV__) {
+      console.log('[API] addDownload response:', response);
+    }
+    return response;
+  } catch (error: any) {
+    if (__DEV__) {
+      console.error('[addDownload] Error:', error?.message);
+    }
+    throw error;
+  }
+};
+
+// Category Types
+export interface CategoryNode {
+  _id: string;
+  name: string;
+  course: string;
+  parent: string | null;
+  level: number;
+  createdAt: string;
+  updatedAt: string;
+  __v: number;
+  children: CategoryNode[];
+}
+
+/**
+ * Fetch category tree for a course
+ * GET /category/tree/:courseId
+ */
+export const fetchCategoryTree = async (courseId: string | number): Promise<CategoryNode[]> => {
+  try {
+    if (__DEV__) {
+      console.log('[API] fetchCategoryTree called for courseId:', courseId);
+    }
+    const url = `/category/tree/${courseId}`;
+    const response = await api.get<CategoryNode[]>(url);
+    
+    // Ensure we always return an array
+    if (Array.isArray(response)) {
+      return response;
+    }
+    
+    // Handle wrapped response
+    if (response && Array.isArray((response as any).data)) {
+      return (response as any).data;
+    }
+    
+    if (__DEV__) {
+      console.warn('[fetchCategoryTree] Unexpected response structure:', response);
+    }
+    return [];
+  } catch (error: any) {
+    if (__DEV__) {
+      console.error('[fetchCategoryTree] Error:', error?.message);
+    }
+    return [];
+  }
+};
+
+// Content Types
+export interface ContentItem {
+  _id: string;
+  title: string;
+  type: 'video' | 'pdf';
+  accessType?: string;
+  pdf?: {
+    url: string;
+    fileName?: string;
+  };
+  video?: {
+    assetId?: string;
+    url?: string;
+  };
+  category?: {
+    _id: string;
+    name: string;
+  };
+  course?: {
+    _id: string;
+    title?: string;
+  };
+  createdAt?: string;
+  updatedAt?: string;
+  __v?: number;
+}
+
+export interface ContentItemsResponse {
+  count: number;
+  contents: ContentItem[];
+}
+
+/**
+ * Fetch content items (videos/PDFs) by category ID
+ * GET /category/:categoryId
+ */
+export const fetchContentByCategory = async (categoryId: string): Promise<ContentItem[]> => {
+  try {
+    if (__DEV__) {
+      console.log('[API] fetchContentByCategory called for categoryId:', categoryId);
+    }
+    const response = await api.get<ContentItemsResponse>(`/category/${categoryId}`);
+    
+    // Handle response structure: { count: number, contents: ContentItem[] }
+    if (response && 'contents' in response && Array.isArray(response.contents)) {
+      return response.contents;
+    }
+    
+    // Fallback: if response is directly an array
+    if (Array.isArray(response)) {
+      return response;
+    }
+    
+    if (__DEV__) {
+      console.warn('[fetchContentByCategory] Unexpected response structure:', response);
+    }
+    return [];
+  } catch (error: any) {
+    if (__DEV__) {
+      console.error('[fetchContentByCategory] Error:', error?.message);
+    }
+    return [];
+  }
 };
 

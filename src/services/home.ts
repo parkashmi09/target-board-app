@@ -9,32 +9,32 @@ export interface HomeData {
   [key: string]: any;
 }
 
-export const fetchSliderData = async (): Promise<SliderItem[]> => {
-  try {
-    const sliderData = await fetchSliders();
-    return sliderData || [];
-  } catch (error: any) {
-    return [];
-  }
-};
+// export const fetchSliderData = async (): Promise<SliderItem[]> => {
+//   try {
+//     const sliderData = await fetchSliders();
+//     return sliderData || [];
+//   } catch (error: any) {
+//     return [];
+//   }
+// };
 
-export const fetchHomeData = async (): Promise<HomeData> => {
-  try {
-    const slider = await fetchSliderData();
-    return {
-      slider,
-      batches: [],
-      live_class: [],
-      onlineTest: [],
-    };
-  } catch (error) {
-    return {
-      slider: [],
-      batches: [],
-      live_class: [],
-      onlineTest: [],
-    };
-  }
-};
+// export const fetchHomeData = async (): Promise<HomeData> => {
+//   try {
+//     const slider = await fetchSliderData();
+//     return {
+//       slider,
+//       batches: [],
+//       live_class: [],
+//       onlineTest: [],
+//     };
+//   } catch (error) {
+//     return {
+//       slider: [],
+//       batches: [],
+//       live_class: [],
+//       onlineTest: [],
+//     };
+//   }
+// };
 
 
