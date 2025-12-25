@@ -1,0 +1,83 @@
+{
+  "common": {
+    "welcome": "Welcome",
+    "search": "Search",
+    "searchPlaceholder": "Search for study materials...",
+    "ourResults": "Our Results",
+    "ourTeachers": "Our Teachers",
+    "download": "Download",
+    "downloadNow": "Download Now",
+    "login": "Login",
+    "changeLanguage": "Change Language",
+    "darkMode": "Dark Mode",
+    "darkModeDescription": "Switch between light and dark theme",
+    "logout": "Logout",
+    "logoutConfirm": "Are you sure you want to logout?",
+    "cancel": "Cancel",
+    "guest": "Guest User"
+  },
+  "navigation": {
+    "home": "Home",
+    "myCourse": "My Course",
+    "batches": "Batches",
+    "notes": "Notes",
+    "download": "Download",
+    "settings": "Settings",
+    "menu": "Menu",
+    "classes": "Classes",
+    "books": "Books",
+    "tests": "Tests",
+    "profile": "Settings"
+  },
+  "profile": {
+    "editProfile": "Edit Profile",
+    "privacyPolicy": "Privacy Policy",
+    "termsAndConditions": "Terms and Conditions"
+  },
+  "home": {
+    "title": "Your Ultimate Study Companion",
+    "subtitle": "For 9th to 12th Board Exams",
+    "description": "A comprehensive, personalized E-learning platform built to empower Board students for 9th - 12th across India.",
+    "trustedPlatform": "India Most Trusted E-Learning Platform",
+    "boards": "BIHAR BOARD, POLYTECHNIC, CUET ETC."
+  },
+  "features": {
+    "liveClass": "Live Class",
+    "recordedClass": "Recorded Class",
+    "quizTest": "Quiz & Test",
+    "notesPdf": "Notes/PDF",
+    "books": "Books"
+  },
+  "classes": {
+    "live": "Live Classes",
+    "recorded": "Recorded Classes",
+    "upcoming": "Upcoming",
+    "completed": "Completed"
+  },
+  "books": {
+    "title": "Books & Solutions",
+    "stateBooks": "State Books",
+    "biharBoard": "Bihar Board",
+    "upBoard": "UP Board",
+    "pyqPaper": "Previous Year Question Papers",
+    "modelPaper": "Model Papers"
+  },
+  "drawer": {
+    "downloads": "Downloads",
+    "myCourses": "My Courses",
+    "notes": "Notes",
+    "help": "Help",
+    "share": "Share",
+    "settings": "Settings",
+    "language": "Language"
+  },
+  "help": {
+    "contactUs": "Contact Us",
+    "subtitle": "We are here to help you!",
+    "howCanWeHelp": "How can we help you?",
+    "callUs": "Call Us",
+    "whatsapp": "WhatsApp",
+    "chatWithUs": "Chat with us"
+  }
+}
+

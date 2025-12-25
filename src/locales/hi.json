@@ -1,0 +1,83 @@
+{
+  "common": {
+    "welcome": "स्वागत है",
+    "search": "खोजें",
+    "searchPlaceholder": "अध्ययन सामग्री खोजें...",
+    "ourResults": "हमारे परिणाम",
+    "ourTeachers": "हमारे शिक्षक",
+    "download": "डाउनलोड",
+    "downloadNow": "अभी डाउनलोड करें",
+    "login": "लॉगिन",
+    "changeLanguage": "भाषा बदलें",
+    "darkMode": "डार्क मोड",
+    "darkModeDescription": "लाइट और डार्क थीम के बीच स्विच करें",
+    "logout": "लॉगआउट",
+    "logoutConfirm": "क्या आप वाकई लॉगआउट करना चाहते हैं?",
+    "cancel": "रद्द करें",
+    "guest": "अतिथि उपयोगकर्ता"
+  },
+  "navigation": {
+    "home": "होम",
+    "myCourse": "मेरा कोर्स",
+    "batches": "बैच",
+    "notes": "नोट्स",
+    "download": "डाउनलोड",
+    "settings": "सेटिंग्स",
+    "menu": "मेनू",
+    "classes": "कक्षाएं",
+    "books": "पुस्तकें",
+    "tests": "टेस्ट",
+    "profile": "सेटिंग्स"
+  },
+  "profile": {
+    "editProfile": "प्रोफ़ाइल संपादित करें",
+    "privacyPolicy": "गोपनीयता नीति",
+    "termsAndConditions": "नियम और शर्तें"
+  },
+  "home": {
+    "title": "आपका अंतिम अध्ययन साथी",
+    "subtitle": "9वीं से 12वीं बोर्ड परीक्षाओं के लिए",
+    "description": "9वीं से 12वीं तक के बोर्ड छात्रों को सशक्त बनाने के लिए बनाया गया एक व्यापक, व्यक्तिगत ई-लर्निंग प्लेटफॉर्म।",
+    "trustedPlatform": "भारत का सबसे भरोसेमंद ई-लर्निंग प्लेटफॉर्म",
+    "boards": "बिहार बोर्ड, पॉलिटेक्निक, CUET आदि"
+  },
+  "features": {
+    "liveClass": "लाइव क्लास",
+    "recordedClass": "रिकॉर्डेड क्लास",
+    "quizTest": "क्विज और टेस्ट",
+    "notesPdf": "नोट्स/PDF",
+    "books": "पुस्तकें"
+  },
+  "classes": {
+    "live": "लाइव कक्षाएं",
+    "recorded": "रिकॉर्डेड कक्षाएं",
+    "upcoming": "आगामी",
+    "completed": "पूर्ण"
+  },
+  "books": {
+    "title": "पुस्तकें और समाधान",
+    "stateBooks": "राज्य पुस्तकें",
+    "biharBoard": "बिहार बोर्ड",
+    "upBoard": "यूपी बोर्ड",
+    "pyqPaper": "पिछले वर्ष के प्रश्न पत्र",
+    "modelPaper": "मॉडल पेपर"
+  },
+  "drawer": {
+    "downloads": "डाउनलोड",
+    "myCourses": "मेरे कोर्स",
+    "notes": "नोट्स",
+    "help": "सहायता",
+    "share": "साझा करें",
+    "settings": "सेटिंग्स",
+    "language": "भाषा"
+  },
+  "help": {
+    "contactUs": "संपर्क करें",
+    "subtitle": "हम आपकी मदद के लिए यहाँ हैं!",
+    "howCanWeHelp": "हम आपकी कैसे मदद कर सकते हैं?",
+    "callUs": "हमें कॉल करें",
+    "whatsapp": "व्हाट्सएप",
+    "chatWithUs": "हमसे चैट करें"
+  }
+}
+
