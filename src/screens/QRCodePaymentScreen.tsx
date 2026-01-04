@@ -5,19 +5,24 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Dimensions,
   ActivityIndicator,
   Image,
+  Share,
+  Platform,
+  Alert,
+  PermissionsAndroid,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
-import { ArrowLeft, Download, Share2 } from 'lucide-react-native';
+import { Download, Share2 } from 'lucide-react-native';
 import { useTheme } from '../theme/theme';
+import { moderateScale, getSpacing, scale, verticalScale } from '../utils/responsive';
 import GradientBackground from '../components/GradientBackground';
+import ScreenHeader from '../components/ScreenHeader';
 import type { MainStackParamList } from '../navigation/MainStack';
 import { createPaymentLink } from '../services/api';
 import { useQuery } from '@tanstack/react-query';
 import { useToast } from '../components/Toast';
+import ReactNativeBlobUtil from 'react-native-blob-util';
 
 type QRCodePaymentRouteProp = RouteProp<MainStackParamList, 'QRCodePayment'>;
 
@@ -25,9 +30,7 @@ const QRCodePaymentScreen: React.FC = () => {
   const theme = useTheme();
   const navigation = useNavigation();
   const route = useRoute<QRCodePaymentRouteProp>();
-  const { courseId, packageId, originalPrice, currentPrice, discountCode } = route.params || {};
-  const { top } = useSafeAreaInsets();
-  const screenWidth = Dimensions.get('window').width;
+  const { courseId, packageId, originalPrice, currentPrice, discountCode, preFetchedQrData } = route.params || {};
   const toast = useToast();
 
   // Normalize and validate params - filter out empty strings
@@ -39,11 +42,7 @@ const QRCodePaymentScreen: React.FC = () => {
   if (!normalizedCourseId || normalizedCourseId === '') {
     return (
       <GradientBackground>
-        <View style={[styles.header, { paddingTop: top + 10 }]}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
-            <ArrowLeft size={24} color={theme.colors.text} />
-          </TouchableOpacity>
-        </View>
+        <ScreenHeader showSearch={false} />
         <View style={styles.errorContainer}>
           <Text style={[styles.errorText, { color: theme.colors.error || 'red' }]}>
             Missing course information
@@ -57,7 +56,7 @@ const QRCodePaymentScreen: React.FC = () => {
   }
 
   // Create Razorpay Payment Link and get QR code
-  // Only include packageId and discountCode in query key if they have valid values
+  // Use pre-fetched data if available, otherwise fetch
   const { data: paymentLinkData, isLoading, error, refetch } = useQuery({
     queryKey: [
       'qrCodePaymentLink', 
@@ -66,6 +65,14 @@ const QRCodePaymentScreen: React.FC = () => {
       normalizedDiscountCode || null
     ],
     queryFn: async () => {
+      // If pre-fetched data is available, use it immediately
+      if (preFetchedQrData) {
+        if (__DEV__) {
+          console.log('[QRCodePayment] Using pre-fetched payment link:', preFetchedQrData);
+        }
+        return preFetchedQrData;
+      }
+      
       try {
         // Only pass packageId and discountCode if they have valid non-empty values
         const linkData = await createPaymentLink(
@@ -87,6 +94,8 @@ const QRCodePaymentScreen: React.FC = () => {
     },
     enabled: !!normalizedCourseId && normalizedCourseId !== '',
     retry: 1,
+    initialData: preFetchedQrData, // Use pre-fetched data as initial data
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
 
   console.log('paymentLinkData', paymentLinkData);
@@ -115,52 +124,174 @@ const QRCodePaymentScreen: React.FC = () => {
     return imageUrl;
   }, [paymentLinkData]);
 
-  const handleDownload = () => {
-    // TODO: Implement QR code download functionality
-    toast.show({ text: 'Download feature coming soon', type: 'info' });
-  };
+  const handleDownload = async () => {
+    if (!qrImageUrl || downloading) {
+      if (!qrImageUrl) {
+        toast.show({ text: 'QR code not available', type: 'error' });
+      }
+      return;
+    }
 
-  const handleShare = () => {
-    // TODO: Implement QR code share functionality
-    if (qrImageUrl) {
-      toast.show({ text: 'Share feature coming soon', type: 'info' });
-    } else {
-      toast.show({ text: 'QR code not available', type: 'error' });
+    try {
+      setDownloading(true);
+
+      // Request storage permission for Android
+      if (Platform.OS === 'android') {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
+          {
+            title: 'Storage Permission',
+            message: 'App needs access to storage to download QR code',
+            buttonNeutral: 'Ask Me Later',
+            buttonNegative: 'Cancel',
+            buttonPositive: 'OK',
+          }
+        );
+        if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+          toast.show({ text: 'Storage permission denied', type: 'error' });
+          setDownloading(false);
+          return;
+        }
+      }
+
+      const { dirs } = ReactNativeBlobUtil.fs;
+      const fileName = `QRCode_${normalizedCourseId}_${Date.now()}.png`;
+      const path = Platform.OS === 'ios' 
+        ? `${dirs.DocumentDir}/${fileName}` 
+        : `${dirs.DownloadDir}/${fileName}`;
+
+      ReactNativeBlobUtil.config({
+        fileCache: true,
+        addAndroidDownloads: {
+          useDownloadManager: true,
+          notification: true,
+          path: path,
+          description: 'Downloading QR Code...',
+          title: fileName,
+          mediaScannable: true,
+          mime: 'image/png',
+        },
+        path: path,
+      })
+        .fetch('GET', qrImageUrl)
+        .then((res) => {
+          if (Platform.OS === 'ios') {
+            ReactNativeBlobUtil.ios.previewDocument(res.path());
+          }
+          toast.show({ text: 'QR code downloaded successfully', type: 'success' });
+        })
+        .catch((err) => {
+          console.error('Download error:', err);
+          toast.show({ text: 'Failed to download QR code', type: 'error' });
+        })
+        .finally(() => {
+          setDownloading(false);
+        });
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.show({ text: 'Failed to download QR code', type: 'error' });
+      setDownloading(false);
     }
   };
 
+  const handleShare = async () => {
+    if (!qrImageUrl) {
+      toast.show({ text: 'QR code not available', type: 'error' });
+      return;
+    }
+
+    try {
+      // Get payment URL for sharing
+      const paymentUrl = paymentLinkData?.qrUrl || paymentLinkData?.short_url || qrImageUrl;
+      const shareMessage = `Scan this QR code to make payment:\n${paymentUrl}`;
+
+      const result = await Share.share({
+        message: shareMessage,
+        url: qrImageUrl, // For iOS, this will share the image
+        title: 'QR Code Payment',
+      });
+
+      if (result.action === Share.sharedAction) {
+        if (result.activityType) {
+          // Shared with activity type of result.activityType
+          toast.show({ text: 'QR code shared successfully', type: 'success' });
+        } else {
+          // Shared
+          toast.show({ text: 'QR code shared successfully', type: 'success' });
+        }
+      } else if (result.action === Share.dismissedAction) {
+        // Dismissed
+      }
+    } catch (error: any) {
+      console.error('Share error:', error);
+      toast.show({ text: error?.message || 'Failed to share QR code', type: 'error' });
+    }
+  };
+
+  // Track image loading state
+  const [imageLoading, setImageLoading] = useState(true);
+  const [imageError, setImageError] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+
+  // Reset loading state when qrImageUrl changes
+  useEffect(() => {
+    if (qrImageUrl) {
+      setImageLoading(true);
+      setImageError(false);
+    }
+  }, [qrImageUrl]);
+
   return (
     <GradientBackground>
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: top + 10 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
-          <ArrowLeft size={24} color={theme.colors.text} />
-        </TouchableOpacity>
-      </View>
+      <ScreenHeader title="QR Code Payment" showSearch={false} />
 
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-     
-
-   
-       
-
-        
-                {/* Display QR code image directly from API response */}
-                <Image
-                  source={{ uri: qrImageUrl }}
-                  style={styles.qrCodeImage}
-                  resizeMode="contain"
-                />
-            
-         
-        
-
-          {/* Instruction Text */}
-         
+        {/* QR Code Container */}
+        <View style={styles.qrCodeContainer}>
+          {isLoading || !qrImageUrl ? (
+            // Loading placeholder
+            <View style={styles.qrCodePlaceholder}>
+              <ActivityIndicator size="large" color={theme.colors.accent || '#001F3F'} />
+              <Text style={[styles.qrCodePlaceholderText, { color: theme.colors.textSecondary }]}>
+                Loading QR Code...
+              </Text>
+            </View>
+          ) : imageError ? (
+            // Error state
+            <View style={styles.qrCodePlaceholder}>
+              <Text style={[styles.qrCodePlaceholderText, { color: theme.colors.error || 'red' }]}>
+                Failed to load QR Code
+              </Text>
+              <TouchableOpacity onPress={() => refetch()} style={styles.retryButton}>
+                <Text style={styles.retryButtonText}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            // QR Code Image
+            <View style={styles.qrCodeImageWrapper}>
+              {imageLoading && (
+                <View style={styles.qrCodeImageLoadingOverlay}>
+                  <ActivityIndicator size="large" color={theme.colors.accent || '#001F3F'} />
+                </View>
+              )}
+              <Image
+                source={{ uri: qrImageUrl }}
+                style={styles.qrCodeImage}
+                resizeMode="contain"
+                onLoadStart={() => setImageLoading(true)}
+                onLoad={() => setImageLoading(false)}
+                onError={() => {
+                  setImageLoading(false);
+                  setImageError(true);
+                }}
+              />
+            </View>
+          )}
+        </View>
 
         {/* Company Name */}
         <Text style={[styles.companyName, { color: theme.colors.text }]}>
@@ -179,20 +310,42 @@ const QRCodePaymentScreen: React.FC = () => {
       {/* Bottom Action Buttons */}
       <View style={styles.bottomButtons}>
         <TouchableOpacity
-          style={[styles.actionButton, styles.downloadButton, { backgroundColor: '#9C27B0' }]}
+          style={[
+            styles.actionButton, 
+            styles.downloadButton, 
+            { 
+              backgroundColor: downloading || !qrImageUrl ? '#CCCCCC' : '#9C27B0',
+              opacity: downloading || !qrImageUrl ? 0.6 : 1,
+            }
+          ]}
           onPress={handleDownload}
           activeOpacity={0.8}
+          disabled={downloading || !qrImageUrl}
         >
-          <Download size={20} color="#FFFFFF" />
-          <Text style={styles.actionButtonText}>Download</Text>
+          {downloading ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <Download size={moderateScale(20)} color="#FFFFFF" />
+          )}
+          <Text style={styles.actionButtonText}>
+            {downloading ? 'Downloading...' : 'Download'}
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.actionButton, styles.shareButton, { backgroundColor: theme.colors.accent }]}
+          style={[
+            styles.actionButton, 
+            styles.shareButton, 
+            { 
+              backgroundColor: !qrImageUrl ? '#CCCCCC' : theme.colors.accent,
+              opacity: !qrImageUrl ? 0.6 : 1,
+            }
+          ]}
           onPress={handleShare}
           activeOpacity={0.8}
+          disabled={!qrImageUrl}
         >
-          <Share2 size={20} color="#FFFFFF" />
+          <Share2 size={moderateScale(20)} color="#FFFFFF" />
           <Text style={styles.actionButtonText}>Share</Text>
         </TouchableOpacity>
       </View>
@@ -201,174 +354,92 @@ const QRCodePaymentScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  headerButton: {
-    padding: 4,
-  },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 100,
+    padding: getSpacing(2),
+    paddingBottom: verticalScale(100),
     alignItems: 'center',
-  },
-  logoContainer: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  logoWrapper: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#001F3F',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-    position: 'relative',
-  },
-  logoText: {
-    fontSize: 32,
-    fontWeight: '900',
-    color: '#FFFFFF',
-  },
-  logoCheckmark: {
-    position: 'absolute',
-    bottom: 8,
-    right: 8,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: '#4CAF50',
-  },
-  appName: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  appTagline: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  qrCard: {
-    width: '100%',
-    maxWidth: 400,
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 24,
-    alignItems: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-  },
-  upiHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-    width: '100%',
-    justifyContent: 'center',
-  },
-  upiLogoContainer: {
-    marginRight: 12,
-  },
-  bhimText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#000000',
-  },
-  upiText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#000000',
-  },
-  upiTextContainer: {
-    alignItems: 'flex-start',
-  },
-  unifiedText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#000000',
-    lineHeight: 12,
   },
   qrCodeContainer: {
     width: '100%',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: getSpacing(2.5),
   },
   qrCodePlaceholder: {
-    width: 250,
-    height: 250,
+    width: scale(850),
+    height: verticalScale(550),
+    maxWidth: '95%',
     backgroundColor: '#F5F5F5',
-    borderRadius: 12,
+    borderRadius: moderateScale(12),
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
+    borderWidth: moderateScale(2),
     borderColor: '#E0E0E0',
     borderStyle: 'dashed',
   },
-
+  qrCodeImageWrapper: {
+    position: 'relative',
+    width: scale(950),
+    height: verticalScale(550),
+    maxWidth: '95%',
+  },
+  qrCodeImageLoadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(245, 245, 245, 0.8)',
+    borderRadius: moderateScale(12),
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
+  },
   qrCodeImage: {
-    width: 850,
-    height: 550,
-    borderRadius: 12,
+    width: scale(850),
+    height: verticalScale(550),
+    maxWidth: '95%',
+    borderRadius: moderateScale(12),
   },
   qrCodePlaceholderText: {
-    fontSize: 18,
+    fontSize: moderateScale(18),
     fontWeight: '600',
     color: '#9E9E9E',
     textAlign: 'center',
-    marginBottom: 8,
-  },
-  qrCodeNote: {
-    fontSize: 12,
-    color: '#9E9E9E',
-    textAlign: 'center',
-    marginTop: 8,
+    marginBottom: getSpacing(1),
   },
   retryButton: {
-    marginTop: 12,
-    paddingHorizontal: 20,
-    paddingVertical: 8,
+    marginTop: getSpacing(1.5),
+    paddingHorizontal: getSpacing(2.5),
+    paddingVertical: getSpacing(1),
     backgroundColor: '#001F3F',
-    borderRadius: 8,
+    borderRadius: moderateScale(8),
   },
   retryButtonText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: moderateScale(14),
     fontWeight: '600',
-  },
-  instructionText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#001F3F',
-    textAlign: 'center',
-    lineHeight: 18,
   },
   companyName: {
-    fontSize: 12,
+    fontSize: moderateScale(12),
     fontWeight: '600',
-    marginBottom: 24,
+    marginBottom: getSpacing(3),
     textAlign: 'center',
   },
   noteContainer: {
     width: '100%',
-    maxWidth: 400,
+    maxWidth: scale(400),
   },
   noteLabel: {
-    fontSize: 14,
+    fontSize: moderateScale(14),
     fontWeight: '700',
-    marginBottom: 8,
+    marginBottom: getSpacing(1),
   },
   noteText: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: moderateScale(14),
+    lineHeight: moderateScale(20),
   },
   bottomButtons: {
     position: 'absolute',
@@ -376,19 +447,19 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    paddingBottom: 20,
-    gap: 12,
+    paddingHorizontal: getSpacing(2),
+    paddingVertical: getSpacing(1.5),
+    paddingBottom: verticalScale(20),
+    gap: getSpacing(1.5),
   },
   actionButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 8,
-    gap: 8,
+    paddingVertical: verticalScale(14),
+    borderRadius: moderateScale(8),
+    gap: getSpacing(1),
   },
   downloadButton: {
     // Styles handled by backgroundColor
@@ -398,28 +469,28 @@ const styles = StyleSheet.create({
   },
   actionButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: moderateScale(16),
     fontWeight: '700',
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: getSpacing(2.5),
   },
   errorText: {
-    fontSize: 16,
-    marginBottom: 20,
+    fontSize: moderateScale(16),
+    marginBottom: getSpacing(2.5),
     textAlign: 'center',
   },
   backButton: {
-    padding: 12,
+    padding: getSpacing(1.5),
     backgroundColor: '#001F3F',
-    borderRadius: 8,
+    borderRadius: moderateScale(8),
   },
   backButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: moderateScale(16),
     fontWeight: '600',
   },
 });

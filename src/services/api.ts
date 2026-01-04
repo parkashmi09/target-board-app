@@ -587,18 +587,18 @@ export const getUserStreams = async (classId: string, type?: 'live' | 'upcoming'
  * Fetch a single stream by ID with purchase status
  * GET /streams/:streamId
  */
-export const getStreamById = async (streamId: string): Promise<{ stream: Stream; isUserPurchased: boolean }> => {
+export const getStreamById = async (streamId: string): Promise<{ stream: Stream; isUserPurchased: boolean; chatRoomId?: { roomId: string } }> => {
   try {
     if (__DEV__) {
       console.log('[API] getStreamById called for streamId:', streamId);
     }
-    const response = await api.get<{ stream: Stream; isUserPurchased: boolean }>(`/streams/${streamId}`);
+    const response = await api.get<{ stream: Stream; isUserPurchased: boolean; chatRoomId?: { roomId: string } }>(`/streams/${streamId}`);
     
     if (__DEV__) {
       console.log('[API] getStreamById response:', response);
     }
     
-    // Handle response structure: { stream: {...}, isUserPurchased: true }
+    // Handle response structure: { stream: {...}, isUserPurchased: true, chatRoomId: {...} }
     const stream = response.stream || (response as any);
     const isUserPurchased = response.isUserPurchased !== undefined 
       ? Boolean(response.isUserPurchased) 
@@ -610,6 +610,7 @@ export const getStreamById = async (streamId: string): Promise<{ stream: Stream;
         id: stream._id || stream.id,
       },
       isUserPurchased,
+      chatRoomId: response.chatRoomId,
     };
   } catch (error: any) {
     if (__DEV__) {
@@ -838,6 +839,8 @@ export interface CategoryNode {
   updatedAt: string;
   __v: number;
   children: CategoryNode[];
+  contents?: ContentItem[];
+  streams?: Stream[];
 }
 
 /**

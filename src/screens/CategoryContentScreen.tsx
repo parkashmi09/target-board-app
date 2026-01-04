@@ -14,8 +14,8 @@ import { useTheme } from '../theme/theme';
 import { moderateScale, getSpacing } from '../utils/responsive';
 import GradientBackground from '../components/GradientBackground';
 import ScreenHeader from '../components/ScreenHeader';
-import { CategoryNode, fetchContentByCategory, ContentItem } from '../services/api';
-import { FileText, Video, Play } from 'lucide-react-native';
+import { CategoryNode, fetchContentByCategory, ContentItem, Stream } from '../services/api';
+import { FileText, Video, Play, Radio } from 'lucide-react-native';
 import { useToast } from '../components/Toast';
 import type { MainStackParamList } from '../navigation/MainStack';
 
@@ -30,6 +30,8 @@ const CategoryContentScreen: React.FC = () => {
   const toast = useToast();
 
   const [contentItems, setContentItems] = useState<ContentItem[]>([]);
+
+  console.log("contentItems", contentItems);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -76,17 +78,17 @@ const CategoryContentScreen: React.FC = () => {
 
     try {
       if (item.type === 'pdf' && item.pdf?.url) {
-        (navigation as any).navigate('PDFViewer', {
+        (navigation as any).navigate('PDFDownload', {
           url: item.pdf.url,
           title: item.title || 'PDF Document',
           contentId: item._id,
         });
-      } else if (item.type === 'video' && item.video?.assetId) {
+      } else if (item.type === 'video' && (item.video?.assetId || item.video?.url)) {
         // Navigate to video player
-        (navigation as any).navigate('StreamPlayer', {
-          streamId: item._id,
+        (navigation as any).navigate('VideoPlayer', {
           tpAssetId: item.video.assetId,
           hlsUrl: item.video.url,
+          title: item.title || 'Video',
         });
       } else {
         toast.show({ text: 'Content not available', type: 'error' });
@@ -98,6 +100,46 @@ const CategoryContentScreen: React.FC = () => {
       toast.show({ text: 'Failed to open content', type: 'error' });
     }
   }, [navigation, toast]);
+
+  const handleStreamPress = useCallback((stream: Stream) => {
+    if (!stream || !stream._id) {
+      toast.show({ text: 'Invalid stream', type: 'error' });
+      return;
+    }
+
+    try {
+      // For live streams, use StreamPlayer (with chat)
+      if (stream.status === 'live' || stream.tpStatus === 'STREAMING') {
+        (navigation as any).navigate('StreamPlayer', {
+          streamId: stream._id,
+          tpAssetId: stream.tpAssetId,
+          hlsUrl: stream.hlsUrl,
+        });
+      } else {
+        // For scheduled/completed streams, use VideoPlayer (simple player)
+        (navigation as any).navigate('VideoPlayer', {
+          tpAssetId: stream.tpAssetId,
+          hlsUrl: stream.hlsUrl,
+          title: stream.title || 'Video',
+        });
+      }
+    } catch (error) {
+      if (__DEV__) {
+        console.error('[CategoryContentScreen] Navigation error:', error);
+      }
+      toast.show({ text: 'Failed to open stream', type: 'error' });
+    }
+  }, [navigation, toast]);
+
+  // Get streams from category - separate live streams from scheduled/completed
+  const allStreams = category?.streams || [];
+  const liveStreams = allStreams.filter((stream: Stream) => 
+    stream.status === 'live' || stream.tpStatus === 'STREAMING'
+  );
+  const scheduledStreams = allStreams.filter((stream: Stream) => 
+    stream.status === 'scheduled' || stream.status === 'upcoming' || 
+    stream.status === 'completed' || stream.tpStatus === 'COMPLETED' || stream.tpStatus === 'STOPPED'
+  );
 
   if (!category) {
     return (
@@ -187,7 +229,60 @@ const CategoryContentScreen: React.FC = () => {
           </View>
         )}
 
-        {/* Content Items (Videos/PDFs) - Only show for leaf categories */}
+        {/* Live Streams Section - Show only live streams */}
+        {liveStreams.length > 0 && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Live Streams
+            </Text>
+            <FlatList
+              data={liveStreams}
+              renderItem={({ item }: { item: Stream }) => {
+                if (!item || !item._id) return null;
+                const isLive = item.status === 'live' || item.tpStatus === 'STREAMING';
+                return (
+                  <TouchableOpacity
+                    style={[styles.contentCard, { backgroundColor: colors.cardBackground }]}
+                    onPress={() => handleStreamPress(item)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.contentIcon}>
+                      <Radio size={24} color={isLive ? '#FF0000' : colors.primary} />
+                    </View>
+                    <View style={styles.contentInfo}>
+                      <View style={styles.streamHeader}>
+                        <Text style={[styles.contentTitle, { color: colors.text }]} numberOfLines={2}>
+                          {item.title || 'Untitled Stream'}
+                        </Text>
+                        {isLive && (
+                          <View style={[styles.liveBadge, { backgroundColor: '#FF0000' }]}>
+                            <Text style={styles.liveBadgeText}>LIVE</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text style={[styles.contentType, { color: colors.textSecondary }]}>
+                        Live Now
+                      </Text>
+                      {item.description && (
+                        <Text style={[styles.streamDescription, { color: colors.textSecondary }]} numberOfLines={1}>
+                          {item.description}
+                        </Text>
+                      )}
+                    </View>
+                    <View style={styles.contentAction}>
+                      <Play size={20} color={colors.primary} />
+                    </View>
+                  </TouchableOpacity>
+                );
+              }}
+              keyExtractor={(item) => item._id || `stream-${Math.random()}`}
+              scrollEnabled={false}
+              showsVerticalScrollIndicator={false}
+            />
+          </View>
+        )}
+
+        {/* Content Items (Videos/PDFs/Scheduled Streams) - Only show for leaf categories */}
         {isLeafCategory && (
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
@@ -200,11 +295,54 @@ const CategoryContentScreen: React.FC = () => {
                   Loading content...
                 </Text>
               </View>
-            ) : contentItems.length > 0 ? (
+            ) : (contentItems.length > 0 || scheduledStreams.length > 0) ? (
               <FlatList
-                data={contentItems}
-                renderItem={({ item }: { item: ContentItem }) => {
+                data={[
+                  // Add scheduled streams as video items
+                  ...scheduledStreams.map((stream: Stream) => ({
+                    _id: stream._id,
+                    title: stream.title,
+                    type: 'video' as const,
+                    video: {
+                      assetId: stream.tpAssetId || '',
+                      url: stream.hlsUrl || '',
+                    },
+                    isStream: true,
+                    stream: stream,
+                  })),
+                  // Add regular content items
+                  ...contentItems,
+                ]}
+                renderItem={({ item }: { item: ContentItem & { isStream?: boolean; stream?: Stream } }) => {
                   if (!item || !item._id) return null;
+                  
+                  // Handle scheduled streams as videos
+                  if (item.isStream && item.stream) {
+                    return (
+                      <TouchableOpacity
+                        style={[styles.contentCard, { backgroundColor: colors.cardBackground }]}
+                        onPress={() => handleStreamPress(item.stream!)}
+                        activeOpacity={0.7}
+                      >
+                        <View style={styles.contentIcon}>
+                          <Video size={24} color={colors.primary} />
+                        </View>
+                        <View style={styles.contentInfo}>
+                          <Text style={[styles.contentTitle, { color: colors.text }]} numberOfLines={2}>
+                            {item.title || 'Untitled'}
+                          </Text>
+                          <Text style={[styles.contentType, { color: colors.textSecondary }]}>
+                            Video
+                          </Text>
+                        </View>
+                        <View style={styles.contentAction}>
+                          <Play size={20} color={colors.primary} />
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  }
+                  
+                  // Handle regular content items
                   return (
                     <TouchableOpacity
                       style={[styles.contentCard, { backgroundColor: colors.cardBackground }]}
@@ -366,6 +504,26 @@ const styles = StyleSheet.create({
   },
   contentAction: {
     marginLeft: getSpacing(1),
+  },
+  streamHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: getSpacing(0.25),
+    gap: getSpacing(1),
+  },
+  liveBadge: {
+    paddingHorizontal: getSpacing(1),
+    paddingVertical: getSpacing(0.25),
+    borderRadius: moderateScale(4),
+  },
+  liveBadgeText: {
+    color: '#FFFFFF',
+    fontSize: moderateScale(10),
+    fontWeight: '700',
+  },
+  streamDescription: {
+    fontSize: moderateScale(12),
+    marginTop: getSpacing(0.25),
   },
 });
 

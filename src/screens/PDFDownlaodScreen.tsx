@@ -1,21 +1,23 @@
 import React, { useState, useRef } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, ActivityIndicator, Alert, Linking, Dimensions } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text, ActivityIndicator, Alert, Platform, PermissionsAndroid, Dimensions } from 'react-native';
 import Pdf from 'react-native-pdf';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useTheme } from '../theme/theme';
 import { moderateScale, getSpacing } from '../utils/responsive';
+import ReactNativeBlobUtil from 'react-native-blob-util';
 import { MainStackParamList } from '../navigation/MainStack';
 import { addDownload } from '../services/api';
 import { useToast } from '../components/Toast';
+import { Download, Check, BookmarkPlus } from 'lucide-react-native';
 import GradientBackground from '../components/GradientBackground';
 import ScreenHeader from '../components/ScreenHeader';
 
-type PDFViewerRouteProp = RouteProp<MainStackParamList, 'PDFViewer'>;
+type PDFDownloadRouteProp = RouteProp<MainStackParamList, 'PDFDownload'>;
 
-const PDFViewerScreen: React.FC = () => {
+const PDFDownloadScreen: React.FC = () => {
   const theme = useTheme();
   const navigation = useNavigation();
-  const route = useRoute<PDFViewerRouteProp>();
+  const route = useRoute<PDFDownloadRouteProp>();
   const { url, title, contentId } = route.params || {};
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
@@ -26,18 +28,21 @@ const PDFViewerScreen: React.FC = () => {
   const pdfRef = useRef<any>(null);
   const toast = useToast();
 
-
   // Validate required params
   if (!url) {
     return (
       <GradientBackground>
         <View style={styles.container}>
-          <ScreenHeader title="PDF Viewer" showSearch={false} />
+          <ScreenHeader 
+            title="PDF Viewer" 
+            showSearch={false}
+            onBackPress={() => navigation.goBack()}
+          />
           <View style={styles.errorContainer}>
             <Text style={[styles.errorText, { color: theme.colors.error || 'red' }]}>
               Missing PDF URL
             </Text>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.errorBackButton}>
               <Text style={[styles.backButtonText, { color: theme.colors.text }]}>Go Back</Text>
             </TouchableOpacity>
           </View>
@@ -88,20 +93,67 @@ const PDFViewerScreen: React.FC = () => {
         }
       }
 
-      // Open PDF in browser for download
-      const canOpen = await Linking.canOpenURL(url);
-      if (canOpen) {
-        await Linking.openURL(url);
-        if (contentId) {
-          toast.show({ text: 'PDF opened in browser', type: 'success' });
+      // Permission check for Android
+      if (Platform.OS === 'android') {
+        if (Platform.Version < 33) {
+          const granted = await PermissionsAndroid.request(
+            PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
+            {
+              title: 'Storage Permission Required',
+              message: 'App needs access to your storage to download the PDF',
+              buttonNeutral: 'Ask Me Later',
+              buttonNegative: 'Cancel',
+              buttonPositive: 'OK',
+            }
+          );
+          if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+            Alert.alert('Permission Denied', 'Storage permission is required to download files.');
+            setDownloading(false);
+            return;
+          }
         }
-      } else {
-        Alert.alert('Error', 'Cannot open PDF URL');
       }
+
+      const { dirs } = ReactNativeBlobUtil.fs;
+      const fileName = title ? `${title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf` : url.split('/').pop() || 'document.pdf';
+      const path = Platform.OS === 'ios' ? dirs.DocumentDir + '/' + fileName : dirs.DownloadDir + '/' + fileName;
+
+      ReactNativeBlobUtil.config({
+        fileCache: true,
+        addAndroidDownloads: {
+          useDownloadManager: true,
+          notification: true,
+          path: path,
+          description: 'Downloading PDF...',
+          title: fileName,
+          mediaScannable: true,
+        },
+        path: path,
+      })
+        .fetch('GET', url)
+        .then((res) => {
+          Alert.alert('Success', `File downloaded to ${res.path()}`);
+          if (Platform.OS === 'ios') {
+            ReactNativeBlobUtil.ios.previewDocument(res.path());
+          }
+          if (contentId) {
+            toast.show({ text: 'PDF downloaded and added to downloads', type: 'success' });
+          } else {
+            toast.show({ text: 'PDF downloaded successfully', type: 'success' });
+          }
+        })
+        .catch((err) => {
+          console.error(err);
+          Alert.alert('Error', 'Failed to download file');
+          toast.show({ text: 'Failed to download PDF', type: 'error' });
+        })
+        .finally(() => {
+          setDownloading(false);
+        });
+
     } catch (error) {
       console.error(error);
       Alert.alert('Error', 'An unexpected error occurred');
-    } finally {
       setDownloading(false);
     }
   };
@@ -112,17 +164,47 @@ const PDFViewerScreen: React.FC = () => {
     cache: true,
   };
 
+  // Right component with download buttons
+  const rightComponent = (
+    <View style={styles.headerActions}>
+      {contentId && (
+        <TouchableOpacity 
+          onPress={handleAddToDownloads} 
+          style={styles.actionButton} 
+          disabled={savingToDownloads || isInDownloads}
+        >
+          {savingToDownloads ? (
+            <ActivityIndicator size="small" color={theme.colors.text} />
+          ) : isInDownloads ? (
+            <Check size={20} color={theme.colors.success || '#4CAF50'} />
+          ) : (
+            <BookmarkPlus size={20} color={theme.colors.text} />
+          )}
+        </TouchableOpacity>
+      )}
+      <TouchableOpacity 
+        onPress={handleDownload} 
+        style={styles.actionButton} 
+        disabled={downloading}
+      >
+        {downloading ? (
+          <ActivityIndicator size="small" color={theme.colors.text} />
+        ) : (
+          <Download size={20} color={theme.colors.text} />
+        )}
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
     <GradientBackground>
       <View style={styles.container}>
-        <View style={styles.header}>
-          <ScreenHeader 
-            title={title || 'PDF Viewer'} 
-            showSearch={false}
-            onBackPress={() => navigation.goBack()}
-          />
-        
-        </View>
+        <ScreenHeader 
+          title={title || 'PDF Viewer'} 
+          showSearch={false}
+          onBackPress={() => navigation.goBack()}
+          rightComponent={rightComponent}
+        />
 
         <View style={styles.pdfContainer}>
           <Pdf
@@ -186,15 +268,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    marginBottom: getSpacing(1),
-  },
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-end',
-    paddingHorizontal: getSpacing(2),
-    paddingBottom: getSpacing(1),
     gap: getSpacing(1),
   },
   actionButton: {
@@ -234,7 +311,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     textAlign: 'center',
   },
-  backButton: {
+  errorBackButton: {
     padding: getSpacing(1),
     marginTop: getSpacing(2),
   },
@@ -244,4 +321,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default PDFViewerScreen;
+export default PDFDownloadScreen;

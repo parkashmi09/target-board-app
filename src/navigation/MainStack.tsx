@@ -9,10 +9,12 @@ import DownloadsScreen from '../screens/DownloadsScreen';
 import HelpScreen from '../screens/HelpScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import PDFViewerScreen from '../screens/PDFViewerScreen';
+import PDFDownloadScreen from '../screens/PDFDownlaodScreen';
 import CategoriesScreen from '../screens/CategoriesScreen';
 import CategoryContentScreen from '../screens/CategoryContentScreen';
 import ClassStreamsScreen from '../screens/ClassStreamsScreen';
 import StreamPlayerScreen from '../screens/StreamPlayerScreen';
+import VideoPlayerScreen from '../screens/VideoPlayerScreen';
 import { CategoryNode } from '../services/api';
 
 export type MainStackParamList = {
@@ -31,11 +33,17 @@ export type MainStackParamList = {
     originalPrice: number;
     currentPrice: number;
     discountCode?: string;
+    preFetchedQrData?: any;
   };
   Downloads: undefined;
   Help: undefined;
   Settings: undefined;
   PDFViewer: {
+    url: string;
+    title?: string;
+    contentId?: string;
+  };
+  PDFDownload: {
     url: string;
     title?: string;
     contentId?: string;
@@ -58,6 +66,11 @@ export type MainStackParamList = {
     tpAssetId?: string;
     hlsUrl?: string;
   };
+  VideoPlayer: {
+    hlsUrl?: string;
+    tpAssetId?: string;
+    title?: string;
+  };
 };
 
 const Stack = createNativeStackNavigator<MainStackParamList>();
@@ -79,10 +92,19 @@ const MainStack: React.FC = () => {
       <Stack.Screen name="Help" component={HelpScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
       <Stack.Screen name="PDFViewer" component={PDFViewerScreen} />
+      <Stack.Screen name="PDFDownload" component={PDFDownloadScreen} />
       <Stack.Screen name="Categories" component={CategoriesScreen} />
       <Stack.Screen name="CategoryContent" component={CategoryContentScreen} />
       <Stack.Screen name="ClassStreams" component={ClassStreamsScreen} />
       <Stack.Screen name="StreamPlayer" component={StreamPlayerScreen} />
+      <Stack.Screen 
+        name="VideoPlayer" 
+        component={VideoPlayerScreen}
+        options={{
+          presentation: 'fullScreenModal',
+          animation: 'slide_from_bottom',
+        }}
+      />
     </Stack.Navigator>
   );
 };

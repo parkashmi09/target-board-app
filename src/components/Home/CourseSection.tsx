@@ -13,8 +13,25 @@ interface CourseSectionProps {
 const CourseSection = memo(({ courses, theme }: CourseSectionProps) => {
     const navigation = useNavigation<any>();
 
+    console.log('courses', courses);
+
     const renderItem = useCallback(({ item }: { item: any }) => {
         if (!item) return null;
+
+        // Get selected package (default or first package)
+        const selectedPackage = item?.packages?.find((pkg: any) => pkg.isDefault === true) 
+            || item?.packages?.[0] 
+            || null;
+        
+        // Get pricing from package or fallback to course data
+        const packagePrice = selectedPackage?.price || 0;
+        const originalPrice = item?.strikeoutPrice || item?.originalPrice || 0;
+        const currentPrice = packagePrice > 0 ? packagePrice : (item?.coursePrice || item?.currentPrice || 0);
+        
+        // Calculate discount
+        const discount = originalPrice > currentPrice && originalPrice > 0
+            ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100)
+            : 0;
 
         const handlePress = () => {
             if (item?.id || item?._id) {
@@ -36,18 +53,18 @@ const CourseSection = memo(({ courses, theme }: CourseSectionProps) => {
         return (
             <View style={styles.courseCardWrapper}>
                 <CourseCard
-                    title={item?.title || 'Course'}
+                    title={item?.name || item?.title || 'Course'}
                     subtitle={item?.subtitle || ''}
                     medium={item?.medium || ''}
                     board={item?.board || ''}
                     targetAudience={item?.targetAudience || ''}
-                    originalPrice={item?.originalPrice || 0}
-                    currentPrice={item?.currentPrice || 0}
-                    discount={item?.discount || 0}
+                    originalPrice={originalPrice}
+                    currentPrice={currentPrice}
+                    discount={discount}
                     startDate={item?.startDate}
                     endDate={item?.endDate}
                     batchType={item?.batchType || ''}
-                    bannerImage={item?.bannerImage}
+                    bannerImage={item?.bannerImage || item?.courseImage}
                     gradientColors={item?.gradientColors || ['#FFFACD', '#FFE4B5']}
                     courseId={item?.id || item?._id}
                     onExplore={handlePress}

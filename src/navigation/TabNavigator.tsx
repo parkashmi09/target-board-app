@@ -18,7 +18,12 @@ const Tab = createBottomTabNavigator();
 
 // Custom Tab Icon with conditional label - Memoized for performance
 const TabIcon = React.memo(({ name, label, focused, theme }: any) => (
-  <View style={{ alignItems: 'center', justifyContent: 'center', top: Platform.OS === 'ios' ? 10 : 0 }}>
+  <View style={{ 
+    alignItems: 'center', 
+    justifyContent: 'center',
+    width: '100%',
+    height: '100%',
+  }}>
     <SVGIcon
       name={name}
       size={24}
@@ -47,24 +52,26 @@ const ResponsiveTabBarButton = React.memo(({ children, onPress, accessibilitySta
     return (
       <TouchableOpacity
         style={{
-          top: shouldFloat ? -24 : 0, // Float up when active
+          flex: 1,
           justifyContent: 'center',
           alignItems: 'center',
-          ...styles.shadow,
+          height: '100%',
+          paddingVertical: 0,
         }}
         onPress={onPress}
         activeOpacity={0.9}
       >
         <View
           style={{
-            width: moderateScale(65), // Increased size to fit label
+            width: moderateScale(65),
             height: moderateScale(65),
             borderRadius: moderateScale(32.5),
             backgroundColor: theme.colors.secondary,
             justifyContent: 'center',
             alignItems: 'center',
             borderWidth: 4,
-            borderColor: theme.colors.background, // Create cutout effect
+            borderColor: theme.colors.background,
+            ...styles.shadow,
           }}
         >
           {children}
@@ -79,6 +86,8 @@ const ResponsiveTabBarButton = React.memo(({ children, onPress, accessibilitySta
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
+        height: '100%',
+        paddingVertical: 0,
       }}
       onPress={onPress}
       activeOpacity={1}
@@ -134,6 +143,13 @@ const TabNavigator: React.FC = () => {
       height: moderateScale(70),
       borderTopWidth: 0,
       opacity: 1,
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      justifyContent: 'space-around' as const,
+      paddingHorizontal: getSpacing(1),
+      paddingVertical: 0,
+      paddingTop: 0,
+      paddingBottom: 0,
       ...styles.shadow,
     };
   }, [theme.isDark, theme.colors.cardBackground]);
@@ -216,6 +232,11 @@ const TabNavigator: React.FC = () => {
       color: theme.colors.text,
     },
     tabBarShowLabel: false, // Hide default labels, we handle them in TabIcon
+    tabBarItemStyle: {
+      justifyContent: 'center' as const,
+      alignItems: 'center' as const,
+      paddingVertical: 0,
+    },
   }), [theme.colors.background, theme.colors.border, theme.colors.text]);
 
   // Memoize tab icon and button functions to prevent recreation
@@ -240,7 +261,7 @@ const TabNavigator: React.FC = () => {
   ), [t, theme]);
 
   const batchesTabButton = useCallback((props: any) => (
-    <ResponsiveTabBarButton {...props} theme={theme} label={t('navigation.batches') || 'Batches'} shouldFloat={true} />
+    <ResponsiveTabBarButton {...props} theme={theme} label={t('navigation.batches') || 'Batches'} shouldFloat={false} />
   ), [t, theme]);
 
   const notesTabIcon = useCallback(({ focused }: { focused: boolean }) => (

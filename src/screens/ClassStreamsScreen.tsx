@@ -30,6 +30,8 @@ const ClassStreamsScreen: React.FC = () => {
     const { courseId } = route.params || {};
 
     const [streams, setStreams] = useState<Stream[]>([]);
+
+    console.log('streams', streams);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);

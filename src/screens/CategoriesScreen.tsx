@@ -27,6 +27,9 @@ const CategoriesScreen: React.FC = () => {
   const { courseId, courseName, parentCategory } = route.params || {};
 
   const [categories, setCategories] = useState<CategoryNode[]>([]);
+
+
+  console.log("categories", categories);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');

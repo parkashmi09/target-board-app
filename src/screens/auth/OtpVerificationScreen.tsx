@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, ScrollView, KeyboardAvoidingView, Platform, TextInput } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../../theme/theme';
 import { moderateScale, getSpacing } from '../../utils/responsive';
@@ -10,6 +10,7 @@ import { useGlobalLoaderManual } from '../../components/GlobalLoader';
 import { useAuthStore } from '../../store';
 import { useLoaderStore } from '../../store/loaderStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { OtpInput } from 'react-native-otp-entry';
 import type { AuthStackParamList } from '../../navigation/AuthStack';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -166,20 +167,40 @@ const OtpVerificationScreen: React.FC = () => {
             We've sent a 6-digit OTP to {mobile || 'your mobile number'}
           </Text>
 
-          <TextInput
-            value={otp}
-            onChangeText={(text) => setOtp(text.replace(/[^0-9]/g, '').slice(0, 6))}
-            style={[styles.otpInput, {
-              backgroundColor: theme.colors.inputBackground,
-              color: theme.colors.text,
-              borderColor: theme.colors.border,
-            }]}
-            placeholder="Enter 6-digit OTP"
-            placeholderTextColor={theme.colors.textSecondary}
-            keyboardType="numeric"
-            maxLength={6}
-            autoFocus
-          />
+          <View style={styles.otpContainer}>
+            <OtpInput
+              numberOfDigits={6}
+              onTextChange={(text: string) => setOtp(text)}
+              onFilled={(text: string) => {
+                setOtp(text);
+                // Auto-verify when OTP is complete
+                if (text.length === 6 && !loading) {
+                  handleVerifyOtp();
+                }
+              }}
+              theme={{
+                containerStyle: styles.otpContainerStyle,
+                pinCodeContainerStyle: {
+                  backgroundColor: theme.colors.inputBackground,
+                  borderColor: theme.colors.border,
+                  borderWidth: 1,
+                  borderRadius: moderateScale(8),
+                  width: moderateScale(50),
+                  height: moderateScale(60),
+                },
+                pinCodeTextStyle: {
+                  color: theme.colors.text,
+                  fontSize: moderateScale(20),
+                  fontWeight: '600',
+                },
+                focusedPinCodeContainerStyle: {
+                  borderColor: theme.colors.secondary,
+                  borderWidth: 2,
+                },
+              }}
+              autoFocus
+            />
+          </View>
 
           <View style={styles.resendContainer}>
             <TouchableOpacity
@@ -254,14 +275,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: getSpacing(3),
   },
-  otpInput: {
-    borderWidth: 1,
-    borderRadius: moderateScale(8),
-    padding: getSpacing(2),
-    fontSize: moderateScale(20),
-    textAlign: 'center',
-    letterSpacing: moderateScale(8),
+  otpContainer: {
     marginBottom: getSpacing(2),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  otpContainerStyle: {
+    gap: moderateScale(12),
   },
   resendContainer: {
     flexDirection: 'row',

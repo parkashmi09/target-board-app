@@ -15,6 +15,7 @@ interface ScreenHeaderProps {
     defaultValue?: string;
     showSearch?: boolean;
     showMenu?: boolean;
+    rightComponent?: React.ReactNode;
 }
 
 const ScreenHeader: React.FC<ScreenHeaderProps> = ({
@@ -25,7 +26,8 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
     placeholder = 'Search',
     defaultValue = '',
     showSearch = true,
-    showMenu = false
+    showMenu = false,
+    rightComponent
 }) => {
     const theme = useTheme();
     const { colors } = theme;
@@ -124,6 +126,11 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
                 {title && (
                     <Text style={[styles.headerTitle, { color: colors.text }]}>{title}</Text>
                 )}
+                {rightComponent && (
+                    <View style={styles.rightIcons}>
+                        {rightComponent}
+                    </View>
+                )}
             </View>
         );
     }
@@ -140,6 +147,7 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
                         <Text style={[styles.headerTitle, { color: colors.text }]}>{title}</Text>
                     )}
                     <View style={styles.rightIcons}>
+                        {rightComponent}
                         {showSearch && (
                             <TouchableOpacity onPress={handleSearchIconPress} style={styles.searchIconButton}>
                                 <Search size={moderateScale(24)} color={colors.text} />

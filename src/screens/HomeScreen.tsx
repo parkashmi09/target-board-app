@@ -117,9 +117,18 @@ const HomeScreen: React.FC = () => {
     const transformed = coursesData
       .filter((course: any) => course && (course._id || course.id))
       .map((course: any) => {
+        // Get selected package (default or first package)
+        const selectedPackage = course?.packages?.find((pkg: any) => pkg.isDefault === true) 
+          || course?.packages?.[0] 
+          || null;
+        
+        // Get pricing from package or fallback to course data
+        const packagePrice = selectedPackage?.price || 0;
         const originalPrice = course.strikeoutPrice || course.coursePrice || 0;
-        const currentPrice = course.coursePrice || 0;
-        const discount = originalPrice > currentPrice
+        const currentPrice = packagePrice > 0 ? packagePrice : (course.coursePrice || 0);
+        
+        // Calculate discount
+        const discount = originalPrice > currentPrice && originalPrice > 0
           ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100)
           : 0;
 
@@ -138,6 +147,8 @@ const HomeScreen: React.FC = () => {
 
         return {
           id: course._id || course.id,
+          _id: course._id,
+          name: course.name,
           title: course.name || 'Course',
           subtitle: course.courseDescription || '',
           medium: course.class?.name || 'All Classes',
@@ -150,7 +161,11 @@ const HomeScreen: React.FC = () => {
           endDate: course.batchInfo?.endDate || course.updatedAt || new Date().toISOString(),
           batchType: course.courseType?.name || 'Regular',
           bannerImage: course.courseImage ? { uri: course.courseImage } : Images.TB_LOGO,
+          courseImage: course.courseImage,
           gradientColors: ['#FFFACD', '#FFE4B5'] as [string, string],
+          packages: course.packages || [], // Include packages array for CourseSection
+          strikeoutPrice: course.strikeoutPrice, // Include for CourseSection
+          coursePrice: course.coursePrice, // Include for fallback
           _raw: course,
         };
       });

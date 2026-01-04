@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, RefreshControl, ActivityIndicator } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -7,22 +7,57 @@ import { moderateScale, getSpacing } from '../utils/responsive';
 import ResponsiveView from '../components/ResponsiveView';
 import GradientBackground from '../components/GradientBackground';
 import CourseCard from '../components/CourseCard';
-import { useUserCourses } from '../hooks/queries/useUserCourses';
+import { useCourses } from '../hooks/queries/useCourses';
 import { Images } from '../assets/images';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const MyCourseScreen: React.FC = () => {
   const theme = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const [refreshing, setRefreshing] = useState(false);
+  const [categoryId, setCategoryId] = useState<string | number | null>(null);
 
-  // Fetch user's purchased courses
-  const { data: coursesData, isLoading, refetch } = useUserCourses({
+  // Fetch courses using the same API as HomeScreen
+  const { data: coursesData, isLoading, refetch } = useCourses({
+    categoryId: categoryId || null,
     enabled: true,
   });
 
+  // Load user data to get class ID
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        const userDataString = await AsyncStorage.getItem('userData');
+        if (userDataString) {
+          const userData = JSON.parse(userDataString);
+          setCategoryId(userData?.class_id || userData?.classId || null);
+        }
+      } catch (error) {
+        if (__DEV__) {
+          console.error('Error loading user data:', error);
+        }
+      }
+    };
+    loadUserData();
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
-      // Refresh courses when screen is focused
+      // Load user data and refresh courses when screen is focused
+      const loadUserData = async () => {
+        try {
+          const userDataString = await AsyncStorage.getItem('userData');
+          if (userDataString) {
+            const userData = JSON.parse(userDataString);
+            setCategoryId(userData?.class_id || userData?.classId || null);
+          }
+        } catch (error) {
+          if (__DEV__) {
+            console.error('Error loading user data:', error);
+          }
+        }
+      };
+      loadUserData();
       refetch();
     }, [refetch])
   );
@@ -47,15 +82,25 @@ const MyCourseScreen: React.FC = () => {
     }
 
     return coursesData.map((course: any) => {
-      // Calculate discount percentage
+      // Get selected package (default or first package)
+      const selectedPackage = course?.packages?.find((pkg: any) => pkg.isDefault === true) 
+        || course?.packages?.[0] 
+        || null;
+      
+      // Get pricing from package or fallback to course data
+      const packagePrice = selectedPackage?.price || 0;
       const originalPrice = course.strikeoutPrice || course.coursePrice || course.originalPrice || 0;
-      const currentPrice = course.coursePrice || course.currentPrice || 0;
-      const discount = originalPrice > currentPrice
+      const currentPrice = packagePrice > 0 ? packagePrice : (course.coursePrice || course.currentPrice || 0);
+      
+      // Calculate discount
+      const discount = originalPrice > currentPrice && originalPrice > 0
         ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100)
         : 0;
 
       return {
         id: course._id || course.id,
+        _id: course._id,
+        name: course.name,
         title: course.name || course.title || 'Course',
         subtitle: course.courseDescription || course.description || '',
         medium: course.class?.name || course.medium || 'All Classes',
@@ -68,7 +113,11 @@ const MyCourseScreen: React.FC = () => {
         endDate: course.batchInfo?.endDate || course.updatedAt || new Date().toISOString(),
         batchType: course.courseType?.name || course.batchType || 'Regular',
         bannerImage: course.courseImage ? { uri: course.courseImage } : Images.TB_LOGO,
+        courseImage: course.courseImage,
         gradientColors: ['#FFFACD', '#FFE4B5'] as [string, string],
+        packages: course.packages || [], // Include packages array
+        strikeoutPrice: course.strikeoutPrice, // Include for fallback
+        coursePrice: course.coursePrice, // Include for fallback
         _raw: course,
       };
     });
