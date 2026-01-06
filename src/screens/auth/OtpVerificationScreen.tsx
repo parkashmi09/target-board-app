@@ -73,8 +73,10 @@ const OtpVerificationScreen: React.FC = () => {
     }
   }, [showTimer, timer]);
 
-  const handleVerifyOtp = async () => {
-    if (!otp || otp.length !== 6) {
+  const handleVerifyOtp = async (otpValue?: string) => {
+    const otpToVerify = otpValue || otp;
+    
+    if (!otpToVerify || otpToVerify.length !== 6) {
       toast.show({ text: 'Please enter a valid 6-digit OTP.', type: 'error' });
       return;
     }
@@ -83,10 +85,15 @@ const OtpVerificationScreen: React.FC = () => {
       toast.show({ text: 'Mobile number is missing. Please try again.', type: 'error' });
       return;
     }
+    
+    if (loading) {
+      return; // Prevent multiple calls
+    }
+    
     setLoading(true);
     try {
       loader.show();
-      const res = await verifyOtp(mobile, otp);
+      const res = await verifyOtp(mobile, otpToVerify);
 
       if (res.token) {
         await AsyncStorage.setItem('token', res.token);
@@ -173,9 +180,12 @@ const OtpVerificationScreen: React.FC = () => {
               onTextChange={(text: string) => setOtp(text)}
               onFilled={(text: string) => {
                 setOtp(text);
-                // Auto-verify when OTP is complete
-                if (text.length === 6 && !loading) {
-                  handleVerifyOtp();
+                // Auto-verify when OTP is complete - pass the text directly to avoid state timing issues
+                if (text.length === 6) {
+                  // Use setTimeout to ensure state is updated and prevent race conditions
+                  setTimeout(() => {
+                    handleVerifyOtp(text);
+                  }, 100);
                 }
               }}
               theme={{
@@ -228,7 +238,7 @@ const OtpVerificationScreen: React.FC = () => {
           </View>
 
           <TouchableOpacity
-            onPress={handleVerifyOtp}
+            onPress={() => handleVerifyOtp()}
             disabled={loading || otp.length !== 6}
             style={[
               styles.verifyButton,

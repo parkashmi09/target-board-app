@@ -20,7 +20,7 @@ import { getStreamStatus, formatDate, getCountdown } from '../utils/streamUtils'
 type ClassStreamsScreenNavigationProp = NativeStackNavigationProp<MainStackParamList, 'ClassStreams'>;
 type ClassStreamsScreenRouteProp = RouteProp<MainStackParamList, 'ClassStreams'>;
 
-type StreamTabType = 'all' | 'live' | 'upcoming';
+type StreamTabType = 'live' | 'upcoming';
 
 const ClassStreamsScreen: React.FC = () => {
     const theme = useTheme();
@@ -38,11 +38,10 @@ const ClassStreamsScreen: React.FC = () => {
     const [selectedStream, setSelectedStream] = useState<Stream | null>(null);
     const [modalVisible, setModalVisible] = useState(false);
     const [purchaseModalVisible, setPurchaseModalVisible] = useState(false);
-    const [activeTab, setActiveTab] = useState<StreamTabType>('all');
+    const [activeTab, setActiveTab] = useState<StreamTabType>('live');
 
     // Memoize filter tabs
     const filterTabs: FilterTab[] = useMemo(() => [
-        { id: 'all', label: 'All' },
         { id: 'live', label: 'Live', icon: Radio as unknown as React.ComponentType<{ size: number; color: string }> },
         { id: 'upcoming', label: 'Upcoming', icon: Calendar as unknown as React.ComponentType<{ size: number; color: string }> },
     ], []);
@@ -51,7 +50,7 @@ const ClassStreamsScreen: React.FC = () => {
     const fetchStreams = useCallback(async () => {
         try {
             setError(null);
-            const typeParam = activeTab === 'all' ? undefined : activeTab as 'live' | 'upcoming';
+            const typeParam = activeTab as 'live' | 'upcoming';
 
             if (courseId) {
                 const data = await getCourseStreams(courseId, typeParam);
@@ -215,14 +214,12 @@ const ClassStreamsScreen: React.FC = () => {
                 <View style={styles.emptyCardContent}>
                     <PlayCircle size={moderateScale(64)} color={colors.textSecondary} />
                     <Text style={[styles.emptyCardTitle, { color: colors.text }]}>
-                        No {activeTab === 'all' ? '' : activeTab === 'live' ? 'Live ' : 'Upcoming '}Streams Available
+                        No {activeTab === 'live' ? 'Live ' : 'Upcoming '}Streams Available
                     </Text>
                     <Text style={[styles.emptyCardSubtext, { color: colors.textSecondary }]}>
                         {activeTab === 'live'
                             ? 'There are no live streams at the moment. Check back later!'
-                            : activeTab === 'upcoming'
-                                ? 'No upcoming streams scheduled. Stay tuned for updates!'
-                                : 'No streams available at the moment. Check back later for upcoming classes.'}
+                            : 'No upcoming streams scheduled. Stay tuned for updates!'}
                     </Text>
                 </View>
             </View>

@@ -15,6 +15,7 @@ import CategoryContentScreen from '../screens/CategoryContentScreen';
 import ClassStreamsScreen from '../screens/ClassStreamsScreen';
 import StreamPlayerScreen from '../screens/StreamPlayerScreen';
 import VideoPlayerScreen from '../screens/VideoPlayerScreen';
+import LiveChatScreen from '../screens/LiveChatScreen';
 import { CategoryNode } from '../services/api';
 
 export type MainStackParamList = {
@@ -71,6 +72,10 @@ export type MainStackParamList = {
     tpAssetId?: string;
     title?: string;
   };
+  LiveChat: {
+    roomId?: string;
+    username?: string;
+  };
 };
 
 const Stack = createNativeStackNavigator<MainStackParamList>();
@@ -105,6 +110,7 @@ const MainStack: React.FC = () => {
           animation: 'slide_from_bottom',
         }}
       />
+      <Stack.Screen name="LiveChat" component={LiveChatScreen} />
     </Stack.Navigator>
   );
 };

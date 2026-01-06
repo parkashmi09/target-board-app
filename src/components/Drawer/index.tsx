@@ -388,6 +388,10 @@ const Drawer: React.FC = () => {
             closeDrawer();
             navigation.navigate('Help' as any);
           })}
+          {renderDrawerItem('chat', t('drawer.liveChat') || 'Live Chat', () => {
+            closeDrawer();
+            navigation.navigate('LiveChat', {});
+          })}
           {renderDrawerItem('share', t('drawer.share') || 'Share', async () => {
             closeDrawer();
             try {

@@ -13,7 +13,7 @@ interface CourseSectionProps {
 const CourseSection = memo(({ courses, theme }: CourseSectionProps) => {
     const navigation = useNavigation<any>();
 
-    console.log('courses', courses);
+    console.log('courses###', courses);
 
     const renderItem = useCallback(({ item }: { item: any }) => {
         if (!item) return null;

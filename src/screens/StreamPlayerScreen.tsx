@@ -27,6 +27,12 @@ const StreamPlayerScreen: React.FC = () => {
     const { colors } = useTheme();
     const { streamId, tpAssetId, hlsUrl } = route.params || {};
 
+    console.log('[StreamPlayerScreen] Props:', {
+        streamId,
+        tpAssetId,
+        hlsUrl,
+    });
+
     const [loading, setLoading] = useState(true);
     const [chatRoomId, setChatRoomId] = useState<string | undefined>(undefined);
     const [username, setUsername] = useState<string>('Guest');
@@ -95,7 +101,7 @@ const StreamPlayerScreen: React.FC = () => {
         const fetchChatRoomId = async () => {
             try {
                 const fetchedStreamData = await getStreamById(streamId);
-                
+
                 if (__DEV__) {
                     console.log('[StreamPlayerScreen] Stream data fetched:', {
                         chatRoomId: fetchedStreamData.chatRoomId,
@@ -104,26 +110,26 @@ const StreamPlayerScreen: React.FC = () => {
                         streamTpStatus: fetchedStreamData.stream?.tpStatus,
                     });
                 }
-                
+
                 // Store stream data
                 if (fetchedStreamData.stream) {
                     setStreamStatus(fetchedStreamData.stream.status);
                     setStreamTpStatus(fetchedStreamData.stream.tpStatus);
                     setStreamTitle(fetchedStreamData.stream.title);
                     setStreamDescription(fetchedStreamData.stream.description);
-                    
+
                     // Check if stream has ended (but don't navigate for now)
-                    const isEnded = 
-                        fetchedStreamData.stream.tpStatus === 'COMPLETED' || 
+                    const isEnded =
+                        fetchedStreamData.stream.tpStatus === 'COMPLETED' ||
                         fetchedStreamData.stream.tpStatus === 'STOPPED' ||
                         fetchedStreamData.stream.status === 'completed' ||
                         (fetchedStreamData.stream.status as string) === 'ended';
-                    
+
                     if (isEnded && __DEV__) {
                         console.log('[StreamPlayerScreen] Stream has ended');
                     }
                 }
-                
+
                 if (fetchedStreamData.chatRoomId?.roomId) {
                     const roomId = fetchedStreamData.chatRoomId.roomId;
                     if (__DEV__) {
