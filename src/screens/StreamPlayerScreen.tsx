@@ -8,7 +8,7 @@ import { MainStackParamList } from '../navigation/MainStack';
 import { getStreamById } from '../services/api';
 import GradientBackground from '../components/GradientBackground';
 import ScreenHeader from '../components/ScreenHeader';
-import TPStreamsLiveChatComponent from '../components/TPStreamsLiveChat';
+import LiveChat from '../components/LiveChat';
 import { useTheme } from '../theme/theme';
 import { moderateScale, getSpacing } from '../utils/responsive';
 
@@ -43,6 +43,22 @@ const StreamPlayerScreen: React.FC = () => {
     const [streamTpStatus, setStreamTpStatus] = useState<string | undefined>(undefined);
     const [streamTitle, setStreamTitle] = useState<string | undefined>(undefined);
     const [streamDescription, setStreamDescription] = useState<string | undefined>(undefined);
+    const [authToken, setAuthToken] = useState<string | null>(null);
+    const [isLoadingToken, setIsLoadingToken] = useState(true);
+
+    useEffect(() => {
+        const loadToken = async () => {
+            try {
+                const token = await AsyncStorage.getItem('token');
+                setAuthToken(token);
+            } catch (error) {
+                console.error('Failed to load token:', error);
+            } finally {
+                setIsLoadingToken(false);
+            }
+        };
+        loadToken();
+    }, []);
 
     // Calculate responsive video height (16:9 aspect ratio)
     const videoHeight = useMemo(() => screenWidth * (9 / 16), [screenWidth]);
@@ -267,33 +283,35 @@ const StreamPlayerScreen: React.FC = () => {
                     </View>
                 )}
 
-                {/* Chat Section - Only render when chatRoomId is available */}
-                {(() => {
-                    if (__DEV__ && chatRoomId) {
-                        console.log('[StreamPlayerScreen] Rendering chat with roomId:', chatRoomId);
-                    }
-                    return null;
-                })()}
-                {chatRoomId ? (
-                    <View style={[styles.chatSection, { backgroundColor: colors.background }]}>
-                        <TPStreamsLiveChatComponent
-                            username={username}
-                            roomId={chatRoomId}
-                            title="Live Chat"
-                        />
-                    </View>
-                ) : (
-                    streamId && (
-                        <View style={[styles.chatSection, { backgroundColor: colors.background }]}>
+                {/* Chat Section */}
+                {streamId ? (
+                    <View style={[styles.chatSection, { 
+                        backgroundColor: colors.background,
+                        minHeight: Dimensions.get('window').height * 0.3,
+                    }]}>
+                        {isLoadingToken ? (
                             <View style={styles.chatLoaderContainer}>
                                 <ActivityIndicator size="small" color={colors.primary || '#9C27B0'} />
-                                <Text style={[styles.loadingText, { color: colors.textSecondary, marginTop: getSpacing(1) }]}>
-                                    Loading chat...
+                                <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+                                    Preparing chat...
                                 </Text>
                             </View>
-                        </View>
-                    )
-                )}
+                        ) : authToken ? (
+                            <LiveChat
+                                streamId={streamId}
+                                token={authToken}
+                                streamTitle={streamTitle}
+                                streamDescription={streamDescription}
+                            />
+                        ) : (
+                            <View style={styles.errorContainer}>
+                                <Text style={[styles.errorText, { color: colors.textSecondary }]}>
+                                    Please login to use chat
+                                </Text>
+                            </View>
+                        )}
+                    </View>
+                ) : null}
             </View>
         </GradientBackground>
     );
@@ -361,6 +379,7 @@ const styles = StyleSheet.create({
         flex: 1,
         width: '100%',
         marginTop: getSpacing(1),
+        minHeight: 200,
     },
     chatLoaderContainer: {
         flex: 1,
