@@ -302,16 +302,16 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
                     styles.messageBubble,
                     isOwnMessage ?
                         { 
-                            backgroundColor: colors.secondary || '#000000', 
+                            backgroundColor: isDark ? '#FFFFFF' : (colors.secondary || '#000000'), 
                             borderBottomRightRadius: moderateScale(4),
                             elevation: 2,
                             shadowColor: '#000',
                             shadowOffset: { width: 0, height: 2 },
-                            shadowOpacity: 0.1,
+                            shadowOpacity: isDark ? 0.2 : 0.1,
                             shadowRadius: 4,
                         } :
                         { 
-                            backgroundColor: colors.cardBackground || (isDark ? '#2A2A2A' : '#F0F0F0'), 
+                            backgroundColor: isDark ? '#1E1E1E' : (colors.cardBackground || '#F0F0F0'), 
                             borderBottomLeftRadius: moderateScale(4),
                             borderWidth: 1,
                             borderColor: colors.border,
@@ -324,32 +324,31 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
                     }
                 ]}>
                     {replyTo && (
-                        <View style={[styles.replyContainer, { borderLeftColor: isOwnMessage ? 'rgba(255,255,255,0.5)' : colors.primary }]}>
-                            <Text style={[styles.replySender, { color: isOwnMessage ? 'rgba(255,255,255,0.9)' : colors.text }]}>{replyTo.userName}</Text>
-                            <Text numberOfLines={1} style={[styles.replyText, { color: isOwnMessage ? 'rgba(255,255,255,0.7)' : colors.textSecondary }]}>
+                        <View style={[styles.replyContainer, { borderLeftColor: isOwnMessage ? (isDark ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.5)') : colors.primary }]}>
+                            <Text style={[styles.replySender, { color: isOwnMessage ? (isDark ? '#000000' : 'rgba(255,255,255,0.9)') : colors.text }]}>{replyTo.userName}</Text>
+                            <Text numberOfLines={1} style={[styles.replyText, { color: isOwnMessage ? (isDark ? '#666666' : 'rgba(255,255,255,0.7)') : colors.textSecondary }]}>
                                 {replyTo.message}
                             </Text>
                         </View>
                     )}
 
                     {/* Show sender name for all messages */}
-                    {true && (
+                    {/* Show sender name for all messages */}
                         <Text style={[styles.senderName, { 
                             color: isOwnMessage 
-                                ? 'rgba(255,255,255,0.9)' 
+                                ? (isDark ? '#000000' : '#FFFFFF') 
                                 : (isAdmin 
                                     ? (colors.accent || '#FFD700') 
                                     : colors.textSecondary)
                         }]}>
-                            {item.userName} {isAdmin && '�️'}
+                            {isOwnMessage ? 'You' : item.userName} {isAdmin && '�️'}
                         </Text>
-                    )}
 
                     <Text style={[
                         styles.messageText,
                         { 
                             color: isOwnMessage 
-                                ? (colors.secondaryText || '#FFFFFF') 
+                                ? (isDark ? '#000000' : '#FFFFFF') 
                                 : colors.text 
                         }
                     ]}>
@@ -360,7 +359,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
                         styles.timestamp,
                         { 
                             color: isOwnMessage 
-                                ? 'rgba(255,255,255,0.8)' 
+                                ? (isDark ? '#666666' : 'rgba(255,255,255,0.8)') 
                                 : (isDark ? 'rgba(255,255,255,0.7)' : colors.textSecondary)
                         }
                     ]}>
