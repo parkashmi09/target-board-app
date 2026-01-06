@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -28,6 +28,7 @@ import PaymentResultModal from '../components/PaymentResultModal';
 import ScreenHeader from '../components/ScreenHeader';
 import GradientBackground from '../components/GradientBackground';
 import CourseVideoPlayer from '../components/CourseVideoPlayer';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const PaymentCheckoutScreen: React.FC = () => {
   const theme = useTheme();
@@ -54,6 +55,51 @@ const PaymentCheckoutScreen: React.FC = () => {
     title: string;
     message: string;
   } | null>(null);
+  const [savedMobileNumber, setSavedMobileNumber] = useState<string>('');
+
+  // Load saved mobile number on mount
+  useEffect(() => {
+    const loadMobileNumber = async () => {
+      try {
+        // First, try to get from Razorpay saved contact
+        const razorpayContact = await AsyncStorage.getItem('razorpayContact');
+        if (razorpayContact) {
+          setSavedMobileNumber(razorpayContact);
+          return;
+        }
+
+        // If not found, try to get from userData
+        const userDataStr = await AsyncStorage.getItem('userData');
+        if (userDataStr) {
+          try {
+            const userData = JSON.parse(userDataStr);
+            const mobile = userData.mobile || userData.phone || userData.contact || '';
+            if (mobile) {
+              // Clean the mobile number (remove any non-digits)
+              const cleanedMobile = mobile.replace(/\D/g, '');
+              if (cleanedMobile.length === 10 || cleanedMobile.length === 12) {
+                // If it's 12 digits, it might have country code, use last 10
+                const finalMobile = cleanedMobile.length === 12 ? cleanedMobile.slice(-10) : cleanedMobile;
+                setSavedMobileNumber(finalMobile);
+                // Also save it for Razorpay
+                await AsyncStorage.setItem('razorpayContact', finalMobile);
+              }
+            }
+          } catch (e) {
+            if (__DEV__) {
+              console.error('[Payment] Error parsing userData:', e);
+            }
+          }
+        }
+      } catch (error) {
+        if (__DEV__) {
+          console.error('[Payment] Error loading mobile number:', error);
+        }
+      }
+    };
+
+    loadMobileNumber();
+  }, []);
 
   // Validate required params
   if (!courseId) {
@@ -224,6 +270,40 @@ const PaymentCheckoutScreen: React.FC = () => {
         console.log('[Payment] Order created:', order);
       }
 
+      // Get user data for name and email
+      let userName = '';
+      let userEmail = '';
+      try {
+        const userDataStr = await AsyncStorage.getItem('userData');
+        if (userDataStr) {
+          const userData = JSON.parse(userDataStr);
+          userName = userData.name || userData.fullName || '';
+          userEmail = userData.email || '';
+        }
+      } catch (e) {
+        if (__DEV__) {
+          console.error('[Payment] Error getting user data:', e);
+        }
+      }
+
+      // Use saved mobile number or get from userData
+      let contactNumber = savedMobileNumber;
+      if (!contactNumber) {
+        try {
+          const userDataStr = await AsyncStorage.getItem('userData');
+          if (userDataStr) {
+            const userData = JSON.parse(userDataStr);
+            const mobile = userData.mobile || userData.phone || userData.contact || '';
+            if (mobile) {
+              const cleanedMobile = mobile.replace(/\D/g, '');
+              contactNumber = cleanedMobile.length === 12 ? cleanedMobile.slice(-10) : cleanedMobile;
+            }
+          }
+        } catch (e) {
+          // Silent error
+        }
+      }
+
       const options = {
         description: course.name || 'Course Purchase',
         image: course.courseImage || course.thumbnail || '',
@@ -233,9 +313,9 @@ const PaymentCheckoutScreen: React.FC = () => {
         name: 'Target Board',
         order_id: order.id,
         prefill: {
-          email: '',
-          contact: '',
-          name: '',
+          email: userEmail,
+          contact: contactNumber || '',
+          name: userName,
         },
         theme: { color: '#001F3F' },
       };
@@ -256,6 +336,21 @@ const PaymentCheckoutScreen: React.FC = () => {
       }
 
       if (paymentData.razorpay_payment_id && paymentData.razorpay_signature) {
+        // Save mobile number from payment response if available
+        // Razorpay may return contact in paymentData
+        if (paymentData.contact || paymentData.razorpay_contact) {
+          const contact = paymentData.contact || paymentData.razorpay_contact || '';
+          const cleanedContact = contact.replace(/\D/g, '');
+          if (cleanedContact.length >= 10) {
+            const finalContact = cleanedContact.length === 12 ? cleanedContact.slice(-10) : cleanedContact.slice(-10);
+            await AsyncStorage.setItem('razorpayContact', finalContact);
+            setSavedMobileNumber(finalContact);
+            if (__DEV__) {
+              console.log('[Payment] Saved mobile number from Razorpay:', finalContact);
+            }
+          }
+        }
+
         await verifyPurchasePayment(
           order.id,
           paymentData.razorpay_payment_id,
@@ -299,7 +394,7 @@ const PaymentCheckoutScreen: React.FC = () => {
       setIsProcessingPayment(false);
       loader.hide();
     }
-    }, [course, courseId, packageId, appliedPromoCode, isProcessingPayment, toast, loader, queryClient, navigation]);
+    }, [course, courseId, packageId, appliedPromoCode, isProcessingPayment, toast, loader, queryClient, navigation, savedMobileNumber]);
 
   const handleScanPay = useCallback(() => {
     // Navigate to QR code payment screen with pre-fetched data

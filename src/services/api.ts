@@ -137,6 +137,179 @@ export const fetchUserDetails = () => api.get<any>('/auth/user/details');
 export const updateUserProfile = (payload: { city?: string; classId: string; stateBoardId: string }) =>
   api.put<{ message?: string; user?: any }>('/auth/update-profile', payload);
 
+/**
+ * Update user profile (fullName and city)
+ * PUT /auth/user/update
+ */
+export const updateUser = async (payload: { fullName?: string; city?: string }) => {
+  try {
+    if (__DEV__) {
+      console.log('[API] updateUser called', payload);
+    }
+    
+    const token = await AsyncStorage.getItem('token');
+    if (!token) {
+      throw new Error('No authentication token found. Please login again.');
+    }
+
+    // Trim token to remove any whitespace
+    const cleanToken = token.trim();
+    
+    if (!cleanToken) {
+      throw new Error('Token is empty. Please login again.');
+    }
+
+    // Ensure payload has required fields
+    const requestPayload: { fullName: string; city?: string } = {
+      fullName: payload.fullName || '',
+    };
+    
+    if (payload.city && payload.city.trim()) {
+      requestPayload.city = payload.city.trim();
+    }
+
+    const authHeader = `Bearer ${cleanToken}`;
+    const requestUrl = `${BASE_URL}/auth/user/update`;
+    const requestBody = JSON.stringify(requestPayload);
+
+    console.log('[API] updateUser - Full Request Details:');
+    console.log('[API] URL:', requestUrl);
+    console.log('[API] Method: PUT');
+    console.log('[API] Payload:', requestPayload);
+    console.log('[API] Token (first 30 chars):', cleanToken.substring(0, 30) + '...');
+    console.log('[API] Token (last 20 chars):', '...' + cleanToken.substring(cleanToken.length - 20));
+    console.log('[API] Token length:', cleanToken.length);
+    console.log('[API] Authorization header:', authHeader.substring(0, 50) + '...');
+
+    const response = await fetch(requestUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': authHeader,
+        'Accept': 'application/json',
+      },
+      body: requestBody,
+    });
+
+    console.log('[API] Response status:', response.status);
+    console.log('[API] Response headers:', Object.fromEntries(response.headers.entries()));
+
+    const isJson = (response.headers.get('content-type') || '').includes('application/json');
+    const data = isJson ? await response.json() : undefined;
+
+    if (!response.ok) {
+      console.error('[API] updateUser - Error Response:');
+      console.error('[API] Status:', response.status);
+      console.error('[API] Status Text:', response.statusText);
+      console.error('[API] Response Data:', data);
+      
+      if (response.status === 401) {
+        // Token might be expired or invalid
+        console.error('[API] 401 Unauthorized - Possible causes:');
+        console.error('[API] 1. Token expired');
+        console.error('[API] 2. Token invalid');
+        console.error('[API] 3. Token not properly formatted');
+        console.error('[API] 4. Server not accepting Bearer token format');
+        
+        // Check token structure
+        try {
+          const tokenParts = cleanToken.split('.');
+          console.error('[API] Token structure - Parts count:', tokenParts.length);
+          if (tokenParts.length === 3) {
+            console.error('[API] Token appears to be a valid JWT format');
+            console.error('[API] Token header (first part):', tokenParts[0].substring(0, 20) + '...');
+            console.error('[API] Token payload (second part):', tokenParts[1].substring(0, 20) + '...');
+          } else {
+            console.error('[API] Token does not appear to be in JWT format');
+          }
+        } catch (e) {
+          console.error('[API] Could not analyze token structure:', e);
+        }
+        
+        throw new ApiError(
+          data?.message || 'Authentication failed. Your session may have expired. Please login again.',
+          response.status,
+          data
+        );
+      }
+      throw new ApiError(
+        data?.message || `HTTP ${response.status}`,
+        response.status,
+        data
+      );
+    }
+
+    if (__DEV__) {
+      console.log('[API] updateUser response:', data);
+    }
+    
+    return data as { message?: string; user?: any };
+  } catch (error: any) {
+    if (__DEV__) {
+      console.error('[updateUser] Error:', error?.message, error);
+    }
+    throw error;
+  }
+};
+
+/**
+ * Upload profile image
+ * PUT /profile/image
+ */
+export const uploadProfileImage = async (imageUri: string) => {
+  try {
+    if (__DEV__) {
+      console.log('[API] uploadProfileImage called', imageUri);
+    }
+    
+    const token = await AsyncStorage.getItem('token');
+    if (!token) {
+      throw new Error('No authentication token found');
+    }
+
+    // Create FormData
+    const formData = new FormData();
+    
+    // Extract file name and type from URI
+    const uriParts = imageUri.split('.');
+    const fileType = uriParts[uriParts.length - 1];
+    const fileName = `profile_${Date.now()}.${fileType}`;
+    
+    formData.append('image', {
+      uri: imageUri,
+      type: `image/${fileType}`,
+      name: fileName,
+    } as any);
+
+    const response = await fetch(`${BASE_URL}/profile/image`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        // Don't set Content-Type - let fetch set it with boundary
+      },
+      body: formData,
+    });
+
+    const isJson = (response.headers.get('content-type') || '').includes('application/json');
+    const data = isJson ? await response.json() : undefined;
+    
+    if (!response.ok) {
+      throw new ApiError(data?.message || `HTTP ${response.status}`, response.status, data);
+    }
+
+    if (__DEV__) {
+      console.log('[API] uploadProfileImage response:', data);
+    }
+    
+    return data as { message: string; imageUrl: string };
+  } catch (error: any) {
+    if (__DEV__) {
+      console.error('[uploadProfileImage] Error:', error?.message);
+    }
+    throw error;
+  }
+};
+
 export const fetchUserCourses = async (): Promise<any[]> => {
   try {
     if (__DEV__) {

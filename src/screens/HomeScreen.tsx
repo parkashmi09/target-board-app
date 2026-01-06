@@ -118,15 +118,15 @@ const HomeScreen: React.FC = () => {
       .filter((course: any) => course && (course._id || course.id))
       .map((course: any) => {
         // Get selected package (default or first package)
-        const selectedPackage = course?.packages?.find((pkg: any) => pkg.isDefault === true) 
-          || course?.packages?.[0] 
+        const selectedPackage = course?.packages?.find((pkg: any) => pkg.isDefault === true)
+          || course?.packages?.[0]
           || null;
-        
+
         // Get pricing from package or fallback to course data
         const packagePrice = selectedPackage?.price || 0;
         const originalPrice = course.strikeoutPrice || course.coursePrice || 0;
         const currentPrice = packagePrice > 0 ? packagePrice : (course.coursePrice || 0);
-        
+
         // Calculate discount
         const discount = originalPrice > currentPrice && originalPrice > 0
           ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100)

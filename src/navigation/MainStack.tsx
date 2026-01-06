@@ -8,6 +8,7 @@ import QRCodePaymentScreen from '../screens/QRCodePaymentScreen';
 import DownloadsScreen from '../screens/DownloadsScreen';
 import HelpScreen from '../screens/HelpScreen';
 import SettingsScreen from '../screens/SettingsScreen';
+import EditProfileScreen from '../screens/EditProfileScreen';
 import PDFViewerScreen from '../screens/PDFViewerScreen';
 import PDFDownloadScreen from '../screens/PDFDownlaodScreen';
 import CategoriesScreen from '../screens/CategoriesScreen';
@@ -39,6 +40,7 @@ export type MainStackParamList = {
   Downloads: undefined;
   Help: undefined;
   Settings: undefined;
+  EditProfile: undefined;
   PDFViewer: {
     url: string;
     title?: string;
@@ -96,6 +98,7 @@ const MainStack: React.FC = () => {
       <Stack.Screen name="Downloads" component={DownloadsScreen} />
       <Stack.Screen name="Help" component={HelpScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
+      <Stack.Screen name="EditProfile" component={EditProfileScreen} />
       <Stack.Screen name="PDFViewer" component={PDFViewerScreen} />
       <Stack.Screen name="PDFDownload" component={PDFDownloadScreen} />
       <Stack.Screen name="Categories" component={CategoriesScreen} />

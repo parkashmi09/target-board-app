@@ -161,8 +161,7 @@ const SettingsScreen: React.FC = () => {
               'user', 
               t('profile.editProfile') || 'Edit Profile', 
               () => {
-                // Navigate to edit profile if screen exists
-                // navigation.navigate('EditProfile');
+                navigation.navigate('EditProfile');
               }
             )}
           </View>

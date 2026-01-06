@@ -11,6 +11,7 @@ import { useRegistrationDataStore } from '../../store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { AuthStackParamList } from '../../navigation/AuthStack';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import SVGIcon from '../../components/SVGIcon';
 
 type LandingPageNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'LandingPage'>;
 
@@ -24,10 +25,120 @@ const LandingPage: React.FC = () => {
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const progressAnim = useRef(new Animated.Value(0)).current;
+  
+  // Animation values
+  const logoOpacity = useRef(new Animated.Value(0)).current;
+  const logoScale = useRef(new Animated.Value(0.5)).current;
+  const heading1Opacity = useRef(new Animated.Value(0)).current;
+  const heading1TranslateY = useRef(new Animated.Value(20)).current;
+  const heading2Opacity = useRef(new Animated.Value(0)).current;
+  const heading2TranslateY = useRef(new Animated.Value(20)).current;
+  const dividerOpacity = useRef(new Animated.Value(0)).current;
+  const dividerScale = useRef(new Animated.Value(0.8)).current;
+  const inputOpacity = useRef(new Animated.Value(0)).current;
+  const inputTranslateY = useRef(new Animated.Value(30)).current;
+  const buttonOpacity = useRef(new Animated.Value(0)).current;
+  const buttonScale = useRef(new Animated.Value(0.9)).current;
 
   useEffect(() => {
     loadAllData();
   }, [loadAllData]);
+
+  // Initial animations on mount
+  useEffect(() => {
+    // Logo animation
+    Animated.parallel([
+      Animated.timing(logoOpacity, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.spring(logoScale, {
+        toValue: 1,
+        tension: 50,
+        friction: 7,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Heading animations (staggered)
+    Animated.sequence([
+      Animated.parallel([
+        Animated.timing(heading1Opacity, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+        Animated.timing(heading1TranslateY, {
+          toValue: 0,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.parallel([
+        Animated.timing(heading2Opacity, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+        Animated.timing(heading2TranslateY, {
+          toValue: 0,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start();
+
+    // Divider animation
+    Animated.parallel([
+      Animated.timing(dividerOpacity, {
+        toValue: 1,
+        duration: 500,
+        delay: 400,
+        useNativeDriver: true,
+      }),
+      Animated.spring(dividerScale, {
+        toValue: 1,
+        tension: 50,
+        friction: 8,
+        delay: 400,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Input animation
+    Animated.parallel([
+      Animated.timing(inputOpacity, {
+        toValue: 1,
+        duration: 600,
+        delay: 600,
+        useNativeDriver: true,
+      }),
+      Animated.timing(inputTranslateY, {
+        toValue: 0,
+        duration: 600,
+        delay: 600,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Button animation
+    Animated.parallel([
+      Animated.timing(buttonOpacity, {
+        toValue: 1,
+        duration: 600,
+        delay: 800,
+        useNativeDriver: true,
+      }),
+      Animated.spring(buttonScale, {
+        toValue: 1,
+        tension: 50,
+        friction: 7,
+        delay: 800,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
 
   useEffect(() => {
     const digitCount = (phone || '').replace(/\D/g, '').length;
@@ -39,6 +150,7 @@ const LandingPage: React.FC = () => {
       useNativeDriver: false,
     }).start();
   }, [phone, progressAnim]);
+
 
   const handleContinue = async () => {
     if (!phone || phone.trim().length === 0) {
@@ -95,31 +207,78 @@ const LandingPage: React.FC = () => {
           style={[styles.backgroundImage, { height: BACKGROUND_HEIGHT }]}
           resizeMode="cover"
         >
-          <View style={styles.logoContainer}>
+       
+        </ImageBackground>
+
+        <View style={[styles.contentOverlay, { backgroundColor: theme.colors.background, minHeight: CONTENT_HEIGHT }]}>
+        <Animated.View
+            style={[
+              styles.logoContainer,
+              {
+                opacity: logoOpacity,
+                transform: [{ scale: logoScale }],
+              },
+            ]}
+          >
             <Image
               source={Images.TB_LOGO}
               style={styles.logo}
               resizeMode="contain"
             />
-          </View>
-        </ImageBackground>
-
-        <View style={[styles.contentOverlay, { backgroundColor: theme.colors.background, minHeight: CONTENT_HEIGHT }]}>
+          </Animated.View>
           <View style={styles.contentContainer}>
-            <View style={styles.headingContainer}>
-              <Text style={[styles.largestText, { color: theme.colors.secondary }]}>Largest Learning</Text>
-              <Text style={[styles.destinationText, { color: theme.colors.text }]}>Destination</Text>
-            </View>
+            {/* <View style={styles.headingContainer}>
+              <Animated.Text
+                style={[
+                  styles.largestText,
+                  {
+                    color: theme.colors.secondary,
+                    opacity: heading1Opacity,
+                    transform: [{ translateY: heading1TranslateY }],
+                  },
+                ]}
+              >
+                Largest Learning
+              </Animated.Text>
+              <Animated.Text
+                style={[
+                  styles.destinationText,
+                  {
+                    color: theme.colors.text,
+                    opacity: heading2Opacity,
+                    transform: [{ translateY: heading2TranslateY }],
+                  },
+                ]}
+              >
+                Destination
+              </Animated.Text>
+            </View> */}
 
-            <View style={styles.dividerContainer}>
+            <Animated.View
+              style={[
+                styles.dividerContainer,
+                {
+                  opacity: dividerOpacity,
+                  transform: [{ scale: dividerScale }],
+                },
+              ]}
+            >
               <View style={[styles.dividerLine, { backgroundColor: theme.colors.border }]} />
               <Text style={[styles.dividerText, { color: theme.colors.textSecondary }]}>Log in/Sign up</Text>
               <View style={[styles.dividerLine, { backgroundColor: theme.colors.border }]} />
-            </View>
+            </Animated.View>
 
-            <Text style={[styles.label, { color: theme.colors.text }]}>Mobile Number</Text>
 
-            <View style={styles.inputContainer}>
+            <Animated.View
+              style={[
+                styles.inputContainer,
+                {
+                  opacity: inputOpacity,
+                  transform: [{ translateY: inputTranslateY }],
+                },
+              ]}
+            >
+              <Text style={[styles.label, { color: theme.colors.text }]}>Mobile Number</Text>
               <TextInput
                 value={phone}
                 maxLength={10}
@@ -128,23 +287,29 @@ const LandingPage: React.FC = () => {
                 style={[styles.input, {
                   backgroundColor: theme.colors.inputBackground,
                   color: theme.colors.text,
-                  borderWidth: 1,
-                  borderColor: theme.colors.border,
+                  borderBottomWidth: 2,
+                  borderBottomColor: theme.colors.primaryText,
                 }]}
                 placeholder="Enter Your 10 digit Mobile no."
                 placeholderTextColor={theme.colors.textSecondary}
               />
-            </View>
+            </Animated.View>
 
-            <TouchableOpacity
-              onPress={handleContinue}
-              disabled={!isValid || loading}
-              style={[styles.button, {
-                backgroundColor: theme.colors.border,
-                overflow: 'hidden',
-              }]}
-              activeOpacity={0.8}
+            <Animated.View
+              style={{
+                opacity: buttonOpacity,
+                transform: [{ scale: buttonScale }],
+              }}
             >
+              <TouchableOpacity
+                onPress={handleContinue}
+                disabled={!isValid || loading}
+                style={[styles.button, {
+                  backgroundColor: theme.colors.border,
+                  overflow: 'hidden',
+                }]}
+                activeOpacity={0.8}
+              >
               <Animated.View
                 style={[
                   styles.buttonProgress,
@@ -173,9 +338,16 @@ const LandingPage: React.FC = () => {
                 <Text style={[styles.buttonText, { color: theme.colors.secondaryText }]}>
                   {loading ? 'Processing...' : "Let's Get Started"}
                 </Text>
-                <Text style={[styles.buttonArrow, { color: theme.colors.secondaryText }]}>→</Text>
+                <View style={styles.buttonArrowContainer}>
+                  <SVGIcon
+                    name="chevron-right"
+                    size={moderateScale(20)}
+                    color={theme.colors.secondaryText}
+                  />
+                </View>
               </View>
             </TouchableOpacity>
+            </Animated.View>
           </View>
         </View>
       </ScrollView>
@@ -203,7 +375,8 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     position: 'absolute',
-    top: '30%',
+    // top: '30%',
+    top:'-10%',
     left: 0,
     right: 0,
     alignItems: 'center',
@@ -252,6 +425,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: getSpacing(1.5),
     paddingVertical: getSpacing(1.5),
     fontSize: moderateScale(15),
+    borderWidth: 0,
   },
   button: {
     width: '100%',
@@ -281,11 +455,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 1,
   },
-  buttonArrow: {
-    color: '#FFFFFF',
-    fontSize: moderateScale(20),
+  buttonArrowContainer: {
     marginLeft: getSpacing(1),
-    fontWeight: '700',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 

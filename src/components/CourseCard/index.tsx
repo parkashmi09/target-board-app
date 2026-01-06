@@ -35,6 +35,7 @@ interface CourseCardProps {
   bannerImage?: any;
   gradientColors?: [string, string];
   courseId?: string | number;
+  packages?: any[];
   onExplore?: () => void;
   onBuyNow?: () => void;
   onPress?: () => void;
@@ -55,13 +56,14 @@ const CourseCard: React.FC<CourseCardProps> = React.memo(({
   bannerImage,
   gradientColors,
   courseId,
+  packages,
   onExplore,
   onBuyNow,
   onPress,
 }) => {
   const theme = useTheme();
   const navigation = useNavigation<NavigationProp>();
-  
+
   // Memoize dimensions to avoid recalculation on every render
   const { screenWidth, bannerHeight, defaultGradient } = useMemo(() => {
     const width = Dimensions.get('window').width;
@@ -117,11 +119,31 @@ const CourseCard: React.FC<CourseCardProps> = React.memo(({
   }, [course]);
 
   const handleBuyNowClick = useCallback(() => {
+    if (!courseId) return;
 
-  if(courseId) {
-    setPurchaseModalVisible(true);
-  }
-  }, [onBuyNow, courseId]);
+    // Check packages logic
+    if (packages && packages.length > 1) {
+      setPurchaseModalVisible(true);
+    } else {
+      // Direct checkout for single package or no package
+      // If we have packages, use the first/default one
+      let pkgId = undefined;
+      let price = currentPrice;
+      let origPrice = originalPrice;
+
+      if (packages && packages.length === 1) {
+        pkgId = packages[0]._id;
+        price = packages[0].price || currentPrice;
+      }
+
+      navigation.navigate('PaymentCheckout', {
+        courseId: String(courseId),
+        packageId: pkgId,
+        originalPrice: origPrice,
+        currentPrice: price,
+      });
+    }
+  }, [onBuyNow, courseId, packages, currentPrice, originalPrice, navigation]);
 
   const handleClosePurchaseModal = useCallback(() => {
     setPurchaseModalVisible(false);

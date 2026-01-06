@@ -19,15 +19,15 @@ const CourseSection = memo(({ courses, theme }: CourseSectionProps) => {
         if (!item) return null;
 
         // Get selected package (default or first package)
-        const selectedPackage = item?.packages?.find((pkg: any) => pkg.isDefault === true) 
-            || item?.packages?.[0] 
+        const selectedPackage = item?.packages?.find((pkg: any) => pkg.isDefault === true)
+            || item?.packages?.[0]
             || null;
-        
+
         // Get pricing from package or fallback to course data
         const packagePrice = selectedPackage?.price || 0;
         const originalPrice = item?.strikeoutPrice || item?.originalPrice || 0;
         const currentPrice = packagePrice > 0 ? packagePrice : (item?.coursePrice || item?.currentPrice || 0);
-        
+
         // Calculate discount
         const discount = originalPrice > currentPrice && originalPrice > 0
             ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100)
@@ -67,6 +67,7 @@ const CourseSection = memo(({ courses, theme }: CourseSectionProps) => {
                     bannerImage={item?.bannerImage || item?.courseImage}
                     gradientColors={item?.gradientColors || ['#FFFACD', '#FFE4B5']}
                     courseId={item?.id || item?._id}
+                    packages={item?.packages}
                     onExplore={handlePress}
                     onBuyNow={handleBuyNow}
                 />
