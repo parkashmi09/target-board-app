@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo, useMemo } from 'react';
 import {
   View,
   Text,
@@ -21,7 +21,7 @@ interface TopperCardProps {
   width?: number;
 }
 
-const TopperCard: React.FC<TopperCardProps> = ({
+const TopperCard: React.FC<TopperCardProps> = memo(({
   name,
   rank,
   percentage,
@@ -29,8 +29,8 @@ const TopperCard: React.FC<TopperCardProps> = ({
   width,
 }) => {
   const theme = useTheme();
-  const screenWidth = Dimensions.get('window').width;
-  const cardWidth = width || screenWidth * 0.75;
+  const screenWidth = useMemo(() => Dimensions.get('window').width, []);
+  const cardWidth = useMemo(() => width || screenWidth * 0.75, [width, screenWidth]);
 
   const getRankConfig = (r: number) => {
     switch (r) {
@@ -89,9 +89,9 @@ const TopperCard: React.FC<TopperCardProps> = ({
     }
   };
 
-  const rankConfig = getRankConfig(rank);
-  const gradientColors = theme.isDark ? rankConfig.darkGradient : rankConfig.gradient;
-  const gradientId = `topperGradient-${rank}-${name}`;
+  const rankConfig = useMemo(() => getRankConfig(rank), [rank]);
+  const gradientColors = useMemo(() => theme.isDark ? rankConfig.darkGradient : rankConfig.gradient, [theme.isDark, rankConfig]);
+  const gradientId = useMemo(() => `topperGradient-${rank}-${name}`, [rank, name]);
 
   return (
     <View
@@ -237,7 +237,7 @@ const TopperCard: React.FC<TopperCardProps> = ({
       </View> */}
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   card: {
@@ -504,5 +504,7 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
   },
 });
+
+TopperCard.displayName = 'TopperCard';
 
 export default TopperCard;

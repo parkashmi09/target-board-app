@@ -1,4 +1,4 @@
-import React, { memo, useCallback } from 'react';
+import React, { memo, useCallback, useMemo } from 'react';
 import { View, Text, Dimensions, StyleSheet } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 import Carousel from 'react-native-reanimated-carousel';
@@ -13,21 +13,20 @@ interface ToppersSectionProps {
 
 const ToppersSection = memo(({ theme }: ToppersSectionProps) => {
     const progress = useSharedValue(0);
-    const windowWidth = Dimensions.get('window').width;
+    const windowWidth = useMemo(() => Dimensions.get('window').width, []);
     
-    const toppers = [
+    const toppers = useMemo(() => [
         { id: 1, name: "Priya Jaiswal", rank: 1, percentage: "96.80%", gradientColors: ['#E3F2FD', '#FFFFFF'] },
         { id: 2, name: "Rahul Kumar", rank: 2, percentage: "95.50%", gradientColors: ['#FFF3E0', '#FFFFFF'] },
         { id: 3, name: "Anjali Singh", rank: 3, percentage: "94.20%", gradientColors: ['#F3E5F5', '#FFFFFF'] },
         { id: 4, name: "Amit Verma", rank: 4, percentage: "93.80%", gradientColors: ['#E8F5E9', '#FFFFFF'] },
-    ];
+    ], []);
 
     // Match CourseSection styling
-    const horizontalPadding = getSpacing(1.5);
-    const peekAmount = moderateScale(20);
-    const cardWidth = windowWidth - horizontalPadding * 2 - peekAmount;
-    // Card height should match the actual card minHeight (260) + some padding
-    const cardHeight = moderateScale(260) + getSpacing(2);
+    const horizontalPadding = useMemo(() => getSpacing(1.5), []);
+    const peekAmount = useMemo(() => moderateScale(20), []);
+    const cardWidth = useMemo(() => windowWidth - horizontalPadding * 2 - peekAmount, [windowWidth, horizontalPadding, peekAmount]);
+    const cardHeight = useMemo(() => moderateScale(260) + getSpacing(2), []);
 
     const renderItem = useCallback(({ item }: { item: any }) => (
         <View style={[styles.cardWrapper, { width: cardWidth }]}>
@@ -65,8 +64,7 @@ const ToppersSection = memo(({ theme }: ToppersSectionProps) => {
                     data={toppers}
                     renderItem={renderItem}
                     loop={toppers.length > 1}
-                    autoPlay={toppers.length > 1}
-                    autoPlayInterval={3500}
+                    autoPlay={false}
                     pagingEnabled
                     snapEnabled
                     mode="parallax"
@@ -75,11 +73,8 @@ const ToppersSection = memo(({ theme }: ToppersSectionProps) => {
                         parallaxScrollingOffset: peekAmount,
                     }}
                     style={{ marginLeft: horizontalPadding, overflow: 'visible' }}
-                    onProgressChange={(_, absoluteProgress) => {
-                        progress.value = absoluteProgress;
-                    }}
                     enabled={true}
-                    windowSize={3}
+                    windowSize={2}
                 />
             )}
         </View>

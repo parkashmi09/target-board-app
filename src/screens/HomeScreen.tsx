@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   StyleSheet,
   ScrollView,
   RefreshControl,
+  Dimensions,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect } from '@react-navigation/native';
@@ -11,7 +12,6 @@ import { useTheme } from '../theme/theme';
 import { moderateScale, getSpacing } from '../utils/responsive';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCourses } from '../hooks/queries/useCourses';
-import { useSliders } from '../hooks/queries/useSliders';
 import { useTeachers } from '../hooks/queries/useTeachers';
 import { useBanners } from '../hooks/queries/useBanners';
 import { useStickyBanners } from '../hooks/queries/useStickyBanners';
@@ -20,7 +20,6 @@ import { useLoaderStore } from '../store/loaderStore';
 import { useUIStore } from '../store';
 import { Images } from '../assets/images';
 
-// Import components (we'll create simplified versions)
 import GradientBackground from '../components/GradientBackground';
 import HomeHeader from '../components/Home/HomeHeader';
 import ImageBanner from '../components/ImageBanner';
@@ -53,12 +52,6 @@ const HomeScreen: React.FC = () => {
     enabled: true,
   });
 
-  // Fetch slider data using custom hook
-  const { data: sliderData, isLoading: isLoadingSliders, refetch: refetchSliders } = useSliders({
-    categoryId: categoryId || null,
-    enabled: true,
-  });
-
   // Fetch teachers data
   const { data: teachersData, isLoading: isLoadingTeachers, refetch: refetchTeachers } = useTeachers({
     enabled: true,
@@ -76,7 +69,6 @@ const HomeScreen: React.FC = () => {
     setRefreshing(true);
     try {
       await Promise.all([
-        // refetchSliders(),
         refetchTeachers(),
         refetchCourses(),
         refetchStickyBanners(),
@@ -99,9 +91,9 @@ const HomeScreen: React.FC = () => {
     } finally {
       setRefreshing(false);
     }
-  }, [refetchSliders, refetchTeachers, refetchCourses, refetchStickyBanners, refetchBanners]);
+  }, [refetchTeachers, refetchCourses, refetchStickyBanners, refetchBanners]);
 
-  const fullData = React.useMemo(() => ({
+  const fullData = useMemo(() => ({
     slider: [],
     batches: [],
     live_class: [],
@@ -109,7 +101,7 @@ const HomeScreen: React.FC = () => {
   }), []);
 
   // Transform API courses data to match CourseCard expected format
-  const transformedCourses = React.useMemo(() => {
+  const transformedCourses = useMemo(() => {
     if (!coursesData || !Array.isArray(coursesData) || coursesData.length === 0) {
       return [];
     }
@@ -172,6 +164,27 @@ const HomeScreen: React.FC = () => {
 
     return transformed;
   }, [coursesData]);
+
+  // Memoize banners data transformation
+  const transformedBanners = useMemo(() => {
+    if (!bannersData || !Array.isArray(bannersData)) return [];
+    return bannersData.map((banner: any) => ({
+      id: banner?._id || banner?.id,
+      image: banner?.mediaUrl || banner?.image || '',
+      action: banner?.link || banner?.action || '',
+      category_id: 0,
+      status: 1,
+      sorting_params: 1,
+    }));
+  }, [bannersData]);
+
+  // Memoize sticky banner
+  const stickyBanner = useMemo(() => {
+    if (stickyBannersData && Array.isArray(stickyBannersData) && stickyBannersData.length > 0 && stickyBannersData[0]) {
+      return stickyBannersData[0];
+    }
+    return null;
+  }, [stickyBannersData]);
 
   useFocusEffect(
     useCallback(() => {
@@ -264,12 +277,12 @@ const HomeScreen: React.FC = () => {
             />
           }
         >
-          {stickyBannersData && Array.isArray(stickyBannersData) && stickyBannersData.length > 0 && stickyBannersData[0] ? (
+          {stickyBanner ? (
             <ImageBanner
-              key={stickyBannersData[0]?._id || 'sticky-banner'}
-              imageUrl={stickyBannersData[0]?.image}
+              key={stickyBanner?._id || 'sticky-banner'}
+              imageUrl={stickyBanner?.image}
               onPress={() => {
-                if (stickyBannersData[0]?.link) {
+                if (stickyBanner?.link) {
                   // Handle banner link
                 }
               }}
@@ -278,27 +291,26 @@ const HomeScreen: React.FC = () => {
             <ImageBanner imageSource={Images.TB_LOGO} />
           )}
 
-          <BannerSlider
-            data={Array.isArray(bannersData) ? bannersData.map((banner: any) => ({
-              id: banner?._id || banner?.id,
-              image: banner?.mediaUrl || banner?.image || '',
-              action: banner?.link || banner?.action || '',
-              category_id: 0,
-              status: 1,
-              sorting_params: 1,
-            })) : []}
-            categoryId={categoryId}
-            full_data={fullData}
-            autoPlay={true}
-            autoPlayInterval={3000}
-          />
+          {transformedBanners.length > 0 && (
+            <BannerSlider
+              data={transformedBanners}
+              categoryId={categoryId}
+              full_data={fullData}
+              autoPlay={transformedBanners.length > 1}
+              autoPlayInterval={3000}
+            />
+          )}
 
           <ResponsiveView padding={2}>
             <CategoryTabs />
           </ResponsiveView>
 
-          <CourseSection courses={transformedCourses} theme={theme} />
-          <TeachersSection theme={theme} teachers={teachersData || []} />
+          {transformedCourses.length > 0 && (
+            <CourseSection courses={transformedCourses} theme={theme} />
+          )}
+          {teachersData && teachersData.length > 0 && (
+            <TeachersSection theme={theme} teachers={teachersData} />
+          )}
           <ToppersSection theme={theme} />
         </ScrollView>
 

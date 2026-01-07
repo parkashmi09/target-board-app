@@ -107,20 +107,17 @@ const CourseSection: React.FC<CourseSectionProps> = memo(({ courses, theme }) =>
           renderItem={renderItem}
           loop={courses.length > 1}
           autoPlay={courses.length > 1}
-          autoPlayInterval={3500}
+          autoPlayInterval={4000}
           pagingEnabled
           snapEnabled
           mode="parallax"
           modeConfig={{
             parallaxScrollingScale: 0.96,
             parallaxScrollingOffset: peekAmount,
-            // peekAmount:peekAmount
           }}
-          
-          style={{ marginLeft: horizontalPadding,   overflow: 'visible' }}
-          onProgressChange={(_, absoluteProgress) => {
-            progress.value = absoluteProgress;
-          }}
+          style={{ marginLeft: horizontalPadding, overflow: 'visible' }}
+          enabled={true}
+          windowSize={2}
         />
       )}
 
