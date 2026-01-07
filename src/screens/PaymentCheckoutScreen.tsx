@@ -690,7 +690,7 @@ const PaymentCheckoutScreen: React.FC = () => {
                 activeOpacity={0.8}
               >
                 <Phone size={16} color="#FFFFFF" />
-                <Text style={styles.callButtonText}>   +91 1234567890</Text>
+                <Text style={styles.callButtonText}>   8114532021</Text>
               </TouchableOpacity>
             </View>
           </View>

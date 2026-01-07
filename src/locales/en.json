@@ -78,6 +78,16 @@
     "callUs": "Call Us",
     "whatsapp": "WhatsApp",
     "chatWithUs": "Chat with us"
+  },
+  "tests": {
+    "title": "Tests",
+    "comingSoon": "Coming Soon",
+    "subtitle": "Take practice tests, solve previous year papers, and track your progress. This feature will be available soon!"
+  },
+  "notes": {
+    "title": "Notes",
+    "comingSoon": "Coming Soon",
+    "subtitle": "Take notes, highlight important points, and organize your study materials all in one place. This feature will be available soon!"
   }
 }
 

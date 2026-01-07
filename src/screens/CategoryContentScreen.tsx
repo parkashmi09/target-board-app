@@ -97,6 +97,7 @@ const CategoryContentScreen: React.FC = () => {
           tpAssetId: item.video.assetId,
           hlsUrl: item.video.url,
           title: item.title || 'Video',
+          contentId: item._id,
         });
       } else {
         toast.show({ text: 'Content not available', type: 'error' });
@@ -129,6 +130,7 @@ const CategoryContentScreen: React.FC = () => {
           tpAssetId: stream.tpAssetId,
           hlsUrl: stream.hlsUrl,
           title: stream.title || 'Video',
+          contentId: stream._id,
         });
       }
     } catch (error) {
@@ -530,7 +532,7 @@ const CategoryContentScreen: React.FC = () => {
         showsVerticalScrollIndicator={false}
       >
         {/* Category Info */}
-        {category && (
+        {/* {category && (
           <View style={[styles.categoryInfoCard, { backgroundColor: colors.cardBackground }]}>
             <Text style={[styles.categoryTitle, { color: colors.text }]}>
               {category.name || 'Category'}
@@ -541,7 +543,7 @@ const CategoryContentScreen: React.FC = () => {
               </Text>
             )}
           </View>
-        )}
+        )} */}
 
         {/* Subcategories */}
         {category?.children && Array.isArray(category.children) && category.children.length > 0 && (

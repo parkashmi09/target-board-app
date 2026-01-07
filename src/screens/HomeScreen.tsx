@@ -29,8 +29,8 @@ import CategoryTabs from '../components/CategoryTabs';
 import ResponsiveView from '../components/ResponsiveView';
 import CourseSection from '../components/Home/CourseSection';
 import TeachersSection from '../components/Home/TeachersSection';
-import ToppersSection from '../components/Home/ToppersSection';
 import Drawer from '../components/Drawer';
+import ToppersSection from '../components/Home/ToppersSection';
 
 const HomeScreen: React.FC = () => {
   const { t } = useTranslation();

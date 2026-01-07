@@ -73,6 +73,13 @@ export type MainStackParamList = {
     hlsUrl?: string;
     tpAssetId?: string;
     title?: string;
+    contentId?: string;
+    accessToken?: string;
+    startInFullscreen?: boolean;
+    enableDownload?: boolean;
+    offlineLicenseExpireTime?: number;
+    downloadMetadata?: { [key: string]: any };
+    startAt?: number;
   };
   LiveChat: {
     roomId?: string;

@@ -4,6 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useSharedValue } from 'react-native-reanimated';
 import Carousel from 'react-native-reanimated-carousel';
 import CourseCard from '../CourseCard';
+import ToppersSection from './ToppersSection';
 import { moderateScale, getSpacing } from '../../utils/responsive';
 import { Theme } from '../../theme/theme';
 
@@ -122,6 +123,9 @@ const CourseSection: React.FC<CourseSectionProps> = memo(({ courses, theme }) =>
           }}
         />
       )}
+
+      {/* Integrated Toppers Section */}
+      {/* <ToppersSection theme={theme} /> */}
     </View>
   );
 });

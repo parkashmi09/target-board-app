@@ -123,14 +123,26 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
                 <TouchableOpacity onPress={handleBackPress} style={styles.backButton}>
                     <ChevronLeft size={moderateScale(24)} color={colors.text} />
                 </TouchableOpacity>
-                {title && (
-                    <Text style={[styles.headerTitle, { color: colors.text }]}>{title}</Text>
+                {title ? (
+                    <Text 
+                        style={[
+                            styles.headerTitle, 
+                            { color: colors.text },
+                            rightComponent ? styles.headerTitleWithRight : styles.headerTitleFull
+                        ]}
+                        numberOfLines={1}
+                        ellipsizeMode="tail"
+                    >
+                        {title}
+                    </Text>
+                ) : (
+                    <View style={styles.headerTitleSpacer} />
                 )}
-                {rightComponent && (
+                {rightComponent ? (
                     <View style={styles.rightIcons}>
                         {rightComponent}
                     </View>
-                )}
+                ) : null}
             </View>
         );
     }
@@ -143,8 +155,20 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
                     <TouchableOpacity onPress={handleBackPress} style={styles.backButton}>
                         <ChevronLeft size={moderateScale(24)} color={colors.text} />
                     </TouchableOpacity>
-                    {title && (
-                        <Text style={[styles.headerTitle, { color: colors.text }]}>{title}</Text>
+                    {title ? (
+                        <Text 
+                            style={[
+                                styles.headerTitle, 
+                                { color: colors.text },
+                                (rightComponent || showSearch) ? styles.headerTitleWithRight : styles.headerTitleFull
+                            ]}
+                            numberOfLines={1}
+                            ellipsizeMode="tail"
+                        >
+                            {title}
+                        </Text>
+                    ) : (
+                        <View style={styles.headerTitleSpacer} />
                     )}
                     <View style={styles.rightIcons}>
                         {rightComponent}
@@ -234,8 +258,17 @@ const styles = StyleSheet.create({
     headerTitle: {
         fontSize: moderateScale(20),
         fontWeight: '700',
-        flex: 1,
         textAlign: 'center',
+    },
+    headerTitleFull: {
+        flex: 1,
+    },
+    headerTitleWithRight: {
+        flex: 1,
+        marginRight: getSpacing(1),
+    },
+    headerTitleSpacer: {
+        flex: 1,
     },
     searchInput: {
         flex: 1,

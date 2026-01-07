@@ -10,6 +10,7 @@ import CourseCard from '../components/CourseCard';
 import { useCourses } from '../hooks/queries/useCourses';
 import { Images } from '../assets/images';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import ScreenHeader from '../components/ScreenHeader';
 
 const MyCourseScreen: React.FC = () => {
   const theme = useTheme();
@@ -141,19 +142,9 @@ const MyCourseScreen: React.FC = () => {
           />
         }
       >
+        <ScreenHeader showSearch={false} title="Courses Available" />
         <ResponsiveView padding={2}>
-          <Text
-            style={[
-              styles.title,
-              {
-                color: theme.colors.text,
-                fontSize: moderateScale(24),
-                fontFamily: theme.typography.h1.fontFamily,
-              },
-            ]}
-          >
-            My Courses
-          </Text>
+      
 
           {isLoading && !refreshing ? (
             <ActivityIndicator size="large" color={theme.colors.primary} style={{ marginTop: 20 }} />

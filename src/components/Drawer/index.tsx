@@ -21,6 +21,7 @@ import CustomToggle from '../CustomToggle';
 import { useUIStore } from '../../store';
 import { useTranslation } from 'react-i18next';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { HelpCircle } from 'lucide-react-native';
 
 interface UserData {
   id?: string | number;
@@ -140,18 +141,22 @@ const Drawer: React.FC = () => {
     setDrawerOpen(false);
   }, [setDrawerOpen]);
 
-  const renderDrawerItem = (icon: string, label: string, onPress?: () => void, rightIcon: string = 'chevron-right') => (
+  const renderDrawerItem = (icon: string, label: string, onPress?: () => void, rightIcon: string = 'chevron-right', useLucideIcon?: boolean) => (
     <TouchableOpacity
       style={styles.drawerItem}
       onPress={onPress || closeDrawer}
       activeOpacity={0.7}
     >
       <View style={styles.drawerItemLeft}>
-        <SVGIcon
-          name={icon}
-          size={moderateScale(20)}
-          color={theme.colors.text}
-        />
+        {useLucideIcon && icon === 'help' ? (
+          <HelpCircle size={moderateScale(20)} color={theme.colors.text} />
+        ) : (
+          <SVGIcon
+            name={icon}
+            size={moderateScale(20)}
+            color={theme.colors.text}
+          />
+        )}
         <Text
           style={[
             styles.drawerItemText,
@@ -387,7 +392,7 @@ const Drawer: React.FC = () => {
           {renderDrawerItem('help', t('drawer.help') || 'Help', () => {
             closeDrawer();
             navigation.navigate('Help' as any);
-          })}
+          }, 'chevron-right', true)}
         
           {renderDrawerItem('share', t('drawer.share') || 'Share', async () => {
             closeDrawer();

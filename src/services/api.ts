@@ -977,26 +977,42 @@ export const fetchStickyBanners = async (): Promise<any[]> => {
 /**
  * Add content to downloads
  * POST /download/:contentId
+ * For videos, the endpoint might need the assetType in the body or as a parameter
  */
 export interface AddDownloadResponse {
   message?: string;
   download?: Download;
 }
 
-export const addDownload = async (contentId: string): Promise<AddDownloadResponse> => {
+export const addDownload = async (contentId: string, assetType?: 'video' | 'pdf'): Promise<AddDownloadResponse> => {
   try {
     if (__DEV__) {
-      console.log('[API] addDownload called for contentId:', contentId);
+      console.log('[API] addDownload called for contentId:', contentId, 'assetType:', assetType);
     }
-    const response = await api.post<AddDownloadResponse>(`/download/${contentId}`, undefined);
+    
+    // Include assetType in request body if provided (especially for videos)
+    const payload = assetType ? { assetType } : {};
+    
+    // Try the standard endpoint with payload
+    const response = await api.post<AddDownloadResponse>(`/download/${contentId}`, payload);
     if (__DEV__) {
       console.log('[API] addDownload response:', response);
     }
     return response;
   } catch (error: any) {
     if (__DEV__) {
-      console.error('[addDownload] Error:', error?.message);
+      console.error('[addDownload] Error:', error?.message, 'Status:', error?.status, 'ContentId:', contentId, 'AssetType:', assetType);
     }
+    
+    // If 404 error for video, provide more specific error message
+    if (error.status === 404 && assetType === 'video') {
+      if (__DEV__) {
+        console.error('[addDownload] 404 error - Video download endpoint may not be configured correctly');
+        console.error('[addDownload] Attempted endpoint: POST /download/' + contentId);
+        console.error('[addDownload] Payload:', assetType ? { assetType } : {});
+      }
+    }
+    
     throw error;
   }
 };
