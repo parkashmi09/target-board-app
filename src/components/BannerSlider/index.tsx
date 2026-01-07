@@ -1,6 +1,22 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { View, StyleSheet, Dimensions, TouchableOpacity, Image, Linking, Animated, ScrollView } from 'react-native';
+import React, {
+  useState,
+  useMemo,
+  useEffect,
+  useRef,
+  useCallback,
+} from 'react';
+import {
+  View,
+  StyleSheet,
+  Dimensions,
+  TouchableOpacity,
+  Image,
+  Linking,
+  Animated,
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useSharedValue } from 'react-native-reanimated';
+import Carousel from 'react-native-reanimated-carousel';
 import Video from 'react-native-video';
 import { useTheme } from '../../theme/theme';
 import { moderateScale, getSpacing } from '../../utils/responsive';
@@ -9,26 +25,10 @@ import { SliderItem } from '../../types/slider';
 import { Images } from '../../assets/images';
 
 interface BannerSliderProps {
-  /**
-   * Direct slider data prop (optional - if not provided, will fetch using useSliders hook)
-   * Matches old SliderComponent pattern for backward compatibility
-   */
   data?: SliderItem[];
-  /**
-   * Category ID to filter sliders by
-   */
   categoryId?: string | number | null;
-  /**
-   * Full data object for navigation to courses/live classes
-   */
   full_data?: any;
-  /**
-   * Whether to enable auto-play
-   */
   autoPlay?: boolean;
-  /**
-   * Auto-play interval in milliseconds
-   */
   autoPlayInterval?: number;
 }
 
@@ -40,330 +40,148 @@ const BannerSlider: React.FC<BannerSliderProps> = ({
   autoPlayInterval = 3000,
 }) => {
   const theme = useTheme();
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const [currentIndex, setCurrentIndex] = useState(0);
-  const screenWidth = Dimensions.get('window').width;
-  const sidePadding = getSpacing(2);
-  const scrollViewRef = useRef<ScrollView>(null);
-  const autoPlayTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Show 1 card at a time - full width minus side padding
-  const cardWidth = screenWidth - (sidePadding * 2);
-  // 16:9 aspect ratio (YouTube thumbnail style)
+  const screenWidth = Dimensions.get('window').width;
+  const sidePadding = getSpacing(1);
+  const peek = moderateScale(20); // 🔥 space for left + right peek
+
+  const cardWidth = screenWidth - sidePadding * 2 - peek;
   const cardHeight = cardWidth * (9 / 16);
 
-  // Fetch slider data using custom hook
+  const progress = useSharedValue(0);
+
   const { data: fetchedSliderData, isLoading: loading } = useSliders({
-    categoryId: categoryId,
-    enabled: !data, // Enable if no data prop provided
+    categoryId,
+    enabled: !data,
   });
 
-  // Create fallback slider items from local images
-  const fallbackSliderItems: SliderItem[] = useMemo(() => [
-    {
-      id: -1,
-      image: '',
-      action: '',
-      category_id: 0,
-      status: 1,
-      sorting_params: 1,
-      localSource: Images.TB_LOGO,
-    },
-    {
-      id: -2,
-      image: '',
-      action: '',
-      category_id: 0,
-      status: 1,
-      sorting_params: 2,
-      localSource: Images.TB_LOGO,
-    },
-    {
-      id: -3,
-      image: '',
-      action: '',
-      category_id: 0,
-      status: 1,
-      sorting_params: 3,
-      localSource: Images.TB_LOGO,
-    },
-  ] as any, []);
+  const fallbackSliderItems: SliderItem[] = useMemo(
+    () => [
+      { id: -1, localSource: Images.TB_LOGO } as any,
+      { id: -2, localSource: Images.TB_LOGO } as any,
+      { id: -3, localSource: Images.TB_LOGO } as any,
+    ],
+    []
+  );
 
   const sliderData = useMemo(() => {
-    if (data && Array.isArray(data)) {
-      return data;
-    }
-    if (!fetchedSliderData) {
-      return [];
-    }
-    return Array.isArray(fetchedSliderData) ? fetchedSliderData : [];
+    if (Array.isArray(data) && data.length > 0) return data;
+    if (Array.isArray(fetchedSliderData)) return fetchedSliderData;
+    return [];
   }, [data, fetchedSliderData]);
 
-  const displayCards: SliderItem[] = useMemo(() => {
-    if (sliderData && sliderData.length > 0) {
-      return sliderData;
-    }
-    return fallbackSliderItems;
-  }, [sliderData, fallbackSliderItems]);
+  const displayCards = sliderData.length
+    ? sliderData
+    : fallbackSliderItems;
 
-  // Auto-play functionality
-  useEffect(() => {
-    if (autoPlay && displayCards.length > 1 && !loading) {
-      autoPlayTimerRef.current = setInterval(() => {
-        setCurrentIndex((prevIndex) => {
-          const nextIndex = (prevIndex + 1) % displayCards.length;
-          if (scrollViewRef.current) {
-            scrollViewRef.current.scrollTo({
-              x: nextIndex * screenWidth,
-              animated: true,
-            });
-          }
-          return nextIndex;
-        });
-      }, autoPlayInterval);
-
-      return () => {
-        if (autoPlayTimerRef.current) {
-          clearInterval(autoPlayTimerRef.current);
-        }
-      };
-    }
-  }, [autoPlay, displayCards.length, autoPlayInterval, loading]);
-
-  // Determine if we should show skeleton
-  const showSkeleton = loading && (!data || data.length === 0) && (!sliderData || sliderData.length === 0);
-
-  // Handle banner press
   const handlePress = (item: SliderItem) => {
-    // Check for new link field first
-    if (item.link) {
-      if (item.link.startsWith('http')) {
-        Linking.openURL(item.link);
-      }
+    if (item.link?.startsWith('http')) {
+      Linking.openURL(item.link);
       return;
     }
 
-    // Fallback to old action field
-    const action = item.action;
-    if (!action) return;
+    if (!item.action) return;
 
-    if (action.startsWith('course_')) {
-      const courseId = action.split('_')[1];
-      const batch = full_data?.batches?.find((batch: any) => batch.id === parseInt(courseId));
-      if (batch) {
-        (navigation as any).navigate('CourseDetails', { courseId: batch.id });
-      }
-    } else if (action.startsWith('live_class_')) {
-      const liveClassId = action.split('_')[2];
-      const liveClass = full_data?.live_class?.find((liveClass: any) => liveClass.id === parseInt(liveClassId));
-      if (liveClass) {
-        (navigation as any).navigate('ClassStreamsScreen', { link: liveClass.link, data: liveClass });
-      }
-    } else if (action.startsWith('http')) {
-      Linking.openURL(action);
+    if (item.action.startsWith('course_')) {
+      const id = item.action.split('_')[1];
+      navigation.navigate('CourseDetails', { courseId: id });
+    }
+
+    if (item.action.startsWith('live_class_')) {
+      const id = item.action.split('_')[2];
+      navigation.navigate('ClassStreamsScreen', { id });
     }
   };
 
-  // Banner Item Component with video error handling
-  const BannerItem: React.FC<{ item: SliderItem; index: number; cardWidth: number; cardHeight: number; screenWidth: number; fallbackItems: SliderItem[]; onPress: () => void }> = ({ item, index, cardWidth, cardHeight, screenWidth, fallbackItems, onPress }) => {
+  const BannerItem = ({
+    item,
+    index,
+  }: {
+    item: SliderItem;
+    index: number;
+  }) => {
     const [videoError, setVideoError] = useState(false);
-    const isFallbackItem = (item as any).localSource;
-    const mediaType = item.mediaType || 'image';
     const mediaUrl = item.mediaUrl || item.image || '';
-    const hasValidMedia = mediaUrl && mediaUrl.trim().startsWith('http');
-    let imageSource;
-    let isTouchable = true;
-    let isVideo = false;
+    const isVideo =
+      mediaUrl &&
+      /\.(mp4|mov|webm|avi|m4v)$/i.test(mediaUrl) &&
+      !videoError;
 
-    // Check if URL is a video file by extension
-    const isVideoByExtension = hasValidMedia && /\.(mp4|mov|webm|avi|m4v)(\?|$)/i.test(mediaUrl);
-
-    // Determine if this is a video
-    if ((mediaType === 'video' || isVideoByExtension) && hasValidMedia && !videoError) {
-      isVideo = true;
-      isTouchable = !!item.link;
-    } else if (isFallbackItem) {
-      imageSource = (item as any).localSource || Images.TB_LOGO;
-      isTouchable = false;
-    } else if (!item || !hasValidMedia) {
-      const fallbackIndex = index % fallbackItems.length;
-      imageSource = (fallbackItems[fallbackIndex] as any).localSource || Images.TB_LOGO;
-      isTouchable = false;
-    } else {
-      imageSource = { uri: mediaUrl };
-    }
-
-    const Content = (
-      <View
-        style={[
-          styles.card,
-          {
-            width: cardWidth,
-            height: cardHeight,
-          },
-        ]}
-      >
-        {isVideo && !videoError ? (
+    return (
+      <View style={[styles.card, { width: cardWidth, height: cardHeight }]}>
+        {isVideo ? (
           <Video
             source={{ uri: mediaUrl }}
-            style={styles.cardVideo}
-            muted={true}
-            repeat={true}
-            paused={false}
-            playInBackground={false}
-            playWhenInactive={true}
-            ignoreSilentSwitch="ignore"
-            allowsExternalPlayback={false}
+            style={styles.media}
+            muted
+            repeat
             resizeMode="cover"
-            onError={() => {
-              // Silently fallback to image on video error
-              setVideoError(true);
-            }}
+            onError={() => setVideoError(true)}
           />
         ) : (
           <Image
-            source={imageSource || (hasValidMedia ? { uri: mediaUrl } : Images.TB_LOGO)}
-            style={styles.cardImage}
+            source={
+              mediaUrl
+                ? { uri: mediaUrl }
+                : (item as any).localSource || Images.TB_LOGO
+            }
+            style={styles.media}
             resizeMode="cover"
-            defaultSource={Images.TB_LOGO}
           />
         )}
       </View>
     );
-
-    if (isTouchable && !isFallbackItem && (item.link || item.action)) {
-      return (
-        <View style={{ width: screenWidth, alignItems: 'center' }}>
-          <TouchableOpacity
-            activeOpacity={0.9}
-            onPress={onPress}
-          >
-            {Content}
-          </TouchableOpacity>
-        </View>
-      );
-    }
-
-    return (
-      <View style={{ width: screenWidth, alignItems: 'center' }}>
-        {Content}
-      </View>
-    );
   };
 
-  const renderItem = (item: SliderItem, index: number) => {
-    return (
-      <BannerItem
-        key={item.id || index}
-        item={item}
-        index={index}
-        cardWidth={cardWidth}
-        cardHeight={cardHeight}
-        screenWidth={screenWidth}
-        fallbackItems={fallbackSliderItems}
+  const renderItem = useCallback(
+    ({ item, index }: { item: SliderItem; index: number }) => (
+      <TouchableOpacity
+        activeOpacity={0.9}
         onPress={() => handlePress(item)}
-      />
-    );
-  };
+        style={{ width: cardWidth, alignItems: 'center' }}
+      >
+        <BannerItem item={item} index={index} />
+      </TouchableOpacity>
+    ),
+    [cardWidth]
+  );
 
-  // Skeleton Component with shimmer effect
-  const SkeletonCard = () => {
-    const shimmerAnim = useRef(new Animated.Value(0)).current;
-
-    useEffect(() => {
-      const shimmerAnimation = Animated.loop(
-        Animated.timing(shimmerAnim, {
-          toValue: 1,
-          duration: 2000,
-          useNativeDriver: true,
-        })
-      );
-      shimmerAnimation.start();
-      return () => shimmerAnimation.stop();
-    }, [shimmerAnim]);
-
-    const translateX = shimmerAnim.interpolate({
-      inputRange: [0, 1],
-      outputRange: [-cardWidth * 2, cardWidth * 2],
-    });
-
-    return (
-      <View style={[styles.container, { paddingHorizontal: sidePadding }]}>
-        <View
-          style={[
-            styles.card,
-            styles.skeletonCard,
-            {
-              width: cardWidth,
-              height: cardHeight,
-              backgroundColor: theme.colors.border,
-            },
-          ]}
-        >
-          <Animated.View
-            style={[
-              {
-                position: 'absolute',
-                top: 0,
-                left: -cardWidth,
-                width: cardWidth * 2,
-                height: '100%',
-                opacity: 0.5,
-                transform: [{ translateX }],
-                backgroundColor: theme.isDark 
-                  ? 'rgba(255, 255, 255, 0.15)' 
-                  : 'rgba(255, 255, 255, 0.4)',
-              },
-            ]}
-          />
-        </View>
-        {/* Skeleton Indicators */}
-        <View style={styles.indicators}>
-          {[0, 1, 2].map((index) => (
-            <View
-              key={index}
-              style={[
-                styles.indicator,
-                styles.skeletonIndicator,
-                {
-                  backgroundColor: theme.colors.border,
-                  width: moderateScale(8),
-                },
-              ]}
-            />
-          ))}
-        </View>
-      </View>
-    );
-  };
-
-  // Show skeleton while loading
-  if (showSkeleton) {
-    return <SkeletonCard />;
-  }
-
-  if (!Array.isArray(displayCards) || displayCards.length === 0) {
-    return null;
-  }
+  if (!displayCards.length) return null;
 
   return (
     <View style={styles.container}>
-      <ScrollView
-        ref={scrollViewRef}
-        horizontal
+      <Carousel
+        width={cardWidth}
+        height={cardHeight}
+        data={displayCards}
+        renderItem={renderItem}
+        loop={displayCards.length > 1}
+        autoPlay={autoPlay && displayCards.length > 1 && !loading}
+        autoPlayInterval={autoPlayInterval}
         pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onMomentumScrollEnd={(e: any) => {
-          const index = Math.round(e.nativeEvent.contentOffset.x / screenWidth);
-          setCurrentIndex(index);
+        snapEnabled
+        alignItems="center"
+        mode="parallax"
+        modeConfig={{
+          parallaxScrollingScale: 0.95,
+          parallaxScrollingOffset: peek,
         }}
-        scrollEventThrottle={16}
-      >
-        {displayCards.map((item, index) => renderItem(item, index))}
-      </ScrollView>
+        style={{ overflow: 'visible' }}
+        containerStyle={{ overflow: 'visible' }}
+        contentContainerStyle={{
+          paddingHorizontal: sidePadding, // 🔥 BALANCED PEEK
+        }}
+        onProgressChange={(_, absoluteProgress) => {
+          progress.value = absoluteProgress;
+          setCurrentIndex(
+            Math.round(absoluteProgress) % displayCards.length
+          );
+        }}
+      />
 
-      {/* Indicators */}
-      {Array.isArray(displayCards) && displayCards.length > 1 && (
+      {displayCards.length > 1 && (
         <View style={styles.indicators}>
           {displayCards.map((_, index) => (
             <View
@@ -373,9 +191,12 @@ const BannerSlider: React.FC<BannerSliderProps> = ({
                 {
                   backgroundColor:
                     index === currentIndex
-                      ? theme.colors.navBackground || theme.colors.accent
+                      ? theme.colors.accent
                       : theme.colors.border,
-                  width: index === currentIndex ? moderateScale(20) : moderateScale(8),
+                  width:
+                    index === currentIndex
+                      ? moderateScale(20)
+                      : moderateScale(8),
                 },
               ]}
             />
@@ -391,42 +212,28 @@ const styles = StyleSheet.create({
     marginVertical: getSpacing(2),
   },
   card: {
-    borderRadius: moderateScale(8),
+    borderRadius: moderateScale(10),
     overflow: 'hidden',
-    backgroundColor: 'white',
-    elevation: 2,
+    backgroundColor: '#fff',
+    elevation: 3,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
   },
-  cardImage: {
+  media: {
     width: '100%',
     height: '100%',
-    borderRadius: moderateScale(8),
-  },
-  cardVideo: {
-    width: '100%',
-    height: '100%',
-    borderRadius: moderateScale(8),
   },
   indicators: {
     flexDirection: 'row',
     justifyContent: 'center',
-    alignItems: 'center',
     marginTop: getSpacing(1.5),
     gap: moderateScale(6),
   },
   indicator: {
     height: moderateScale(8),
     borderRadius: moderateScale(4),
-  },
-  skeletonCard: {
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  skeletonIndicator: {
-    opacity: 0.5,
   },
 });
 
