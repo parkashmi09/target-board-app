@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,6 @@ import {
   Dimensions,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Svg, Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { useQuery } from '@tanstack/react-query';
 import { useTheme } from '../../theme/theme';
@@ -16,9 +15,6 @@ import { moderateScale, getSpacing } from '../../utils/responsive';
 import { Images } from '../../assets/images';
 import { fetchCourseDetails } from '../../services/api';
 import CoursePurchaseModal from '../CoursePurchaseModal';
-import type { MainStackParamList } from '../../navigation/MainStack';
-
-type NavigationProp = NativeStackNavigationProp<MainStackParamList>;
 
 interface CourseCardProps {
   title: string;
@@ -41,270 +37,163 @@ interface CourseCardProps {
   onPress?: () => void;
 }
 
-const CourseCard: React.FC<CourseCardProps> = React.memo(({
-  title,
-  subtitle,
-  medium,
-  board,
-  targetAudience,
-  originalPrice,
-  currentPrice,
-  discount,
-  startDate,
-  endDate,
-  batchType,
-  bannerImage,
-  gradientColors,
-  courseId,
-  packages,
-  onExplore,
-  onBuyNow,
-  onPress,
-}) => {
-  const theme = useTheme();
-  const navigation = useNavigation<NavigationProp>();
+const CourseCard: React.FC<CourseCardProps> = React.memo(
+  ({
+    title,
+    medium,
+    board,
+    targetAudience,
+    originalPrice,
+    currentPrice,
+    discount,
+    batchType,
+    bannerImage,
+    gradientColors,
+    courseId,
+    packages,
+    onExplore,
+  }) => {
+    const theme = useTheme();
+    const navigation = useNavigation<any>();
 
-  // Memoize dimensions to avoid recalculation on every render
-  const { screenWidth, bannerHeight, defaultGradient } = useMemo(() => {
-    const width = Dimensions.get('window').width;
-    const padding = getSpacing(2);
-    const cardWidth = width - (padding * 2.8);
-    const height = cardWidth * (9 / 16);
-    const gradient: [string, string] = gradientColors || ['#FFFACD', '#FFE4B5'];
-    return {
-      screenWidth: width,
-      bannerHeight: height,
-      defaultGradient: gradient,
-    };
-  }, [gradientColors]);
+    // ✅ NO WIDTH CALCULATION HERE
+    const bannerHeight = useMemo(() => {
+      const width = Dimensions.get('window').width;
+      return width * (9 / 18);
+    }, []);
 
-  // Purchase modal state
-  const [purchaseModalVisible, setPurchaseModalVisible] = useState(false);
-  const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
-  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+    const gradient = gradientColors || ['#FFFACD', '#FFE4B5'];
 
-  // Fetch course details when modal is opened
-  const { data: course, isLoading: isLoadingCourse } = useQuery({
-    queryKey: ['courseDetails', courseId],
-    queryFn: () => fetchCourseDetails(String(courseId || '')),
-    enabled: !!courseId && purchaseModalVisible,
-  });
+    const [showModal, setShowModal] = useState(false);
 
-  // Parse courseFeatures if it's a string
-  const courseFeatures = useMemo(() => {
-    if (!course?.courseFeatures) return {};
-    try {
-      return typeof course.courseFeatures === 'string'
-        ? JSON.parse(course.courseFeatures)
-        : course.courseFeatures;
-    } catch (e) {
-      return {};
-    }
-  }, [course?.courseFeatures]);
-
-  // Calculate prices from course data or use props
-  const modalOriginalPrice = course?.strikeoutPrice || course?.coursePrice || originalPrice;
-  const modalCurrentPrice = course?.coursePrice || currentPrice;
-
-  // Get default package on mount
-  useEffect(() => {
-    if (course?.packages && Array.isArray(course.packages)) {
-      const defaultPackage = course.packages.find((pkg: any) => pkg.isDefault === true);
-      if (defaultPackage) {
-        setSelectedPackageId(defaultPackage._id);
-      } else if (course.packages.length > 0) {
-        setSelectedPackageId(course.packages[0]._id);
-      }
-    }
-  }, [course]);
-
-  const handleBuyNowClick = useCallback(() => {
-    if (!courseId) return;
-
-    // Check packages logic
-    if (packages && packages.length > 1) {
-      setPurchaseModalVisible(true);
-    } else {
-      // Direct checkout for single package or no package
-      // If we have packages, use the first/default one
-      let pkgId = undefined;
-      let price = currentPrice;
-      let origPrice = originalPrice;
-
-      if (packages && packages.length === 1) {
-        pkgId = packages[0]._id;
-        price = packages[0].price || currentPrice;
-      }
-
-      navigation.navigate('PaymentCheckout', {
-        courseId: String(courseId),
-        packageId: pkgId,
-        originalPrice: origPrice,
-        currentPrice: price,
-      });
-    }
-  }, [onBuyNow, courseId, packages, currentPrice, originalPrice, navigation]);
-
-  const handleClosePurchaseModal = useCallback(() => {
-    setPurchaseModalVisible(false);
-  }, []);
-
-  const handlePackageSelect = useCallback((packageId: string) => {
-    setSelectedPackageId(packageId);
-  }, []);
-
-  const handlePayment = useCallback(() => {
-    if (!course || !courseId) {
-      return;
-    }
-    setPurchaseModalVisible(false);
-    navigation.navigate('PaymentCheckout', {
-      courseId: String(courseId),
-      packageId: selectedPackageId || undefined,
-      originalPrice: modalOriginalPrice,
-      currentPrice: modalCurrentPrice,
+    const { data: course } = useQuery({
+      queryKey: ['courseDetails', courseId],
+      queryFn: () => fetchCourseDetails(String(courseId)),
+      enabled: showModal && !!courseId,
     });
-  }, [course, courseId, selectedPackageId, modalOriginalPrice, modalCurrentPrice, navigation]);
 
-  const handleExploreClick = useCallback(() => {
-    if (onExplore) {
-      onExplore();
-    }
-  }, [onExplore]);
+    const handleBuyNow = useCallback(() => {
+      if (!courseId) return;
 
-  return (
-    <View style={styles.card}>
-      <View style={[StyleSheet.absoluteFill, { overflow: 'hidden', backgroundColor: theme.isDark ? theme.colors.cardBackground : 'transparent', zIndex: 0 }]}>
-        <Svg width="100%" height="100%" style={StyleSheet.absoluteFill}>
+      if (packages && packages.length > 1) {
+        setShowModal(true);
+      } else {
+        navigation.navigate('PaymentCheckout', {
+          courseId: String(courseId),
+          packageId: packages?.[0]?._id,
+          originalPrice,
+          currentPrice,
+        });
+      }
+    }, [courseId, packages, originalPrice, currentPrice]);
+
+    return (
+      <View style={styles.card}>
+        <Svg style={StyleSheet.absoluteFill}>
           <Defs>
-            <LinearGradient id={`courseGradient-${title}`} x1="0%" y1="0%" x2="100%" y2="100%">
-              <Stop offset="0%" stopColor={theme.isDark ? theme.colors.cardBackground : defaultGradient[0]} stopOpacity="1" />
-              <Stop offset="100%" stopColor={theme.isDark ? theme.colors.background : defaultGradient[1]} stopOpacity="1" />
+            <LinearGradient id={`grad-${title}`} x1="0%" y1="0%" x2="100%" y2="100%">
+              <Stop offset="0%" stopColor={gradient[0]} />
+              <Stop offset="100%" stopColor={gradient[1]} />
             </LinearGradient>
           </Defs>
-          <Rect width="100%" height="100%" fill={`url(#courseGradient-${title})`} />
+          <Rect width="100%" height="100%" fill={`url(#grad-${title})`} />
         </Svg>
-      </View>
 
-      <View style={[styles.contentContainer, { zIndex: 1 }]}>
-        <View style={[styles.bannerContainer, { height: bannerHeight }]}>
-          <Image
-            source={bannerImage || Images.TB_LOGO}
-            style={styles.bannerImage}
-            resizeMode="cover"
-          />
-        </View>
+        <View style={styles.content}>
+          <View style={[styles.banner, { height: bannerHeight }]}>
+            <Image
+              source={bannerImage || Images.TB_LOGO}
+              style={styles.image}
+              resizeMode="cover"
+            />
+          </View>
 
-        <View style={styles.detailsContainer}>
-          <Text style={[styles.courseTitle, { color: theme.colors.text }]}>
-            {title} ({medium}) {board} {targetAudience}
-          </Text>
+          <View style={styles.details}>
+            <Text style={[styles.title, { color: theme.colors.text }]}>
+              {title} ({medium}) {board} {targetAudience}
+            </Text>
 
-          <View style={styles.pricingSection}>
-            <View style={styles.priceContainer}>
-              <Text style={[styles.currentPrice, { color: theme.isDark ? theme.colors.text : '#1f1e1d' }]}>
-                ₹ {currentPrice}
-              </Text>
-              <Text style={[styles.originalPrice, { color: theme.colors.textSecondary }]}>
-                {originalPrice}
-              </Text>
-              {batchType && (
-                <Text style={[styles.batchType, { color: theme.colors.textSecondary }]}>
-                  ({batchType})
-                </Text>
-              )}
+         <View style={styles.priceContainer}>
+         <View style={styles.priceRow}>
+              <Text style={styles.currentPrice}>₹ {currentPrice}</Text>
+              <Text style={styles.originalPrice}>₹ {originalPrice}</Text>
+              {batchType && <Text style={styles.batchType}>({batchType})</Text>}
             </View>
-            {discount && discount > 0 && (
-              <View style={[styles.discountBadge, { backgroundColor: '#4CAF50' }]}>
-                <Text style={styles.discountText}>Discount of {discount}% applied</Text>
-              </View>
-            )}
-          </View>
 
-          <View style={[styles.actionButtons, { zIndex: 10 }]}>
-            <TouchableOpacity
-              style={[styles.exploreButton, { backgroundColor: theme.colors.accent }]}
-              onPress={handleExploreClick}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.exploreButtonText, { color: '#1f1e1d', fontFamily: theme.typography?.h3?.fontFamily || undefined }]}>DETAILS</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.buyButton, { backgroundColor: '#1f1e1d', shadowColor: '#1f1e1d' }]}
-              onPress={handleBuyNowClick}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.buyButtonText, { color: '#FFFFFF', fontFamily: theme.typography?.h3?.fontFamily || undefined }]}>BUY NOW</Text>
-            </TouchableOpacity>
+            {discount ? (
+              <View style={styles.discount}>
+                <Text style={styles.discountText}>
+                  Discount of {discount}% applied
+                </Text>
+              </View>
+            ) : null}
+
+         </View>
+            <View style={styles.actions}>
+              <TouchableOpacity
+                style={styles.detailsBtn}
+                onPress={onExplore}
+              >
+                <Text style={styles.detailsText}>DETAILS</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.buyBtn}
+                onPress={handleBuyNow}
+              >
+                <Text style={styles.buyText}>BUY NOW</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
+
+        {course && (
+          <CoursePurchaseModal
+            visible={showModal}
+            course={course}
+            originalPrice={originalPrice}
+            currentPrice={currentPrice}
+            onClose={() => setShowModal(false)}
+            onPayment={() => setShowModal(false)}
+          />
+        )}
       </View>
-
-      {/* Purchase Modal */}
-      {course && (
-        <CoursePurchaseModal
-          visible={purchaseModalVisible}
-          course={course}
-          courseFeatures={courseFeatures}
-          originalPrice={modalOriginalPrice}
-          currentPrice={modalCurrentPrice}
-          selectedPackageId={selectedPackageId}
-          isProcessingPayment={isProcessingPayment}
-          onClose={handleClosePurchaseModal}
-          onPayment={handlePayment}
-          onPackageSelect={handlePackageSelect}
-        />
-      )}
-    </View>
-  );
-});
-
-CourseCard.displayName = 'CourseCard';
+    );
+  }
+);
 
 const styles = StyleSheet.create({
   card: {
+    width: '95%', // 🔥 FULL WIDTH
     borderRadius: moderateScale(16),
-    marginBottom: getSpacing(2),
     overflow: 'hidden',
-    position: 'relative',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+
   },
-  contentContainer: {
+  content: {
     position: 'relative',
-    zIndex: 1,
-    backgroundColor: 'transparent',
   },
-  bannerContainer: {
+  banner: {
     width: '100%',
-    position: 'relative',
-    overflow: 'hidden',
   },
-  bannerImage: {
+  image: {
     width: '100%',
     height: '100%',
   },
-  detailsContainer: {
-    paddingHorizontal: getSpacing(1),
-    paddingBottom: getSpacing(1),
+  details: {
+    padding: getSpacing(1),
   },
-  courseTitle: {
+  title: {
     fontSize: moderateScale(12),
     fontWeight: '600',
     marginBottom: getSpacing(0.5),
   },
-  pricingSection: {
+  priceContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: getSpacing(1),
+    // justifyContent: 'space-between',
+    gap: getSpacing(1),
   },
-  priceContainer: {
+  priceRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: getSpacing(1),
@@ -320,57 +209,45 @@ const styles = StyleSheet.create({
   batchType: {
     fontSize: moderateScale(10),
   },
-  discountBadge: {
-    borderRadius: moderateScale(20),
-    paddingHorizontal: getSpacing(1.5),
-    paddingVertical: moderateScale(4),
+  discount: {
+    backgroundColor: '#4CAF50',
+    alignSelf: 'flex-start',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    marginVertical: 6,
   },
   discountText: {
-    fontSize: moderateScale(9),
+    color: '#fff',
+    fontSize: 9,
     fontWeight: '700',
-    color: '#FFFFFF',
   },
-  actionButtons: {
+  actions: {
     flexDirection: 'row',
     gap: getSpacing(1),
-    marginTop: getSpacing(0.5),
+    marginTop: getSpacing(0.8),
   },
-  exploreButton: {
+  detailsBtn: {
     flex: 1,
-    borderRadius: moderateScale(8),
-    paddingVertical: getSpacing(1.5),
+    backgroundColor: '#FFD700',
+    paddingVertical: 12,
+    borderRadius: 8,
     alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 2,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
   },
-  exploreButtonText: {
-    fontSize: moderateScale(12),
+  detailsText: {
     fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
   },
-  buyButton: {
+  buyBtn: {
     flex: 1,
-    paddingVertical: getSpacing(1.5),
-    borderRadius: moderateScale(8),
+    backgroundColor: '#1f1e1d',
+    paddingVertical: 12,
+    borderRadius: 8,
     alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 4,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
   },
-  buyButtonText: {
-    fontSize: moderateScale(12),
+  buyText: {
+    color: '#fff',
     fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
   },
 });
 
 export default CourseCard;
-
-

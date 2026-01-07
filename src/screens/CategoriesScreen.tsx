@@ -102,6 +102,8 @@ const CategoriesScreen: React.FC = () => {
   const renderCategoryItem = useCallback(
     ({ item }: { item: CategoryNode }) => {
       const hasChildren = item.children && item.children.length > 0;
+      // Use Hindi name from API if available
+      const hindiName = item.hindiName || '';
 
       return (
         <TouchableOpacity
@@ -112,29 +114,29 @@ const CategoriesScreen: React.FC = () => {
               backgroundColor: colors.cardBackground,
               marginLeft: getSpacing(2),
               marginRight: getSpacing(2),
-              marginBottom: getSpacing(1),
+              marginBottom: getSpacing(1.5),
             },
           ]}
           onPress={() => handleCategoryPress(item)}
           activeOpacity={0.7}
         >
           <View style={styles.categoryContent}>
-            <View style={styles.iconContainer}>
+            <View style={[styles.iconContainer, { backgroundColor: '#E3F2FD' }]}>
               <SVGIcon
                 name="folder"
-                size={28}
+                size={32}
                 color="#FF9800"
               />
             </View>
             <View style={styles.textContainer}>
-              <Text style={[styles.categoryName, { color: colors.text }]} numberOfLines={2}>
+              <Text style={[styles.categoryName, { color: colors.text }]} numberOfLines={1}>
                 {item.name}
               </Text>
-              {hasChildren && (
-                <Text style={[styles.subcategoryHint, { color: colors.textSecondary }]}>
-                  {item.children?.length} subcategories
+              {hindiName ? (
+                <Text style={[styles.categoryNameHindi, { color: colors.text }]} numberOfLines={1}>
+                  {hindiName}
                 </Text>
-              )}
+              ) : null}
             </View>
           </View>
         </TouchableOpacity>
@@ -182,6 +184,7 @@ const CategoriesScreen: React.FC = () => {
           </Text>
         </View>
       )}
+   
     </GradientBackground>
   );
 };
@@ -190,35 +193,67 @@ const styles = StyleSheet.create({
   listContent: {
     paddingTop: getSpacing(2),
     marginTop: getSpacing(4),
-    paddingBottom: getSpacing(18),
+    paddingBottom: getSpacing(20),
   },
   categoryItem: {
     borderRadius: moderateScale(12),
-    padding: getSpacing(1.5),
+    padding: getSpacing(2),
     elevation: 2,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    marginBottom: getSpacing(1),
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    marginBottom: getSpacing(1.5),
+    borderWidth: 1,
+    borderColor: '#F5F5F5',
   },
   categoryContent: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   iconContainer: {
-    marginRight: getSpacing(1.5),
+    width: moderateScale(56),
+    height: moderateScale(56),
+    borderRadius: moderateScale(28),
+    backgroundColor: '#E3F2FD',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: getSpacing(2),
   },
   textContainer: {
     flex: 1,
   },
   categoryName: {
-    fontSize: moderateScale(15),
+    fontSize: moderateScale(16),
     fontWeight: '600',
+    lineHeight: moderateScale(22),
+    marginBottom: getSpacing(0.25),
+  },
+  categoryNameHindi: {
+    fontSize: moderateScale(15),
+    fontWeight: '500',
     lineHeight: moderateScale(20),
   },
   subcategoryHint: {
     fontSize: moderateScale(12),
     marginTop: getSpacing(0.25),
+  },
+  fab: {
+    position: 'absolute',
+    bottom: getSpacing(4),
+    right: getSpacing(3),
+    backgroundColor: '#000000',
+    borderRadius: moderateScale(8),
+    paddingHorizontal: getSpacing(2.5),
+    paddingVertical: getSpacing(1.5),
+    elevation: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+  },
+  fabText: {
+    color: '#FFFFFF',
+    fontSize: moderateScale(14),
+    fontWeight: '600',
   },
   centerContainer: {
     flex: 1,

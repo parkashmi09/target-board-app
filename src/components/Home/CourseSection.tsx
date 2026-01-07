@@ -1,136 +1,145 @@
 import React, { memo, useCallback } from 'react';
-import { View, Text, FlatList, Dimensions, StyleSheet } from 'react-native';
+import { View, Text, Dimensions, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useSharedValue } from 'react-native-reanimated';
+import Carousel from 'react-native-reanimated-carousel';
 import CourseCard from '../CourseCard';
 import { moderateScale, getSpacing } from '../../utils/responsive';
 import { Theme } from '../../theme/theme';
 
 interface CourseSectionProps {
-    courses: any[];
-    theme: Theme;
+  courses: any[];
+  theme: Theme;
 }
 
-const CourseSection = memo(({ courses, theme }: CourseSectionProps) => {
-    const navigation = useNavigation<any>();
+const CourseSection: React.FC<CourseSectionProps> = memo(({ courses, theme }) => {
+  const navigation = useNavigation<any>();
+  const progress = useSharedValue(0);
+  const windowWidth = Dimensions.get('window').width;
 
-    console.log('courses###', courses);
+  // 🔥 TIGHT WIDTH (like 2nd image)
+  const horizontalPadding = getSpacing(1.5);
+  const peekAmount = moderateScale(28);
 
-    const renderItem = useCallback(({ item }: { item: any }) => {
-        if (!item) return null;
+  const cardWidth =
+    windowWidth - horizontalPadding * 2 - peekAmount;
 
-        // Get selected package (default or first package)
-        const selectedPackage = item?.packages?.find((pkg: any) => pkg.isDefault === true)
-            || item?.packages?.[0]
-            || null;
+  const cardHeight = cardWidth * (9 / 16) + moderateScale(130);
 
-        // Get pricing from package or fallback to course data
-        const packagePrice = selectedPackage?.price || 0;
-        const originalPrice = item?.strikeoutPrice || item?.originalPrice || 0;
-        const currentPrice = packagePrice > 0 ? packagePrice : (item?.coursePrice || item?.currentPrice || 0);
+  const renderItem = useCallback(
+    ({ item }: { item: any }) => {
+      if (!item) return <View />;
 
-        // Calculate discount
-        const discount = originalPrice > currentPrice && originalPrice > 0
-            ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100)
-            : 0;
+      const selectedPackage =
+        item?.packages?.find((p: any) => p.isDefault) ||
+        item?.packages?.[0];
 
-        const handlePress = () => {
-            if (item?.id || item?._id) {
-                navigation.navigate('CourseDetails', {
-                    courseId: String(item.id || item._id),
-                });
-            }
-        };
+      const originalPrice =
+        item?.strikeoutPrice || item?.originalPrice || 0;
 
-        const handleBuyNow = () => {
-            if (item?.id || item?._id) {
-                navigation.navigate('CourseDetails', {
-                    courseId: String(item.id || item._id),
-                    openPurchaseModal: true,
-                });
-            }
-        };
+      const currentPrice =
+        selectedPackage?.price ||
+        item?.coursePrice ||
+        item?.currentPrice ||
+        0;
 
-        return (
-            <View style={styles.courseCardWrapper}>
-                <CourseCard
-                    title={item?.name || item?.title || 'Course'}
-                    subtitle={item?.subtitle || ''}
-                    medium={item?.medium || ''}
-                    board={item?.board || ''}
-                    targetAudience={item?.targetAudience || ''}
-                    originalPrice={originalPrice}
-                    currentPrice={currentPrice}
-                    discount={discount}
-                    startDate={item?.startDate}
-                    endDate={item?.endDate}
-                    batchType={item?.batchType || ''}
-                    bannerImage={item?.bannerImage || item?.courseImage}
-                    gradientColors={item?.gradientColors || ['#FFFACD', '#FFE4B5']}
-                    courseId={item?.id || item?._id}
-                    packages={item?.packages}
-                    onExplore={handlePress}
-                    onBuyNow={handleBuyNow}
-                />
-            </View>
-        );
-    }, [navigation]);
+      const discount =
+        originalPrice > currentPrice
+          ? Math.round(
+              ((originalPrice - currentPrice) / originalPrice) * 100
+            )
+          : 0;
 
-    return (
-        <View style={styles.courseSectionContainer}>
-            <View style={[styles.courseSection, { paddingHorizontal: getSpacing(2) }]}>
-                <Text
-                    style={[
-                        styles.courseSectionTitle,
-                        {
-                            color: theme.colors.text,
-                            fontSize: moderateScale(18),
-                            fontWeight: '700',
-                            marginBottom: getSpacing(2),
-                        },
-                    ]}
-                >
-                    COURSE
-                </Text>
-                {courses && Array.isArray(courses) && courses.length > 0 ? (
-                    <FlatList
-                        data={courses}
-                        renderItem={renderItem}
-                        keyExtractor={(item, index) => {
-                            if (!item) return `course-${index}`;
-                            return item.id?.toString() || item._id?.toString() || `course-${index}`;
-                        }}
-                        horizontal
-                        pagingEnabled
-                        showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={styles.courseScrollContent}
-                        decelerationRate="fast"
-                        snapToInterval={Dimensions.get('window').width - (getSpacing(2) * 2) + moderateScale(12)}
-                    />
-                ) : null}
-            </View>
+      const goToDetails = () => {
+        navigation.navigate('CourseDetails', {
+          courseId: String(item.id || item._id),
+        });
+      };
+
+      return (
+        <View style={[styles.cardWrapper, { width: cardWidth }]}>
+          <CourseCard
+            title={item?.name || item?.title || ''}
+            subtitle={item?.subtitle}
+            medium={item?.medium || ''}
+            board={item?.board || ''}
+            targetAudience={item?.targetAudience || item?.class || ''}
+            originalPrice={originalPrice}
+            currentPrice={currentPrice}
+            discount={discount}
+            startDate={item?.startDate || ''}
+            endDate={item?.endDate || ''}
+            batchType={item?.batchType}
+            bannerImage={item?.bannerImage}
+            gradientColors={item?.gradientColors}
+            courseId={item?.id || item?._id}
+            packages={item?.packages}
+            onExplore={goToDetails}
+            onBuyNow={goToDetails}
+            onPress={goToDetails}
+          />
         </View>
-    );
+      );
+    },
+    [navigation, cardWidth]
+  );
+
+  return (
+    <View style={styles.container}>
+      <Text
+        style={[
+          styles.title,
+          {
+            color: theme.colors.text,
+            marginLeft: horizontalPadding,
+          },
+        ]}
+      >
+        Latest Courses
+      </Text>
+
+      {courses?.length > 0 && (
+        <Carousel
+          width={cardWidth}
+          height={cardHeight}
+          data={courses}
+          renderItem={renderItem}
+          loop={courses.length > 1}
+          autoPlay={courses.length > 1}
+          autoPlayInterval={3500}
+          pagingEnabled
+          snapEnabled
+          mode="parallax"
+          modeConfig={{
+            parallaxScrollingScale: 0.96,
+            parallaxScrollingOffset: peekAmount,
+            // peekAmount:peekAmount
+          }}
+          
+          style={{ marginLeft: horizontalPadding,   overflow: 'visible' }}
+          onProgressChange={(_, absoluteProgress) => {
+            progress.value = absoluteProgress;
+          }}
+        />
+      )}
+    </View>
+  );
 });
 
+CourseSection.displayName = 'CourseSection';
+
 const styles = StyleSheet.create({
-    courseSectionContainer: {
-        marginVertical: getSpacing(2),
-    },
-    courseSection: {
-        marginTop: getSpacing(1),
-    },
-    courseSectionTitle: {
-        fontWeight: '700',
-    },
-    courseScrollContent: {
-        alignItems: 'center',
-    },
-    courseCardWrapper: {
-        width: Dimensions.get('window').width - (getSpacing(2) * 2),
-        paddingRight: moderateScale(12),
-    },
+  container: {
+    marginVertical: getSpacing(1.2),
+  },
+  title: {
+    fontSize: moderateScale(18),
+    fontWeight: '700',
+    marginBottom: getSpacing(0.8),
+  },
+  cardWrapper: {
+    alignItems: 'stretch', // 🔥 FULL WIDTH
+  },
 });
 
 export default CourseSection;
-
-

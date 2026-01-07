@@ -1005,6 +1005,7 @@ export const addDownload = async (contentId: string): Promise<AddDownloadRespons
 export interface CategoryNode {
   _id: string;
   name: string;
+  hindiName?: string; // Hindi translation from API
   course: string;
   parent: string | null;
   level: number;
@@ -1054,6 +1055,7 @@ export const fetchCategoryTree = async (courseId: string | number): Promise<Cate
 export interface ContentItem {
   _id: string;
   title: string;
+  hindiTitle?: string; // Hindi translation from API
   type: 'video' | 'pdf';
   accessType?: string;
   pdf?: {
@@ -1067,6 +1069,7 @@ export interface ContentItem {
   category?: {
     _id: string;
     name: string;
+    hindiName?: string;
   };
   course?: {
     _id: string;

@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, StatusBar } from 'react-native';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, StatusBar, Animated, Easing } from 'react-native';
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -16,6 +16,7 @@ import StreamSkeletonCard from '../components/StreamSkeletonCard';
 import StreamDetailsModal from '../components/StreamDetailsModal';
 import PurchaseModal from '../components/PurchaseModal';
 import { getStreamStatus, formatDate, getCountdown } from '../utils/streamUtils';
+import { Svg, Circle, Rect, Path, G, Text as SvgText, TSpan } from 'react-native-svg';
 
 type ClassStreamsScreenNavigationProp = NativeStackNavigationProp<MainStackParamList, 'ClassStreams'>;
 type ClassStreamsScreenRouteProp = RouteProp<MainStackParamList, 'ClassStreams'>;
@@ -30,6 +31,8 @@ const ClassStreamsScreen: React.FC = () => {
     const { courseId } = route.params || {};
 
     const [streams, setStreams] = useState<Stream[]>([]);
+
+    
 
     console.log('streams', streams);
     const [loading, setLoading] = useState(true);
@@ -74,27 +77,36 @@ const ClassStreamsScreen: React.FC = () => {
                         if (classId) {
                             const data = await getUserStreams(classId, typeParam);
                             setStreams(Array.isArray(data) ? data : []);
+                            setError(null); // Clear error if data is fetched successfully
                         } else {
-                            setError('Class information not found');
+                            // No class info - show empty state instead of error
                             setStreams([]);
+                            setError(null);
                         }
                     } else {
-                        setError('User information not found');
+                        // No user info - show empty state instead of error
                         setStreams([]);
+                        setError(null);
                     }
                 } catch (storageError) {
                     if (__DEV__) {
                         console.error('[ClassStreamsScreen] Storage error:', storageError);
                     }
-                    setError('Failed to load user data');
+                    // Show empty state instead of error for storage issues
                     setStreams([]);
+                    setError(null);
                 }
             }
         } catch (err: any) {
             if (__DEV__) {
                 console.error('[ClassStreamsScreen] Error fetching streams:', err);
             }
-            setError('Failed to load streams');
+            // Only set error for actual network/API errors, otherwise show empty state
+            if (err?.message?.includes('network') || err?.message?.includes('Network')) {
+                setError('Network error. Please check your connection.');
+            } else {
+                setError(null); // Show empty state for other errors
+            }
             setStreams([]);
         } finally {
             setLoading(false);
@@ -207,12 +219,312 @@ const ClassStreamsScreen: React.FC = () => {
     // Memoize keyExtractor
     const keyExtractor = useCallback((item: Stream) => item._id || item.id || Math.random().toString(), []);
 
+    // Animated Empty State SVG Component
+    const EmptyStateIllustration = () => {
+        const rotateAnim = useRef(new Animated.Value(0)).current;
+        const scaleAnim = useRef(new Animated.Value(1)).current;
+        const opacityAnim = useRef(new Animated.Value(0.8)).current;
+        const translateYAnim = useRef(new Animated.Value(0)).current;
+        const pulseAnim = useRef(new Animated.Value(0)).current;
+
+        useEffect(() => {
+            // Radio wave rotation
+            Animated.loop(
+                Animated.sequence([
+                    Animated.timing(rotateAnim, {
+                        toValue: 1,
+                        duration: 3000,
+                        easing: Easing.linear,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(rotateAnim, {
+                        toValue: 0,
+                        duration: 0,
+                        useNativeDriver: true,
+                    }),
+                ])
+            ).start();
+
+            // Pulsing effect
+            Animated.loop(
+                Animated.sequence([
+                    Animated.timing(pulseAnim, {
+                        toValue: 1,
+                        duration: 2000,
+                        easing: Easing.inOut(Easing.ease),
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(pulseAnim, {
+                        toValue: 0,
+                        duration: 2000,
+                        easing: Easing.inOut(Easing.ease),
+                        useNativeDriver: true,
+                    }),
+                ])
+            ).start();
+
+            // Scale animation
+            Animated.loop(
+                Animated.sequence([
+                    Animated.timing(scaleAnim, {
+                        toValue: 1.15,
+                        duration: 2000,
+                        easing: Easing.inOut(Easing.ease),
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(scaleAnim, {
+                        toValue: 1,
+                        duration: 2000,
+                        easing: Easing.inOut(Easing.ease),
+                        useNativeDriver: true,
+                    }),
+                ])
+            ).start();
+
+            // Opacity animation
+            Animated.loop(
+                Animated.sequence([
+                    Animated.timing(opacityAnim, {
+                        toValue: 0.3,
+                        duration: 2000,
+                        easing: Easing.inOut(Easing.ease),
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(opacityAnim, {
+                        toValue: 0.9,
+                        duration: 2000,
+                        easing: Easing.inOut(Easing.ease),
+                        useNativeDriver: true,
+                    }),
+                ])
+            ).start();
+
+            // Vertical translation
+            Animated.loop(
+                Animated.sequence([
+                    Animated.timing(translateYAnim, {
+                        toValue: 1,
+                        duration: 2500,
+                        easing: Easing.inOut(Easing.ease),
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(translateYAnim, {
+                        toValue: 0,
+                        duration: 2500,
+                        easing: Easing.inOut(Easing.ease),
+                        useNativeDriver: true,
+                    }),
+                ])
+            ).start();
+        }, []);
+
+        const rotateInterpolate = rotateAnim.interpolate({
+            inputRange: [0, 1],
+            outputRange: ['0deg', '360deg'],
+        });
+
+        const pulseScale = pulseAnim.interpolate({
+            inputRange: [0, 1],
+            outputRange: [1, 1.3],
+        });
+
+        const pulseOpacity = pulseAnim.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0.4, 1],
+        });
+
+        const translateYInterpolate = translateYAnim.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0, moderateScale(10)],
+        });
+
+        return (
+            <View style={styles.emptyIllustrationContainer}>
+                <View style={{ width: moderateScale(200), height: moderateScale(200), position: 'relative' }}>
+                    <Svg
+                        width={moderateScale(200)}
+                        height={moderateScale(200)}
+                        viewBox="0 0 200 200"
+                        style={{ position: 'absolute' }}
+                    >
+                        {/* Background circle */}
+                        <Circle
+                            cx="100"
+                            cy="100"
+                            r="85"
+                            fill="#E3F2FD"
+                            opacity="0.3"
+                        />
+                        
+                        {/* Radio/TV icon base */}
+                        <G transform="translate(60, 60)">
+                            <Rect
+                                x="20"
+                                y="20"
+                                width="40"
+                                height="50"
+                                fill="#1976D2"
+                                rx="3"
+                            />
+                            <Rect
+                                x="25"
+                                y="30"
+                                width="30"
+                                height="25"
+                                fill="#0D47A1"
+                                rx="2"
+                            />
+                            {/* Screen lines */}
+                            <Rect x="27" y="32" width="26" height="2" fill="#64B5F6" />
+                            <Rect x="27" y="36" width="26" height="2" fill="#64B5F6" />
+                            <Rect x="27" y="40" width="20" height="2" fill="#64B5F6" />
+                            <Rect x="27" y="44" width="26" height="2" fill="#64B5F6" />
+                            {/* Antenna base */}
+                            <Rect
+                                x="38"
+                                y="10"
+                                width="4"
+                                height="10"
+                                fill="#1976D2"
+                            />
+                        </G>
+                    </Svg>
+                    
+                    {/* Animated radio waves */}
+                    <Animated.View
+                        style={{
+                            position: 'absolute',
+                            left: moderateScale(100),
+                            top: moderateScale(100),
+                            transform: [{ rotate: rotateInterpolate }],
+                            transformOrigin: '0 0',
+                        }}
+                    >
+                        <Svg width={moderateScale(200)} height={moderateScale(200)}>
+                            <G transform="translate(0, 0)">
+                                <Circle
+                                    cx={moderateScale(0)}
+                                    cy={moderateScale(0)}
+                                    r={moderateScale(30)}
+                                    fill="none"
+                                    stroke="#2196F3"
+                                    strokeWidth={moderateScale(2)}
+                                    opacity="0.6"
+                                />
+                                <Circle
+                                    cx={moderateScale(0)}
+                                    cy={moderateScale(0)}
+                                    r={moderateScale(50)}
+                                    fill="none"
+                                    stroke="#2196F3"
+                                    strokeWidth={moderateScale(2)}
+                                    opacity="0.4"
+                                />
+                                <Circle
+                                    cx={moderateScale(0)}
+                                    cy={moderateScale(0)}
+                                    r={moderateScale(70)}
+                                    fill="none"
+                                    stroke="#2196F3"
+                                    strokeWidth={moderateScale(2)}
+                                    opacity="0.2"
+                                />
+                            </G>
+                        </Svg>
+                    </Animated.View>
+                    
+                    {/* Pulsing center dot */}
+                    <Animated.View
+                        style={{
+                            position: 'absolute',
+                            left: moderateScale(95),
+                            top: moderateScale(95),
+                            transform: [{ scale: pulseScale }],
+                            opacity: pulseOpacity,
+                        }}
+                    >
+                        <Svg width={moderateScale(10)} height={moderateScale(10)}>
+                            <Circle
+                                cx={moderateScale(5)}
+                                cy={moderateScale(5)}
+                                r={moderateScale(5)}
+                                fill="#2196F3"
+                            />
+                        </Svg>
+                    </Animated.View>
+                    
+                    {/* Animated play icon */}
+                    <Animated.View
+                        style={{
+                            position: 'absolute',
+                            left: moderateScale(90),
+                            top: moderateScale(90),
+                            transform: [
+                                { scale: scaleAnim },
+                                { translateY: translateYInterpolate },
+                            ],
+                            opacity: opacityAnim,
+                        }}
+                    >
+                        <Svg width={moderateScale(20)} height={moderateScale(20)}>
+                            <Circle
+                                cx={moderateScale(10)}
+                                cy={moderateScale(10)}
+                                r={moderateScale(10)}
+                                fill="#FF5722"
+                            />
+                            <Path
+                                d={`M ${moderateScale(7)} ${moderateScale(6)} L ${moderateScale(7)} ${moderateScale(14)} L ${moderateScale(14)} ${moderateScale(10)} Z`}
+                                fill="#FFFFFF"
+                            />
+                        </Svg>
+                    </Animated.View>
+                    
+                    {/* Floating signal bars */}
+                    <Animated.View
+                        style={{
+                            position: 'absolute',
+                            left: moderateScale(50),
+                            top: moderateScale(50),
+                            opacity: opacityAnim,
+                            transform: [{ translateY: translateYInterpolate }],
+                        }}
+                    >
+                        <Svg width={moderateScale(12)} height={moderateScale(12)}>
+                            <Rect
+                                x={moderateScale(0)}
+                                y={moderateScale(8)}
+                                width={moderateScale(3)}
+                                height={moderateScale(4)}
+                                fill="#4CAF50"
+                            />
+                            <Rect
+                                x={moderateScale(4)}
+                                y={moderateScale(5)}
+                                width={moderateScale(3)}
+                                height={moderateScale(7)}
+                                fill="#4CAF50"
+                            />
+                            <Rect
+                                x={moderateScale(8)}
+                                y={moderateScale(2)}
+                                width={moderateScale(3)}
+                                height={moderateScale(10)}
+                                fill="#4CAF50"
+                            />
+                        </Svg>
+                    </Animated.View>
+                </View>
+            </View>
+        );
+    };
+
     // Memoize empty component
     const renderEmptyComponent = useMemo(() => (
         <View style={styles.emptyCardContainer}>
             <View style={[styles.emptyCard, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}>
                 <View style={styles.emptyCardContent}>
-                    <PlayCircle size={moderateScale(64)} color={colors.textSecondary} />
+                    <EmptyStateIllustration />
                     <Text style={[styles.emptyCardTitle, { color: colors.text }]}>
                         No {activeTab === 'live' ? 'Live ' : 'Upcoming '}Streams Available
                     </Text>
@@ -253,15 +565,20 @@ const ClassStreamsScreen: React.FC = () => {
 
                 {loading && !refreshing ? (
                     renderSkeletonList
-                ) : error ? (
-                    <View style={styles.centerContainer}>
-                        <Text style={[styles.errorText, { color: colors.textSecondary }]}>{error}</Text>
-                        <TouchableOpacity
-                            onPress={fetchStreams}
-                            style={[styles.retryButton, { backgroundColor: colors.primary }]}
-                        >
-                            <Text style={styles.retryText}>Retry</Text>
-                        </TouchableOpacity>
+                ) : streams.length === 0 ? (
+                    <View style={styles.emptyContainer}>
+                        {renderEmptyComponent}
+                        {error && (
+                            <View style={styles.errorContainer}>
+                                <Text style={[styles.errorText, { color: colors.textSecondary }]}>{error}</Text>
+                                <TouchableOpacity
+                                    onPress={fetchStreams}
+                                    style={[styles.retryButton, { backgroundColor: colors.primary }]}
+                                >
+                                    <Text style={styles.retryText}>Retry</Text>
+                                </TouchableOpacity>
+                            </View>
+                        )}
                     </View>
                 ) : (
                     <FlatList
@@ -341,6 +658,11 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
+    emptyIllustrationContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: getSpacing(2),
+    },
     emptyCardTitle: {
         fontSize: moderateScale(18),
         fontWeight: '700',
@@ -359,6 +681,16 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         padding: getSpacing(4),
+    },
+    emptyContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: getSpacing(2),
+    },
+    errorContainer: {
+        marginTop: getSpacing(3),
+        alignItems: 'center',
     },
     errorText: {
         fontSize: moderateScale(16),
