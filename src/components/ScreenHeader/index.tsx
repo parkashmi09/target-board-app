@@ -77,12 +77,17 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
         }
     }, [isSearchActive, screenWidth]);
 
+    // const handleBackPress = () => {
+    //     if (onBackPress) {
+    //         onBackPress();
+    //     } else {
+    //         navigation.goBack();
+    //     }
+    // };
+
+    // Always go back to previous route
     const handleBackPress = () => {
-        if (onBackPress) {
-            onBackPress();
-        } else {
-            navigation.goBack();
-        }
+        navigation.goBack();
     };
 
     const handleSearchChange = (text: string) => {
@@ -120,17 +125,18 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
 
     if (!showSearch) {
         // Fallback to title-based header if search is disabled
+        const hasRightContent = !!rightComponent;
         return (
             <View style={[styles.header, { backgroundColor }]}>
                 <TouchableOpacity onPress={handleBackPress} style={styles.backButton}>
-                    <ChevronLeft size={moderateScale(24)} color={colors.text} />
+                    <ChevronLeft size={moderateScale(28)} color={colors.text} />
                 </TouchableOpacity>
                 {title ? (
                     <Text 
                         style={[
                             styles.headerTitle, 
                             { color: colors.text },
-                            rightComponent ? styles.headerTitleWithRight : styles.headerTitleFull
+                            hasRightContent ? styles.headerTitleWithRight : styles.headerTitleCentered
                         ]}
                         numberOfLines={1}
                         ellipsizeMode="tail"
@@ -144,7 +150,9 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
                     <View style={styles.rightIcons}>
                         {rightComponent}
                     </View>
-                ) : null}
+                ) : (
+                    <View style={styles.rightIconsPlaceholder} />
+                )}
             </View>
         );
     }
@@ -162,7 +170,7 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
                             style={[
                                 styles.headerTitle, 
                                 { color: colors.text },
-                                (rightComponent || showSearch) ? styles.headerTitleWithRight : styles.headerTitleFull
+                                (rightComponent || showSearch) ? styles.headerTitleWithRight : styles.headerTitleCentered
                             ]}
                             numberOfLines={1}
                             ellipsizeMode="tail"
@@ -180,6 +188,9 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
                             </TouchableOpacity>
                         )}
                     </View>
+                    {!rightComponent && !showSearch && (
+                        <View style={styles.rightIconsPlaceholder} />
+                    )}
                 </View>
             )}
 
@@ -269,6 +280,12 @@ const styles = StyleSheet.create({
     headerTitleFull: {
         flex: 1,
     },
+    headerTitleCentered: {
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        textAlign: 'center',
+    },
     headerTitleWithRight: {
         flex: 1,
         marginRight: getSpacing(1),
@@ -296,6 +313,9 @@ const styles = StyleSheet.create({
     rightIcons: {
         flexDirection: 'row',
         alignItems: 'center',
+    },
+    rightIconsPlaceholder: {
+        width: moderateScale(40),
     },
     searchIconButton: {
         padding: getSpacing(0.5),

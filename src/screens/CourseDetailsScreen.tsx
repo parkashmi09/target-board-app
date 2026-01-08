@@ -97,9 +97,35 @@ const CourseDetailsScreen: React.FC = () => {
     }
   }, [course?.courseFeatures]);
 
-  // Calculate discount
-  const originalPrice = course?.strikeoutPrice || course?.coursePrice || 0;
-  const currentPrice = course?.coursePrice || 0;
+  // Get default package price if available, otherwise use coursePrice
+  const defaultPackage = useMemo(() => {
+    if (!course?.packages || !Array.isArray(course.packages)) return null;
+    return course.packages.find((pkg: any) => pkg?.isDefault === true) || course.packages[0] || null;
+  }, [course?.packages]);
+
+  // Get class name from courseMappings
+  const className = useMemo(() => {
+    if (course?.courseMappings && Array.isArray(course.courseMappings) && course.courseMappings.length > 0) {
+      return course.courseMappings[0]?.class?.name || null;
+    }
+    // Fallback to course.class?.name if it's an object
+    if (course?.class && typeof course.class === 'object') {
+      return course.class.name || null;
+    }
+    return null;
+  }, [course?.courseMappings, course?.class]);
+
+  // Calculate prices - use default package price if available
+  const originalPrice = course?.strikeoutPrice || 0;
+  const currentPrice = useMemo(() => {
+    // If there's a default package with price, use that
+    if (defaultPackage?.price !== undefined && defaultPackage.price > 0) {
+      return defaultPackage.price;
+    }
+    // Otherwise use coursePrice
+    return course?.coursePrice || 0;
+  }, [defaultPackage, course?.coursePrice]);
+
   const discount = originalPrice > 0 && originalPrice > currentPrice
     ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100)
     : 0;
@@ -123,8 +149,11 @@ const CourseDetailsScreen: React.FC = () => {
     }
   }, [course, toast]);
 
-  const isCoursePaid = course?.isPaid === true;
-  const isPurchased = course?.purchased === true;
+  // Determine if course is paid based on price
+  const isCoursePaid = currentPrice > 0;
+  // Note: purchased status would need to come from a separate API call to /student-courses/:id
+  // For now, we'll keep it as false since we're only using /courses/:id
+  const isPurchased = false;
   const hasLiveStreams = liveStreams.length > 0;
 
   // Get default package on mount
@@ -149,38 +178,15 @@ const CourseDetailsScreen: React.FC = () => {
   }, [openPurchaseModal, course, isLoading]);
 
   const handleBuyNow = useCallback(() => {
-    // If course is already purchased, don't show purchase modal
+    // If course is already purchased, navigate to ClassStreams screen
     if (isPurchased) {
-      // If purchased and has live streams, navigate to stream
-      if (hasLiveStreams && liveStreams.length > 0) {
-        const firstLiveStream = liveStreams[0];
-        if (firstLiveStream && (firstLiveStream._id || firstLiveStream.id)) {
-          try {
-            navigation.navigate('StreamPlayer', {
-              streamId: firstLiveStream._id || firstLiveStream.id || '',
-              tpAssetId: firstLiveStream.tpAssetId,
-              hlsUrl: firstLiveStream.hlsUrl,
-            });
-          } catch (error) {
-            if (__DEV__) {
-              console.error('[CourseDetailsScreen] Navigation error:', error);
-            }
-            toast.show({ text: 'Failed to open stream', type: 'error' });
-          }
+      try {
+        navigation.navigate('ClassStreams')
+      } catch (error) {
+        if (__DEV__) {
+          console.error('[CourseDetailsScreen] Navigation error:', error);
         }
-      } else {
-        // Navigate to course content/categories
-        try {
-          navigation.navigate('Categories', { 
-            courseId: String(courseId), 
-            courseName: course?.name || 'Course' 
-          });
-        } catch (error) {
-          if (__DEV__) {
-            console.error('[CourseDetailsScreen] Navigation error:', error);
-          }
-          toast.show({ text: 'Failed to open course content', type: 'error' });
-        }
+        toast.show({ text: 'Failed to open course streams', type: 'error' });
       }
       return;
     }
@@ -194,11 +200,12 @@ const CourseDetailsScreen: React.FC = () => {
       const firstLiveStream = liveStreams[0];
       if (firstLiveStream && (firstLiveStream._id || firstLiveStream.id)) {
         try {
-          navigation.navigate('StreamPlayer', {
-            streamId: firstLiveStream._id || firstLiveStream.id || '',
-            tpAssetId: firstLiveStream.tpAssetId,
-            hlsUrl: firstLiveStream.hlsUrl,
-          });
+          // navigation.navigate('StreamPlayer', {
+          //   streamId: firstLiveStream._id || firstLiveStream.id || '',
+          //   tpAssetId: firstLiveStream.tpAssetId,
+          //   hlsUrl: firstLiveStream.hlsUrl,
+          // });
+          navigation.navigate('ClassStreams')
         } catch (error) {
           if (__DEV__) {
             console.error('[CourseDetailsScreen] Navigation error:', error);
@@ -319,14 +326,18 @@ const CourseDetailsScreen: React.FC = () => {
           </Text>
 
           {/* Validity Badge */}
-          <View style={styles.validityWrapper}>
-            <View style={styles.validityBadge}>
-              <Check size={14} color="#FFFFFF" strokeWidth={4} />
+          {defaultPackage?.durationInMonths && (
+            <View style={styles.validityWrapper}>
+              <View style={styles.validityBadge}>
+                <Check size={14} color="#FFFFFF" strokeWidth={4} />
+              </View>
+              <Text style={[styles.validityText, { color: theme.colors.text }]}>
+                Validity- <Text style={[styles.validityValue, { color: theme.colors.text }]}>
+                  {defaultPackage.durationInMonths} {defaultPackage.durationInMonths === 1 ? 'Month' : 'Months'}
+                </Text>
+              </Text>
             </View>
-            <Text style={[styles.validityText, { color: theme.colors.text }]}>
-              Validity- <Text style={[styles.validityValue, { color: theme.colors.text }]}>12 Month</Text>
-            </Text>
-          </View>
+          )}
 
           <BatchInfoCard
             batchInfoUrl={course.batchInfo}
@@ -339,7 +350,7 @@ const CourseDetailsScreen: React.FC = () => {
             description={course.courseDescription}
             originalPrice={originalPrice}
             currentPrice={currentPrice}
-            className={course.class?.name}
+            className={className}
           />
 
           <TimeTableSection timetableUrl={course.timetable} />
