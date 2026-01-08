@@ -31,10 +31,6 @@ const ClassStreamsScreen: React.FC = () => {
     const { courseId } = route.params || {};
 
     const [streams, setStreams] = useState<Stream[]>([]);
-
-    
-
-    console.log('streams', streams);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -142,31 +138,47 @@ const ClassStreamsScreen: React.FC = () => {
         }
 
         try {
+            // Check stream status first
+            const statusInfo = getStreamStatus(stream);
+            const isLive = statusInfo.label === 'LIVE';
+
             // Call API to get stream with purchase status
             const response = await getStreamById(streamId);
+            const streamData = response.stream || stream;
 
-            // If user has purchased, navigate directly to player
-            if (response.isUserPurchased === true) {
+            // Only LIVE streams can play directly
+            if (isLive && response.isUserPurchased === true) {
+                // User has purchased and stream is LIVE - navigate to player
                 navigation.navigate('StreamPlayer', {
-                    streamId: response.stream._id || response.stream.id || streamId,
-                    tpAssetId: response.stream.tpAssetId || stream.tpAssetId,
-                    hlsUrl: response.stream.hlsUrl || stream.hlsUrl,
+                    streamId: streamData._id || streamData.id || streamId,
+                    tpAssetId: streamData.tpAssetId || stream.tpAssetId,
+                    hlsUrl: streamData.hlsUrl || stream.hlsUrl,
                 });
                 return;
             }
 
-            // If not purchased, show purchase modal
-            setSelectedStream(response.stream);
+            // For UPCOMING streams or if not purchased - always show modal
+            setSelectedStream(streamData);
             setPurchaseModalVisible(true);
         } catch (error: any) {
             if (__DEV__) {
                 console.error('[ClassStreamsScreen] Error fetching stream details:', error);
             }
-            // Fallback: use the stream from the list
-            setSelectedStream(stream);
-            setPurchaseModalVisible(true);
+            // Fallback: check status and show modal
+            const statusInfo = getStreamStatus(stream);
+            const isLive = statusInfo.label === 'LIVE';
+            
+            // Only try to play if LIVE, otherwise show modal
+            if (!isLive) {
+                setSelectedStream(stream);
+                setPurchaseModalVisible(true);
+            } else {
+                // For LIVE streams on error, still show modal to be safe
+                setSelectedStream(stream);
+                setPurchaseModalVisible(true);
+            }
         }
-    }, []);
+    }, [navigation]);
 
     const handlePlayStream = useCallback(() => {
         if (!selectedStream) return;

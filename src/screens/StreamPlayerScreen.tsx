@@ -12,6 +12,7 @@ import LiveChat from '../components/LiveChat';
 import { useTheme } from '../theme/theme';
 import { moderateScale, getSpacing } from '../utils/responsive';
 import { TPSTREAMS_ORG_ID, TPSTREAMS_ACCESS_TOKEN } from '../services/config';
+import { getStreamStatus, getCountdown, formatDate } from '../utils/streamUtils';
 
 type StreamPlayerScreenRouteProp = RouteProp<MainStackParamList, 'StreamPlayer'>;
 
@@ -42,6 +43,8 @@ const StreamPlayerScreen: React.FC = () => {
     const [streamDescription, setStreamDescription] = useState<string | undefined>(undefined);
     const [authToken, setAuthToken] = useState<string | null>(null);
     const [isLoadingToken, setIsLoadingToken] = useState(true);
+    const [streamData, setStreamData] = useState<any>(null);
+    const [countdown, setCountdown] = useState<string>('');
 
     useEffect(() => {
         const loadToken = async () => {
@@ -126,21 +129,11 @@ const StreamPlayerScreen: React.FC = () => {
 
                 // Store stream data
                 if (fetchedStreamData.stream) {
+                    setStreamData(fetchedStreamData.stream);
                     setStreamStatus(fetchedStreamData.stream.status);
                     setStreamTpStatus(fetchedStreamData.stream.tpStatus);
                     setStreamTitle(fetchedStreamData.stream.title);
                     setStreamDescription(fetchedStreamData.stream.description);
-
-                    // Check if stream has ended (but don't navigate for now)
-                    const isEnded =
-                        fetchedStreamData.stream.tpStatus === 'COMPLETED' ||
-                        fetchedStreamData.stream.tpStatus === 'STOPPED' ||
-                        fetchedStreamData.stream.status === 'completed' ||
-                        (fetchedStreamData.stream.status as string) === 'ended';
-
-                    if (isEnded && __DEV__) {
-                        console.log('[StreamPlayerScreen] Stream has ended');
-                    }
                 }
 
                 if (fetchedStreamData.chatRoomId?.roomId) {
@@ -164,6 +157,24 @@ const StreamPlayerScreen: React.FC = () => {
         // Call immediately, don't wait
         fetchChatRoomId();
     }, [streamId]);
+
+    // Update countdown for upcoming streams
+    useEffect(() => {
+        if (!streamData) return;
+        
+        const statusInfo = getStreamStatus(streamData);
+        if (statusInfo.label === 'UPCOMING' && streamData.startTime) {
+            const updateCountdown = () => {
+                const countdownText = getCountdown(streamData.startTime);
+                setCountdown(countdownText);
+            };
+            
+            updateCountdown();
+            const interval = setInterval(updateCountdown, 1000);
+            
+            return () => clearInterval(interval);
+        }
+    }, [streamData]);
 
 
     // TPStreams Player Event Handlers
@@ -207,6 +218,10 @@ const StreamPlayerScreen: React.FC = () => {
         []
     );
 
+    // Check if stream is upcoming or live
+    const isUpcoming = streamData ? getStreamStatus(streamData).label === 'UPCOMING' : false;
+    const isLive = streamData ? getStreamStatus(streamData).label === 'LIVE' : false;
+
     if (!videoId) {
         return (
             <GradientBackground>
@@ -225,11 +240,39 @@ const StreamPlayerScreen: React.FC = () => {
 
     return (
         <GradientBackground>
-            <ScreenHeader title="Live Stream" showSearch={false} />
+            <ScreenHeader title={isUpcoming ? "Upcoming Stream" : "Live Stream"} showSearch={false} />
             <View style={[styles.container, { backgroundColor: colors.background }]}>
                 {/* Video Player Container */}
                 <View style={[styles.videoContainer, { height: videoHeight, backgroundColor: 'black' }]}>
-                    {isPlayerReady && (
+                    {isUpcoming ? (
+                        // Upcoming Stream - Show countdown instead of player
+                        <View style={styles.upcomingContainer}>
+                            <View style={styles.upcomingContent}>
+                                <Text style={[styles.upcomingTitle, { color: colors.text }]}>
+                                    {streamTitle || 'Stream Starting Soon'}
+                                </Text>
+                                {streamDescription && (
+                                    <Text style={[styles.upcomingDescription, { color: colors.textSecondary }]}>
+                                        {streamDescription}
+                                    </Text>
+                                )}
+                                <View style={styles.countdownContainer}>
+                                    <Text style={[styles.countdownLabel, { color: colors.textSecondary }]}>
+                                        Stream starts in:
+                                    </Text>
+                                    <Text style={[styles.countdownText, { color: colors.primary }]}>
+                                        {countdown || 'Calculating...'}
+                                    </Text>
+                                </View>
+                                {streamData?.startTime && (
+                                    <Text style={[styles.startTimeText, { color: colors.textSecondary }]}>
+                                        {formatDate(streamData.startTime)}
+                                    </Text>
+                                )}
+                            </View>
+                        </View>
+                    ) : isPlayerReady && isLive ? (
+                        // Live Stream - Show Player only for LIVE streams
                         <TPStreamsPlayerView
                             videoId={videoId}
                             accessToken={TPSTREAMS_ACCESS_TOKEN}
@@ -242,6 +285,14 @@ const StreamPlayerScreen: React.FC = () => {
                             onError={handleError}
                             onAccessTokenExpired={handleAccessTokenExpired}
                         />
+                    ) : (
+                        // Loading state
+                        <View style={styles.loadingContainer}>
+                            <ActivityIndicator size="large" color={colors.primary} />
+                            <Text style={[styles.loadingText, { color: colors.text }]}>
+                                {isLive ? 'Loading stream...' : 'Preparing stream...'}
+                            </Text>
+                        </View>
                     )}
 
                     {/* Loading Indicator */}
@@ -401,5 +452,49 @@ const styles = StyleSheet.create({
         fontSize: moderateScale(14),
         lineHeight: moderateScale(20),
         marginTop: getSpacing(0.5),
+    },
+    upcomingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: getSpacing(4),
+    },
+    upcomingContent: {
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    upcomingTitle: {
+        fontSize: moderateScale(22),
+        fontWeight: '700',
+        textAlign: 'center',
+        marginBottom: getSpacing(2),
+    },
+    upcomingDescription: {
+        fontSize: moderateScale(14),
+        textAlign: 'center',
+        marginBottom: getSpacing(3),
+        lineHeight: moderateScale(20),
+    },
+    countdownContainer: {
+        alignItems: 'center',
+        marginBottom: getSpacing(2),
+    },
+    countdownLabel: {
+        fontSize: moderateScale(14),
+        marginBottom: getSpacing(1),
+    },
+    countdownText: {
+        fontSize: moderateScale(32),
+        fontWeight: '700',
+        letterSpacing: 2,
+    },
+    startTimeText: {
+        fontSize: moderateScale(12),
+        marginTop: getSpacing(1),
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
 });
