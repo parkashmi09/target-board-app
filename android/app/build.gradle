@@ -81,9 +81,9 @@ android {
         prefab false
     }
 
-    namespace "com.testapp"
+    namespace "com.targetboard"
     defaultConfig {
-        applicationId "com.testapp"
+        applicationId "com.targetboard"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
