@@ -370,12 +370,10 @@ export const fetchCourses = async (
   categoryId?: string | number | null,
   options?: {
     search?: string;
-    minPrice?: number;
-    maxPrice?: number;
   }
 ) => {
   try {
-    let url = '/courses';
+    let url = '/student-courses';
     const params: string[] = [];
     
 
@@ -385,14 +383,6 @@ export const fetchCourses = async (
 
     if (options?.search) {
       params.push(`search=${encodeURIComponent(options.search)}`);
-    }
-
-    if (options?.minPrice !== undefined) {
-      params.push(`minPrice=${options.minPrice}`);
-    }
-
-    if (options?.maxPrice !== undefined) {
-      params.push(`maxPrice=${options.maxPrice}`);
     }
 
     if (params.length > 0) {

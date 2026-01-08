@@ -77,6 +77,7 @@ const CourseSection: React.FC<CourseSectionProps> = memo(({ courses, theme }) =>
             gradientColors={item?.gradientColors}
             courseId={item?.id || item?._id}
             packages={item?.packages}
+            purchased={item?.purchased || false}
             onExplore={goToDetails}
             onBuyNow={goToDetails}
             onPress={goToDetails}

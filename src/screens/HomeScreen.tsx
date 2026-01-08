@@ -164,6 +164,7 @@ const HomeScreen: React.FC = () => {
           packages: course.packages || [], // Include packages array for CourseSection
           strikeoutPrice: course.strikeoutPrice, // Include for CourseSection
           coursePrice: course.coursePrice, // Include for fallback
+          purchased: course.purchased || false, // Include purchased status
           _raw: course,
         };
       });

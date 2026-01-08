@@ -76,7 +76,7 @@ const MyCourseScreen: React.FC = () => {
   }, [transformedCourses, searchQuery]);
 
   const handleSearch = useCallback((searchText: string) => {
-    setSearchQuery(searchText);
+    setSearchQuery(searchText.trim());
   }, []);
 
   const onRefresh = useCallback(async () => {
@@ -151,6 +151,7 @@ const MyCourseScreen: React.FC = () => {
             />
           }
           showsVerticalScrollIndicator={false}
+          ListHeaderComponent={<View style={{ height: getSpacing(1) }} />}
         />
       ) : (
         <ScrollView

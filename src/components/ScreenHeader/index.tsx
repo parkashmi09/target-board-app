@@ -57,19 +57,21 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
             // Animate to center (0) with smooth easing
             Animated.timing(slideAnim, {
                 toValue: 0,
-                duration: 400,
-                easing: Easing.out(Easing.cubic),
+                duration: 300,
+                easing: Easing.out(Easing.ease),
                 useNativeDriver: true,
             }).start(() => {
                 // Focus input after animation completes
-                inputRef.current?.focus();
+                setTimeout(() => {
+                    inputRef.current?.focus();
+                }, 100);
             });
         } else {
             // Slide out to the left when deactivating
             Animated.timing(slideAnim, {
                 toValue: -screenWidth,
-                duration: 300,
-                easing: Easing.in(Easing.cubic),
+                duration: 250,
+                easing: Easing.in(Easing.ease),
                 useNativeDriver: true,
             }).start();
         }
@@ -181,7 +183,7 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
                 </View>
             )}
 
-            {/* Search Bar - Slides in from left when activated - Always render but position off-screen when inactive */}
+            {/* Search Bar - Slides in from left when activated */}
             <Animated.View
                 style={[
                     styles.searchHeader,
@@ -189,7 +191,7 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
                         backgroundColor: colors.cardBackground,
                         transform: [{ translateX: slideAnim }],
                         opacity: isSearchActive ? 1 : 0,
-                        zIndex: isSearchActive ? 1001 : -1,
+                        zIndex: isSearchActive ? 10 : -1,
                     }
                 ]}
                 pointerEvents={isSearchActive ? 'auto' : 'none'}
@@ -199,7 +201,7 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
                 </TouchableOpacity>
                 <TextInput
                     ref={inputRef}
-                    style={[styles.searchInput, { color: colors.text }]}
+                    style={[styles.searchInput, { color: colors.text, backgroundColor: colors.background }]}
                     placeholder={placeholder}
                     placeholderTextColor={colors.textSecondary}
                     value={searchText}
@@ -228,6 +230,7 @@ const styles = StyleSheet.create({
         marginTop: getSpacing(2),
         position: 'relative',
         zIndex: 1000,
+        minHeight: moderateScale(56),
     },
     header: {
         flexDirection: 'row',
@@ -239,17 +242,20 @@ const styles = StyleSheet.create({
     searchHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        // borderRadius: moderateScale(8),
+        borderRadius: moderateScale(8),
         paddingHorizontal: getSpacing(2),
         paddingVertical: getSpacing(1.5),
         minHeight: moderateScale(44),
-        marginBottom: getSpacing(8),
         position: 'absolute',
-        width: '95%',
-        left: '2.5%',
+        width: '100%',
+        left: 0,
         right: 0,
-        bottom: getSpacing(8),
-        top: getSpacing(2),
+        top: 0,
+        elevation: 5,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
     },
     backButton: {
         marginRight: getSpacing(1.5),
@@ -273,10 +279,11 @@ const styles = StyleSheet.create({
     searchInput: {
         flex: 1,
         fontSize: moderateScale(16),
-        paddingVertical: 0,
-        paddingHorizontal: getSpacing(1),
+        paddingVertical: getSpacing(1),
+        paddingHorizontal: getSpacing(1.5),
         margin: 0,
-        minHeight: moderateScale(24),
+        minHeight: moderateScale(36),
+        borderRadius: moderateScale(8),
     },
     clearButton: {
         padding: getSpacing(0.5),

@@ -32,6 +32,7 @@ interface CourseCardProps {
   gradientColors?: [string, string];
   courseId?: string | number;
   packages?: any[];
+  purchased?: boolean;
   onExplore?: () => void;
   onBuyNow?: () => void;
   onPress?: () => void;
@@ -51,6 +52,7 @@ const CourseCard: React.FC<CourseCardProps> = React.memo(
     gradientColors,
     courseId,
     packages,
+    purchased = false,
     onExplore,
   }) => {
     const theme = useTheme();
@@ -137,12 +139,21 @@ const CourseCard: React.FC<CourseCardProps> = React.memo(
                 <Text style={styles.detailsText}>DETAILS</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.buyBtn}
-                onPress={handleBuyNow}
-              >
-                <Text style={styles.buyText}>BUY NOW</Text>
-              </TouchableOpacity>
+              {purchased ? (
+                <TouchableOpacity
+                  style={[styles.buyBtn, styles.purchasedBtn]}
+                  disabled={true}
+                >
+                  <Text style={styles.buyText}>PURCHASED</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={styles.buyBtn}
+                  onPress={handleBuyNow}
+                >
+                  <Text style={styles.buyText}>BUY NOW</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </View>
@@ -247,6 +258,10 @@ const styles = StyleSheet.create({
   buyText: {
     color: '#fff',
     fontWeight: '700',
+  },
+  purchasedBtn: {
+    backgroundColor: '#4CAF50',
+    opacity: 0.8,
   },
 });
 

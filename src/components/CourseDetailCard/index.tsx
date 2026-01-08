@@ -97,12 +97,16 @@ const CourseDetailCard: React.FC<CourseDetailCardProps> = ({
     <View style={[styles.card, { backgroundColor: colors.cardBackground, shadowColor: colors.cardShadow }]}>
       {/* Banner Section */}
       <View style={styles.bannerContainer}>
-        {course?.courseImage && (
+        {course?.courseImage ? (
           <Image
             source={{ uri: course.courseImage }}
             style={styles.bannerImage}
-            resizeMode="contain"
+            resizeMode="cover"
           />
+        ) : (
+          <View style={[styles.bannerImage, { backgroundColor: '#E0E0E0', justifyContent: 'center', alignItems: 'center' }]}>
+            <Text style={{ color: '#999', fontSize: moderateScale(14) }}>No Image</Text>
+          </View>
         )}
       </View>
 
@@ -153,18 +157,14 @@ const styles = StyleSheet.create({
   },
   bannerContainer: {
     width: '100%',
-    minHeight: moderateScale(200),
+    height: moderateScale(220),
     position: 'relative',
-    backgroundColor: '#1A237E',
+    backgroundColor: '#F5F5F5',
+    overflow: 'hidden',
   },
   bannerImage: {
     width: '100%',
     height: '100%',
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
   },
   detailsSection: {
     padding: getSpacing(2),
