@@ -19,7 +19,10 @@ import VideoPlayerScreen from '../screens/VideoPlayerScreen';
 import LiveChatScreen from '../screens/LiveChatScreen';
 import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
 import TermsAndConditionsScreen from '../screens/TermsAndConditionsScreen';
+import NetworkBanner from '../components/NetworkBanner';
 import { CategoryNode } from '../services/api';
+import { useNetworkStore } from '../store/networkStore';
+import { View } from 'react-native';
 
 export type MainStackParamList = {
   TabNavigator: undefined;
@@ -99,12 +102,14 @@ const Stack = createNativeStackNavigator<MainStackParamList>();
 
 const MainStack: React.FC = () => {
   return (
-    <Stack.Navigator
-      screenOptions={{
-        headerShown: false,
-      }}
-      initialRouteName="TabNavigator"
-    >
+    <View style={{ flex: 1 }}>
+      <NetworkBanner />
+      <Stack.Navigator
+        screenOptions={{
+          headerShown: false,
+        }}
+        initialRouteName="TabNavigator"
+      >
       <Stack.Screen name="TabNavigator" component={TabNavigator} />
       <Stack.Screen name="TeacherDetails" component={TeacherDetailsScreen} />
       <Stack.Screen name="CourseDetails" component={CourseDetailsScreen} />
@@ -131,7 +136,8 @@ const MainStack: React.FC = () => {
       <Stack.Screen name="LiveChat" component={LiveChatScreen} />
       <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
       <Stack.Screen name="TermsAndConditions" component={TermsAndConditionsScreen} />
-    </Stack.Navigator>
+      </Stack.Navigator>
+    </View>
   );
 };
 

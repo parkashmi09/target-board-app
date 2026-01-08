@@ -17,20 +17,14 @@ import {
   Clipboard,
   Alert,
 } from 'react-native';
+import { Svg, Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { useTheme } from '../../theme/theme';
 import { moderateScale, getSpacing } from '../../utils/responsive';
-import { Send, Radio, Settings, Users, X, Copy, Trash2, MessageSquare } from 'lucide-react-native';
+import { Send, Radio, Settings, X, Copy, Trash2, MessageSquare } from 'lucide-react-native';
+import { socketService, ChatMessage, ChatSettings, RoomData } from '../../services/socketService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-const CHAT_HEIGHT = SCREEN_HEIGHT * 0.7; // 70% of screen height
-
-interface Message {
-  id: string;
-  text: string;
-  sender: 'user' | 'teacher' | 'system';
-  timestamp: Date;
-  isTyping?: boolean;
-}
+const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface LiveChatInterfaceProps {
   roomId?: string;
@@ -39,6 +33,18 @@ interface LiveChatInterfaceProps {
 }
 
 type ConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'reconnecting';
+
+interface Message {
+  id: string;
+  streamId: string;
+  userId: string;
+  userName: string;
+  message: string;
+  timestamp: Date;
+  isAdmin: boolean;
+  isReply: boolean;
+  originalMessageId?: string | null;
+}
 
 const LiveChatInterface: React.FC<LiveChatInterfaceProps> = ({
   roomId,
@@ -51,15 +57,10 @@ const LiveChatInterface: React.FC<LiveChatInterfaceProps> = ({
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
   const [isSending, setIsSending] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [onlineCount, setOnlineCount] = useState(1);
-  const [isTyping, setIsTyping] = useState(false);
-  const [chatSettings, setChatSettings] = useState({
-    soundEnabled: true,
-    notificationsEnabled: true,
-    autoScroll: true,
-    showTimestamps: true,
-    maxMessageLength: 500,
-  });
+  const [chatSettings, setChatSettings] = useState<ChatSettings | null>(null);
+  const [pinnedMessage, setPinnedMessage] = useState<any | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   
   const flatListRef = useRef<FlatList>(null);
   const slideAnim = useRef(new Animated.Value(0)).current;
@@ -68,44 +69,153 @@ const LiveChatInterface: React.FC<LiveChatInterfaceProps> = ({
   const inputScaleAnim = useRef(new Animated.Value(1)).current;
   const messageAnimations = useRef<{ [key: string]: Animated.Value }>({});
 
-  // Simulate connection status changes
+  // Load token and initialize socket
   useEffect(() => {
-    // Simulate connecting
-    const connectTimer = setTimeout(() => {
-      setConnectionStatus('connected');
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.spring(slideAnim, {
-          toValue: 1,
-          tension: 50,
-          friction: 7,
-          useNativeDriver: true,
-        }),
-      ]).start();
+    const initializeChat = async () => {
+      try {
+        const storedToken = await AsyncStorage.getItem('token');
+        if (!storedToken) {
+          setConnectionStatus('disconnected');
+          return;
+        }
 
-      // Add welcome message
-      addSystemMessage('Connected to live chat. You can now ask questions!');
-      // Simulate online users
-      setOnlineCount(Math.floor(Math.random() * 50) + 10);
-    }, 1500);
+        setToken(storedToken);
+        
+        // Decode token to get user ID
+        try {
+          const parts = storedToken.split('.');
+          if (parts.length === 3) {
+            const payload = JSON.parse(
+              atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'))
+            );
+            setCurrentUserId(payload.id);
+          }
+        } catch (e) {
+          // Failed to decode token
+        }
 
-    return () => clearTimeout(connectTimer);
-  }, []);
+        // Initialize socket service
+        socketService.initialize(storedToken);
 
-  // Simulate typing indicator
-  useEffect(() => {
-    if (connectionStatus === 'connected' && messages.length > 0) {
-      const typingTimer = setTimeout(() => {
-        setIsTyping(true);
-        setTimeout(() => setIsTyping(false), 2000);
-      }, 3000);
-      return () => clearTimeout(typingTimer);
-    }
-  }, [messages, connectionStatus]);
+        // Setup socket listeners
+        socketService.onJoinedRoom((data: RoomData) => {
+          
+          setConnectionStatus('connected');
+          setChatSettings(data.settings);
+          setPinnedMessage(data.pinnedMessage);
+          
+          // Convert recent messages to Message format
+          const formattedMessages: Message[] = (data.recentMessages || []).map((msg) => ({
+            ...msg,
+            timestamp: new Date(msg.timestamp),
+          }));
+          
+          setMessages(formattedMessages);
+          
+          // Animate in
+          Animated.parallel([
+            Animated.timing(fadeAnim, {
+              toValue: 1,
+              duration: 300,
+              useNativeDriver: true,
+            }),
+            Animated.spring(slideAnim, {
+              toValue: 1,
+              tension: 50,
+              friction: 7,
+              useNativeDriver: true,
+            }),
+          ]).start();
+
+          // Scroll to bottom
+          setTimeout(() => {
+            flatListRef.current?.scrollToEnd({ animated: true });
+          }, 100);
+        });
+
+        socketService.onMessageReceived((message: ChatMessage) => {
+          const newMessage: Message = {
+            ...message,
+            timestamp: new Date(message.timestamp),
+          };
+          
+          // Create animation for new message
+          const animValue = new Animated.Value(0);
+          messageAnimations.current[message.id] = animValue;
+          
+          Animated.spring(animValue, {
+            toValue: 1,
+            tension: 50,
+            friction: 7,
+            useNativeDriver: true,
+          }).start();
+          
+          setMessages((prev) => [...prev, newMessage]);
+          
+          // Scroll to bottom
+          setTimeout(() => {
+            flatListRef.current?.scrollToEnd({ animated: true });
+          }, 100);
+        });
+
+        socketService.onMessageSent(() => {
+          setIsSending(false);
+        });
+
+        socketService.onMessageDeleted((data) => {
+          setMessages((prev) => prev.filter((m) => m.id !== data.messageId));
+        });
+
+        socketService.onMessagePinned((data) => {
+          setPinnedMessage(data.pinnedMessage);
+        });
+
+        socketService.onMessageUnpinned(() => {
+          setPinnedMessage(null);
+        });
+
+        socketService.onSettingsUpdated((data) => {
+          setChatSettings(data.settings);
+        });
+
+        socketService.onError((error) => {
+          Alert.alert('Error', error.message || 'An error occurred');
+        });
+
+        // Join stream room if roomId is provided
+        if (roomId) {
+          socketService.joinStream(roomId);
+        } else {
+          setConnectionStatus('connected');
+          Animated.parallel([
+            Animated.timing(fadeAnim, {
+              toValue: 1,
+              duration: 300,
+              useNativeDriver: true,
+            }),
+            Animated.spring(slideAnim, {
+              toValue: 1,
+              tension: 50,
+              friction: 7,
+              useNativeDriver: true,
+            }),
+          ]).start();
+        }
+      } catch (error) {
+        setConnectionStatus('disconnected');
+      }
+    };
+
+    initializeChat();
+
+    // Cleanup on unmount
+    return () => {
+      if (roomId) {
+        socketService.leaveStream(roomId);
+      }
+      socketService.disconnect();
+    };
+  }, [roomId]);
 
   // Pulse animation for connection indicator
   useEffect(() => {
@@ -129,16 +239,6 @@ const LiveChatInterface: React.FC<LiveChatInterfaceProps> = ({
     }
   }, [connectionStatus]);
 
-  const addSystemMessage = useCallback((text: string) => {
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      text,
-      sender: 'system',
-      timestamp: new Date(),
-    };
-    setMessages((prev) => [...prev, newMessage]);
-  }, []);
-
   const copyMessage = useCallback((text: string) => {
     Clipboard.setString(text);
     Alert.alert('Copied', 'Message copied to clipboard');
@@ -155,17 +255,26 @@ const LiveChatInterface: React.FC<LiveChatInterfaceProps> = ({
           style: 'destructive',
           onPress: () => {
             setMessages([]);
-            addSystemMessage('Chat cleared');
           },
         },
       ]
     );
-  }, [addSystemMessage]);
+  }, []);
 
   const handleSendMessage = useCallback(async () => {
-    if (!inputText.trim() || isSending) return;
+    if (!inputText.trim() || isSending || !roomId || connectionStatus !== 'connected') return;
 
     const messageText = inputText.trim();
+    
+    // Check message length
+    if (chatSettings && messageText.length > chatSettings.maxMessageLength) {
+      Alert.alert(
+        'Message Too Long',
+        `Maximum message length is ${chatSettings.maxMessageLength} characters.`
+      );
+      return;
+    }
+
     setInputText('');
     setIsSending(true);
 
@@ -183,45 +292,14 @@ const LiveChatInterface: React.FC<LiveChatInterfaceProps> = ({
       }),
     ]).start();
 
-    // Add user message with animation
-    const messageId = Date.now().toString();
-    const userMessage: Message = {
-      id: messageId,
-      text: messageText,
-      sender: 'user',
-      timestamp: new Date(),
-    };
-    
-    // Create animation for new message
-    const animValue = new Animated.Value(0);
-    messageAnimations.current[messageId] = animValue;
-    
-    Animated.spring(animValue, {
-      toValue: 1,
-      tension: 50,
-      friction: 7,
-      useNativeDriver: true,
-    }).start();
-    
-    setMessages((prev) => [...prev, userMessage]);
+    // Send message via socket
+    socketService.sendMessage(roomId, messageText);
 
-    // Call onMessageSend callback if provided
+    // Call callback if provided
     if (onMessageSend) {
       onMessageSend(messageText);
     }
-
-    // Simulate teacher response (for demo)
-    setTimeout(() => {
-      const teacherMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        text: `Thank you for your question: "${messageText}". I'll get back to you shortly.`,
-        sender: 'teacher',
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, teacherMessage]);
-      setIsSending(false);
-    }, 1000);
-  }, [inputText, isSending, onMessageSend]);
+  }, [inputText, isSending, roomId, connectionStatus, chatSettings, onMessageSend]);
 
   const getConnectionStatusColor = useMemo(() => {
     switch (connectionStatus) {
@@ -253,65 +331,65 @@ const LiveChatInterface: React.FC<LiveChatInterfaceProps> = ({
   }, [connectionStatus]);
 
   const renderMessage = useCallback(({ item }: { item: Message }) => {
-    const isUser = item.sender === 'user';
-    const isSystem = item.sender === 'system';
+    const isUser = item.userId === currentUserId;
+    const isAdmin = item.isAdmin;
     const animValue = messageAnimations.current[item.id] || new Animated.Value(1);
 
-    if (isSystem) {
-      return (
-        <View style={styles.systemMessageContainer}>
-          <Text style={[styles.systemMessageText, { color: theme.colors.textSecondary }]}>
-            {item.text}
-          </Text>
-        </View>
-      );
-    }
-
     return (
-      <Animated.View
-        style={[
-          styles.messageContainer,
-          isUser ? styles.userMessageContainer : styles.teacherMessageContainer,
-          {
-            backgroundColor: isUser
-              ? theme.colors.secondary
-              : theme.colors.cardBackground,
-            alignSelf: isUser ? 'flex-end' : 'flex-start',
-            maxWidth: '75%',
-            opacity: animValue,
-            transform: [
-              {
-                scale: animValue.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0.8, 1],
-                }),
-              },
-              {
-                translateY: animValue.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [10, 0],
-                }),
-              },
-            ],
-          },
-        ]}
-      >
-        {!isUser && (
-          <Text style={[styles.senderName, { color: theme.colors.accent }]}>
-            Teacher
-          </Text>
-        )}
-        <Text
+        <Animated.View
           style={[
-            styles.messageText,
+            styles.messageContainer,
+            isUser ? styles.userMessageContainer : styles.teacherMessageContainer,
             {
-              color: isUser ? theme.colors.secondaryText : theme.colors.text,
+              opacity: animValue,
+              transform: [
+                {
+                  scale: animValue.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.8, 1],
+                  }),
+                },
+                {
+                  translateY: animValue.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [10, 0],
+                  }),
+                },
+              ],
             },
           ]}
         >
-          {item.text}
-        </Text>
-        {chatSettings.showTimestamps && (
+        {/* Gradient Background for User Messages */}
+        {isUser && (
+          <View style={[StyleSheet.absoluteFill, { overflow: 'hidden', borderRadius: moderateScale(16) }]}>
+            <Svg width="100%" height="100%" style={StyleSheet.absoluteFill}>
+              <Defs>
+                <LinearGradient id={`userMsgGrad-${item.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
+                  <Stop offset="0%" stopColor={theme.colors.secondary} stopOpacity="1" />
+                  <Stop offset="100%" stopColor={theme.colors.accent} stopOpacity="0.9" />
+                </LinearGradient>
+              </Defs>
+              <Rect width="100%" height="100%" fill={`url(#userMsgGrad-${item.id})`} rx={moderateScale(16)} />
+            </Svg>
+          </View>
+        )}
+
+        <View style={styles.messageContent}>
+          {!isUser && (
+            <Text style={[styles.senderName, { color: isAdmin ? theme.colors.accent : theme.colors.textSecondary }]}>
+              {isAdmin ? '👨‍🏫 Admin' : item.userName}
+            </Text>
+          )}
+          <Text
+            style={[
+              styles.messageText,
+              {
+                color: isUser ? theme.colors.secondaryText : theme.colors.text,
+              },
+            ]}
+          >
+            {item.message}
+          </Text>
           <Text
             style={[
               styles.timestamp,
@@ -327,18 +405,19 @@ const LiveChatInterface: React.FC<LiveChatInterfaceProps> = ({
               minute: '2-digit',
             })}
           </Text>
-        )}
+        </View>
+
         {isUser && (
           <TouchableOpacity
             style={styles.messageActionButton}
-            onPress={() => copyMessage(item.text)}
+            onPress={() => copyMessage(item.message)}
           >
             <Copy size={moderateScale(12)} color="rgba(255, 255, 255, 0.7)" />
           </TouchableOpacity>
         )}
       </Animated.View>
     );
-  }, [theme.colors, chatSettings.showTimestamps, copyMessage]);
+  }, [theme.colors, currentUserId, copyMessage]);
 
   const renderConnectionIndicator = () => {
     const indicatorSize = moderateScale(8);
@@ -379,17 +458,19 @@ const LiveChatInterface: React.FC<LiveChatInterfaceProps> = ({
     );
   };
 
+  const isChatEnabled = chatSettings?.isChatEnabled !== false;
+  const maxLength = chatSettings?.maxMessageLength || 500;
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
     >
       <Animated.View
         style={[
           styles.chatContainer,
           {
-            height: CHAT_HEIGHT,
             backgroundColor: theme.colors.cardBackground,
             borderColor: theme.colors.border,
             opacity: fadeAnim,
@@ -404,37 +485,33 @@ const LiveChatInterface: React.FC<LiveChatInterfaceProps> = ({
           },
         ]}
       >
-        {/* Header */}
-        <View
-          style={[
-            styles.header,
-            {
-              backgroundColor: theme.colors.cardBackground,
-              borderBottomColor: theme.colors.border,
-            },
-          ]}
-        >
-          <View style={styles.headerLeft}>
-            {renderConnectionIndicator()}
-            <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
-              Live Chat
-            </Text>
-            {connectionStatus === 'connected' && (
-              <View style={styles.onlineCountContainer}>
-                <Users size={moderateScale(12)} color={theme.colors.textSecondary} />
-                <Text style={[styles.onlineCountText, { color: theme.colors.textSecondary }]}>
-                  {onlineCount}
-                </Text>
-              </View>
-            )}
+        {/* Header with Gradient */}
+        <View style={[styles.header, { borderBottomColor: theme.colors.border }]}>
+          <View style={[StyleSheet.absoluteFill, { overflow: 'hidden' }]}>
+            <Svg width="100%" height="100%" style={StyleSheet.absoluteFill}>
+              <Defs>
+                <LinearGradient id="headerGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <Stop offset="0%" stopColor={theme.colors.cardBackground} stopOpacity="1" />
+                  <Stop offset="100%" stopColor={theme.colors.backgroundSecondary || theme.colors.cardBackground} stopOpacity="0.3" />
+                </LinearGradient>
+              </Defs>
+              <Rect width="100%" height="100%" fill="url(#headerGradient)" />
+            </Svg>
           </View>
-          <View style={styles.headerRight}>
-            {connectionStatus === 'connected' && (
-              <View style={styles.liveBadge}>
-                <Radio size={moderateScale(12)} color="#FFFFFF" />
-                <Text style={styles.liveBadgeText}>LIVE</Text>
-              </View>
-            )}
+          
+          <View style={styles.headerContent}>
+            <View style={styles.headerLeft}>
+              {renderConnectionIndicator()}
+              <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
+                Live Chat
+              </Text>
+              {connectionStatus === 'connected' && (
+                <View style={styles.liveBadge}>
+                  <Radio size={moderateScale(10)} color="#FFFFFF" />
+                  <Text style={styles.liveBadgeText}>LIVE</Text>
+                </View>
+              )}
+            </View>
             <TouchableOpacity
               onPress={() => setShowSettings(true)}
               style={styles.settingsButton}
@@ -443,6 +520,16 @@ const LiveChatInterface: React.FC<LiveChatInterfaceProps> = ({
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Pinned Message */}
+        {pinnedMessage && (
+          <View style={[styles.pinnedMessageContainer, { backgroundColor: theme.colors.accent + '20', borderColor: theme.colors.accent }]}>
+            <Text style={[styles.pinnedLabel, { color: theme.colors.accent }]}>📌 Pinned</Text>
+            <Text style={[styles.pinnedText, { color: theme.colors.text }]}>
+              {pinnedMessage.message}
+            </Text>
+          </View>
+        )}
 
         {/* Messages List */}
         <FlatList
@@ -467,24 +554,9 @@ const LiveChatInterface: React.FC<LiveChatInterfaceProps> = ({
             </View>
           }
         />
-        {isTyping && connectionStatus === 'connected' && (
-          <View style={styles.typingIndicator}>
-            <Text style={[styles.typingText, { color: theme.colors.textSecondary }]}>
-              Teacher is typing...
-            </Text>
-          </View>
-        )}
 
-        {/* Input Area */}
-        <View
-          style={[
-            styles.inputContainer,
-            {
-              backgroundColor: theme.colors.cardBackground,
-              borderTopColor: theme.colors.border,
-            },
-          ]}
-        >
+        {/* Input Area with Gradient */}
+        <View style={[styles.inputContainer, { borderTopColor: theme.colors.border }]}>
           <Animated.View
             style={[
               styles.inputWrapper,
@@ -508,17 +580,19 @@ const LiveChatInterface: React.FC<LiveChatInterfaceProps> = ({
               value={inputText}
               onChangeText={setInputText}
               multiline
-              maxLength={500}
-              editable={connectionStatus === 'connected' && !isSending}
+              maxLength={maxLength}
+              editable={connectionStatus === 'connected' && !isSending && isChatEnabled}
+              returnKeyType="send"
+              blurOnSubmit={false}
             />
             <TouchableOpacity
               onPress={handleSendMessage}
-              disabled={!inputText.trim() || isSending || connectionStatus !== 'connected'}
+              disabled={!inputText.trim() || isSending || connectionStatus !== 'connected' || !isChatEnabled}
               style={[
                 styles.sendButton,
                 {
                   backgroundColor:
-                    inputText.trim() && connectionStatus === 'connected'
+                    inputText.trim() && connectionStatus === 'connected' && isChatEnabled
                       ? theme.colors.secondary
                       : theme.colors.border,
                 },
@@ -531,7 +605,7 @@ const LiveChatInterface: React.FC<LiveChatInterfaceProps> = ({
                 <Send
                   size={moderateScale(18)}
                   color={
-                    inputText.trim() && connectionStatus === 'connected'
+                    inputText.trim() && connectionStatus === 'connected' && isChatEnabled
                       ? theme.colors.secondaryText
                       : theme.colors.textSecondary
                   }
@@ -539,6 +613,11 @@ const LiveChatInterface: React.FC<LiveChatInterfaceProps> = ({
               )}
             </TouchableOpacity>
           </Animated.View>
+          {!isChatEnabled && (
+            <Text style={[styles.chatDisabledText, { color: theme.colors.error }]}>
+              Chat is currently disabled
+            </Text>
+          )}
         </View>
       </Animated.View>
 
@@ -574,44 +653,6 @@ const LiveChatInterface: React.FC<LiveChatInterfaceProps> = ({
               <View style={styles.settingItem}>
                 <View style={styles.settingLeft}>
                   <Text style={[styles.settingLabel, { color: theme.colors.text }]}>
-                    Sound Notifications
-                  </Text>
-                  <Text style={[styles.settingDescription, { color: theme.colors.textSecondary }]}>
-                    Play sound when receiving messages
-                  </Text>
-                </View>
-                <Switch
-                  value={chatSettings.soundEnabled}
-                  onValueChange={(value) =>
-                    setChatSettings((prev) => ({ ...prev, soundEnabled: value }))
-                  }
-                  trackColor={{ false: theme.colors.border, true: theme.colors.accent }}
-                  thumbColor="#FFFFFF"
-                />
-              </View>
-
-              <View style={styles.settingItem}>
-                <View style={styles.settingLeft}>
-                  <Text style={[styles.settingLabel, { color: theme.colors.text }]}>
-                    Push Notifications
-                  </Text>
-                  <Text style={[styles.settingDescription, { color: theme.colors.textSecondary }]}>
-                    Receive notifications for new messages
-                  </Text>
-                </View>
-                <Switch
-                  value={chatSettings.notificationsEnabled}
-                  onValueChange={(value) =>
-                    setChatSettings((prev) => ({ ...prev, notificationsEnabled: value }))
-                  }
-                  trackColor={{ false: theme.colors.border, true: theme.colors.accent }}
-                  thumbColor="#FFFFFF"
-                />
-              </View>
-
-              <View style={styles.settingItem}>
-                <View style={styles.settingLeft}>
-                  <Text style={[styles.settingLabel, { color: theme.colors.text }]}>
                     Auto Scroll
                   </Text>
                   <Text style={[styles.settingDescription, { color: theme.colors.textSecondary }]}>
@@ -619,29 +660,10 @@ const LiveChatInterface: React.FC<LiveChatInterfaceProps> = ({
                   </Text>
                 </View>
                 <Switch
-                  value={chatSettings.autoScroll}
-                  onValueChange={(value) =>
-                    setChatSettings((prev) => ({ ...prev, autoScroll: value }))
-                  }
-                  trackColor={{ false: theme.colors.border, true: theme.colors.accent }}
-                  thumbColor="#FFFFFF"
-                />
-              </View>
-
-              <View style={styles.settingItem}>
-                <View style={styles.settingLeft}>
-                  <Text style={[styles.settingLabel, { color: theme.colors.text }]}>
-                    Show Timestamps
-                  </Text>
-                  <Text style={[styles.settingDescription, { color: theme.colors.textSecondary }]}>
-                    Display time on messages
-                  </Text>
-                </View>
-                <Switch
-                  value={chatSettings.showTimestamps}
-                  onValueChange={(value) =>
-                    setChatSettings((prev) => ({ ...prev, showTimestamps: value }))
-                  }
+                  value={true}
+                  onValueChange={(value) => {
+                    // Auto-scroll is always enabled
+                  }}
                   trackColor={{ false: theme.colors.border, true: theme.colors.accent }}
                   thumbColor="#FFFFFF"
                 />
@@ -669,52 +691,60 @@ const LiveChatInterface: React.FC<LiveChatInterfaceProps> = ({
   );
 };
 
+// Simple atob polyfill
+const atob = (input: string) => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+  let str = input.replace(/=+$/, '');
+  let output = '';
+  for (let bc = 0, bs = 0, buffer, i = 0;
+    buffer = str.charAt(i++);
+    ~buffer && (bs = bc % 4 ? bs * 64 + buffer : buffer,
+      bc++ % 4) ? output += String.fromCharCode(255 & bs >> (-2 * bc & 6)) : 0
+  ) {
+    buffer = chars.indexOf(buffer);
+  }
+  return output;
+};
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
   chatContainer: {
-    borderRadius: moderateScale(16),
+    flex: 1,
+    borderRadius: moderateScale(20),
     borderWidth: 1,
     overflow: 'hidden',
-    elevation: 4,
+    elevation: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     paddingHorizontal: getSpacing(2),
     paddingVertical: getSpacing(1.5),
     borderBottomWidth: 1,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    position: 'relative',
+    zIndex: 1,
   },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
     gap: getSpacing(1),
   },
   headerTitle: {
     fontSize: moderateScale(18),
     fontWeight: '700',
-    marginLeft: getSpacing(1),
-  },
-  onlineCountContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginLeft: getSpacing(1),
-    gap: getSpacing(0.5),
-  },
-  onlineCountText: {
-    fontSize: moderateScale(11),
-    fontWeight: '600',
+    marginLeft: getSpacing(0.5),
   },
   settingsButton: {
     padding: getSpacing(0.5),
@@ -743,22 +773,47 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(10),
     fontWeight: '700',
   },
+  pinnedMessageContainer: {
+    padding: getSpacing(1.5),
+    borderBottomWidth: 1,
+    borderTopWidth: 0,
+  },
+  pinnedLabel: {
+    fontSize: moderateScale(10),
+    fontWeight: '700',
+    marginBottom: getSpacing(0.5),
+    textTransform: 'uppercase',
+  },
+  pinnedText: {
+    fontSize: moderateScale(13),
+    lineHeight: moderateScale(18),
+  },
   messagesList: {
     flexGrow: 1,
     padding: getSpacing(2),
   },
   messageContainer: {
     padding: getSpacing(1.5),
-    borderRadius: moderateScale(12),
+    borderRadius: moderateScale(16),
     marginBottom: getSpacing(1),
     minWidth: moderateScale(100),
+    maxWidth: '75%',
+    position: 'relative',
+    overflow: 'hidden',
   },
   userMessageContainer: {
+    alignSelf: 'flex-end',
     borderBottomRightRadius: moderateScale(4),
   },
   teacherMessageContainer: {
+    alignSelf: 'flex-start',
     borderBottomLeftRadius: moderateScale(4),
     borderWidth: 1,
+    backgroundColor: 'transparent',
+  },
+  messageContent: {
+    position: 'relative',
+    zIndex: 1,
   },
   senderName: {
     fontSize: moderateScale(11),
@@ -773,14 +828,6 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(10),
     marginTop: getSpacing(0.5),
     alignSelf: 'flex-end',
-  },
-  systemMessageContainer: {
-    alignItems: 'center',
-    marginVertical: getSpacing(1),
-  },
-  systemMessageText: {
-    fontSize: moderateScale(12),
-    fontStyle: 'italic',
   },
   inputContainer: {
     padding: getSpacing(2),
@@ -809,6 +856,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginLeft: getSpacing(1),
   },
+  chatDisabledText: {
+    fontSize: moderateScale(11),
+    marginTop: getSpacing(0.5),
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -820,19 +873,12 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     marginTop: getSpacing(1),
   },
-  typingIndicator: {
-    paddingHorizontal: getSpacing(2),
-    paddingVertical: getSpacing(1),
-  },
-  typingText: {
-    fontSize: moderateScale(12),
-    fontStyle: 'italic',
-  },
   messageActionButton: {
     position: 'absolute',
     top: getSpacing(0.5),
     right: getSpacing(0.5),
     padding: getSpacing(0.5),
+    zIndex: 2,
   },
   modalOverlay: {
     flex: 1,
@@ -903,4 +949,3 @@ const styles = StyleSheet.create({
 });
 
 export default LiveChatInterface;
-

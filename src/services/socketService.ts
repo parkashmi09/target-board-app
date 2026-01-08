@@ -67,27 +67,19 @@ class SocketService {
         if (!this.socket) return;
 
         this.socket.on('connect', () => {
-            if (__DEV__) {
-                console.log('✅ Connected to chat service', this.socket?.id);
-            }
+            // Connected to chat service
         });
 
         this.socket.on('connect_error', (error) => {
-            if (__DEV__) {
-                console.error('❌ Connection error:', error.message);
-            }
+            // Connection error handled
         });
 
         this.socket.on('disconnect', (reason) => {
-            if (__DEV__) {
-                console.log('❌ Disconnected:', reason);
-            }
+            // Disconnected from chat service
         });
 
         this.socket.on('error', (error) => {
-            if (__DEV__) {
-                console.error('Socket error event:', error);
-            }
+            // Socket error handled
         });
     }
 
@@ -114,6 +106,11 @@ class SocketService {
     stopTyping(streamId: string) {
         if (!this.socket) return;
         this.socket.emit('typing-stop', { streamId });
+    }
+
+    reportMessage(streamId: string, messageId: string, reason: string, description?: string) {
+        if (!this.socket) return;
+        this.socket.emit('report-message', { streamId, messageId, reason, description });
     }
 
     // Event Listeners
@@ -163,6 +160,14 @@ class SocketService {
 
     onError(callback: (error: any) => void) {
         this.socket?.on('error', callback);
+    }
+
+    onReportSuccess(callback: (data: { reportId: string; message: string }) => void) {
+        this.socket?.on('report-success', callback);
+    }
+
+    onReportError(callback: (error: { message: string }) => void) {
+        this.socket?.on('report-error', callback);
     }
 
     off(event: string) {

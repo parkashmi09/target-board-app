@@ -15,11 +15,10 @@ import {
     Easing,
     ScrollView,
 } from 'react-native';
-import { Send, Users, Radio, Smile } from 'lucide-react-native';
+import { Send, Smile } from 'lucide-react-native';
 import { useTheme } from '../../theme/theme';
 import { moderateScale, getSpacing } from '../../utils/responsive';
 import { socketService, ChatMessage, ChatSettings } from '../../services/socketService';
-import LottieView from 'lottie-react-native';
 
 interface LiveChatProps {
     streamId: string;
@@ -54,21 +53,17 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
     const { colors, isDark } = theme;
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [inputText, setInputText] = useState('');
-    const [onlineCount, setOnlineCount] = useState(0);
     const [settings, setSettings] = useState<ChatSettings | null>(null);
-    const [typingUsers, setTypingUsers] = useState<{ userId: string; userName: string }[]>([]);
     const [isConnected, setIsConnected] = useState(false);
     const [loading, setLoading] = useState(true);
 
     const flatListRef = useRef<FlatList>(null);
-    const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const [pinnedMessage, setPinnedMessage] = useState<any | null>(null);
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     
     // Animation refs
-    const pulseAnim = useRef(new Animated.Value(1)).current;
     const emojiButtonScale = useRef(new Animated.Value(1)).current;
 
     // Simple JWT Decode to get user ID
@@ -81,7 +76,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
                     setCurrentUserId(payload.id);
                 }
             } catch (e) {
-                console.warn('Failed to decode token', e);
+                // Failed to decode token
             }
         }
     }, [token]);

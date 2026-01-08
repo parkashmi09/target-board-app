@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   StyleSheet,
   ScrollView,
   RefreshControl,
   Dimensions,
+  Animated,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect } from '@react-navigation/native';
@@ -31,8 +32,9 @@ import CourseSection from '../components/Home/CourseSection';
 import TeachersSection from '../components/Home/TeachersSection';
 import Drawer from '../components/Drawer';
 import ToppersSection from '../components/Home/ToppersSection';
+import { CourseCardSkeleton, TeacherCardSkeleton, BannerSkeleton } from '../components/Skeletons';
 
-const HomeScreen: React.FC = () => {
+const HomeScreen: React.FC = React.memo(() => {
   const { t } = useTranslation();
   const theme = useTheme();
   const { forceHide } = useLoaderStore();
@@ -41,6 +43,10 @@ const HomeScreen: React.FC = () => {
   const [categoryId, setCategoryId] = useState<string | number | null>(null);
   const [classes, setClasses] = useState<Array<{ label: string; value: string | number }>>([]);
   const { setDrawerOpen } = useUIStore();
+
+  // Animation values for smooth fade-in
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   // Fetch user details using React Query
   const { data: userData, refetch: refetchUserDetails } = useUserDetails({
@@ -69,6 +75,31 @@ const HomeScreen: React.FC = () => {
   });
 
   const [refreshing, setRefreshing] = useState(false);
+
+  // Check if initial loading is complete - only show skeletons if ALL data is loading
+  const isInitialLoading = isLoadingStickyBanners || isLoadingBanners || isLoadingTeachers || isLoadingCourses;
+  
+  // Track if we have any data loaded to prevent showing skeletons when data exists
+  const hasAnyData = useMemo(() => {
+    return (
+      (stickyBannersData && stickyBannersData.length > 0) ||
+      (bannersData && bannersData.length > 0) ||
+      (teachersData && teachersData.length > 0) ||
+      (coursesData && coursesData.length > 0)
+    );
+  }, [stickyBannersData, bannersData, teachersData, coursesData]);
+
+  // Animate content fade-in when data loads
+  useEffect(() => {
+    if (!isInitialLoading && isInitialLoad) {
+      setIsInitialLoad(false);
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [isInitialLoading, isInitialLoad, fadeAnim]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -174,7 +205,14 @@ const HomeScreen: React.FC = () => {
 
   // Memoize banners data transformation
   const transformedBanners = useMemo(() => {
-    if (!bannersData || !Array.isArray(bannersData)) return [];
+    if (!bannersData || !Array.isArray(bannersData)) return [] as Array<{
+      id: string | number | undefined;
+      image: string;
+      action: string;
+      category_id: number;
+      status: number;
+      sorting_params: number;
+    }>;
     return bannersData.map((banner: any) => ({
       id: banner?._id || banner?.id,
       image: banner?.mediaUrl || banner?.image || '',
@@ -261,6 +299,72 @@ const HomeScreen: React.FC = () => {
     }
   }, [stickyBannersData]);
 
+  // Render skeleton loaders during initial load - only show if no data exists
+  const renderSkeletons = () => {
+    // Don't show skeletons if we already have data
+    if (hasAnyData) {
+      return null;
+    }
+
+    return (
+      <View>
+        {/* Banner skeleton - match actual banner height */}
+        {isLoadingStickyBanners && (
+          <View style={styles.bannerSkeletonWrapper}>
+            <BannerSkeleton />
+          </View>
+        )}
+        
+        {/* Banner slider skeleton - match actual slider height */}
+        {isLoadingBanners && (
+          <View style={styles.bannerSkeletonWrapper}>
+            <BannerSkeleton />
+          </View>
+        )}
+
+        {/* Category tabs - always show */}
+        <ResponsiveView padding={2}>
+          <CategoryTabs />
+        </ResponsiveView>
+
+        {/* Courses skeleton - match CourseSection layout */}
+        {isLoadingCourses && (
+          <View style={styles.skeletonContainer}>
+            <View style={[styles.skeletonTitle, { backgroundColor: theme.colors.border }]} />
+            <View style={styles.courseSkeletonWrapper}>
+              {[1, 2, 3].map((i) => (
+                <View key={i} style={styles.skeletonCard}>
+                  <CourseCardSkeleton />
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Teachers skeleton - match TeachersSection layout */}
+        {isLoadingTeachers && (
+          <View style={styles.skeletonContainer}>
+            <View style={[styles.skeletonTitle, { backgroundColor: theme.colors.border }]} />
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false} 
+              contentContainerStyle={styles.skeletonScroll}
+            >
+              {[1, 2, 3, 4].map((i) => (
+                <TeacherCardSkeleton key={i} />
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* Toppers section skeleton placeholder */}
+        <View style={styles.skeletonContainer}>
+          <View style={[styles.skeletonTitle, { backgroundColor: theme.colors.border, width: moderateScale(120) }]} />
+        </View>
+      </View>
+    );
+  };
+
   return (
     <GradientBackground>
       <View style={styles.contentWrapper}>
@@ -278,48 +382,101 @@ const HomeScreen: React.FC = () => {
             />
           }
         >
-          {stickyBanner ? (
-            <ImageBanner
-              key={stickyBanner?._id || 'sticky-banner'}
-              imageUrl={stickyBanner?.image}
-              onPress={() => {
-                if (stickyBanner?.link) {
-                  // Handle banner link
-                }
-              }}
-            />
+          {isInitialLoading && !hasAnyData ? (
+            renderSkeletons()
           ) : (
-            <ImageBanner imageSource={Images.TB_LOGO} />
-          )}
+            <Animated.View style={{ opacity: fadeAnim }}>
+              {/* Show banner even if loading, but with skeleton if no data */}
+              {isLoadingStickyBanners && !stickyBanner ? (
+                <View style={styles.bannerSkeletonWrapper}>
+                  <BannerSkeleton />
+                </View>
+              ) : stickyBanner ? (
+                <ImageBanner
+                  key={stickyBanner?._id || 'sticky-banner'}
+                  imageUrl={stickyBanner?.image}
+                  onPress={() => {
+                    if (stickyBanner?.link) {
+                      // Handle banner link
+                    }
+                  }}
+                />
+              ) : (
+                <ImageBanner imageSource={Images.TB_LOGO} />
+              )}
 
-          {transformedBanners.length > 0 && (
-            <BannerSlider
-              data={transformedBanners}
-              categoryId={categoryId}
-              full_data={fullData}
-              autoPlay={transformedBanners.length > 1}
-              autoPlayInterval={3000}
-            />
-          )}
+              {/* Show banner slider skeleton if loading, otherwise show actual slider */}
+              {isLoadingBanners && transformedBanners.length === 0 ? (
+                <View style={styles.bannerSkeletonWrapper}>
+                  <BannerSkeleton />
+                </View>
+              ) : transformedBanners.length > 0 ? (
+                <BannerSlider
+                  data={transformedBanners}
+                  categoryId={categoryId}
+                  full_data={fullData}
+                  autoPlay={transformedBanners.length > 1}
+                  autoPlayInterval={3000}
+                />
+              ) : null}
 
-          <ResponsiveView padding={2}>
-            <CategoryTabs />
-          </ResponsiveView>
+              <ResponsiveView padding={2}>
+                <CategoryTabs />
+              </ResponsiveView>
 
-          {transformedCourses.length > 0 && (
-            <CourseSection courses={transformedCourses} theme={theme} />
+              {/* Show course skeleton if loading, otherwise show courses */}
+              {isLoadingCourses && transformedCourses.length === 0 ? (
+                <View style={styles.skeletonContainer}>
+                  <View style={[styles.skeletonTitle, { backgroundColor: theme.colors.border }]} />
+                  <View style={styles.courseSkeletonWrapper}>
+                    {[1, 2, 3].map((i) => (
+                      <View key={i} style={styles.skeletonCard}>
+                        <CourseCardSkeleton />
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              ) : transformedCourses.length > 0 ? (
+                <CourseSection courses={transformedCourses} theme={theme} />
+              ) : null}
+
+              {/* Show teachers skeleton if loading, otherwise show teachers */}
+              {(() => {
+                const hasTeachers = Array.isArray(teachersData) && teachersData.length > 0;
+                if (isLoadingTeachers && !hasTeachers) {
+                  return (
+                    <View style={styles.skeletonContainer}>
+                      <View style={[styles.skeletonTitle, { backgroundColor: theme.colors.border }]} />
+                      <ScrollView 
+                        horizontal 
+                        showsHorizontalScrollIndicator={false} 
+                        contentContainerStyle={styles.skeletonScroll}
+                      >
+                        {[1, 2, 3, 4].map((i) => (
+                          <TeacherCardSkeleton key={i} />
+                        ))}
+                      </ScrollView>
+                    </View>
+                  );
+                }
+                if (hasTeachers) {
+                  return <TeachersSection theme={theme} teachers={teachersData} />;
+                }
+                return null;
+              })()}
+
+              <ToppersSection theme={theme} />
+            </Animated.View>
           )}
-          {teachersData && teachersData.length > 0 && (
-            <TeachersSection theme={theme} teachers={teachersData} />
-          )}
-          <ToppersSection theme={theme} />
         </ScrollView>
 
         <Drawer />
       </View>
     </GradientBackground>
   );
-};
+});
+
+HomeScreen.displayName = 'HomeScreen';
 
 const styles = StyleSheet.create({
   container: {
@@ -334,6 +491,30 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingBottom: moderateScale(100),
+  },
+  skeletonContainer: {
+    marginVertical: getSpacing(2),
+  },
+  skeletonTitle: {
+    height: moderateScale(20),
+    width: moderateScale(150),
+    borderRadius: moderateScale(4),
+    marginLeft: getSpacing(2),
+    marginBottom: getSpacing(1),
+  },
+  skeletonScroll: {
+    paddingHorizontal: getSpacing(2),
+  },
+  skeletonCard: {
+    marginRight: getSpacing(2),
+  },
+  bannerSkeletonWrapper: {
+    marginBottom: getSpacing(1),
+  },
+  courseSkeletonWrapper: {
+    flexDirection: 'row',
+    paddingHorizontal: getSpacing(2),
+    gap: getSpacing(2),
   },
 });
 

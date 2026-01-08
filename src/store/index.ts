@@ -9,4 +9,5 @@ export { useAppStore } from './appStore';
 export { useLoaderStore } from './loaderStore';
 export { useAuthStore } from './authStore';
 export { useRegistrationDataStore } from './registrationDataStore';
+export { useNetworkStore } from './networkStore';
 

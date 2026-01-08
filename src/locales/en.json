@@ -33,6 +33,16 @@
     "hideDetails": "Hide Details",
     "errorDetails": "Error Details:"
   },
+  "offline": {
+    "title": "No Internet Connection",
+    "message": "Please check your internet connection and try again.",
+    "banner": "No Internet Connection",
+    "retry": "Retry Connection",
+    "tips": "Tips:",
+    "tip1": "Check your Wi-Fi or mobile data",
+    "tip2": "Try moving to an area with better signal",
+    "tip3": "Some features may work with cached data"
+  },
   "navigation": {
     "home": "Home",
     "myCourse": "My Course",

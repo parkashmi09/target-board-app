@@ -12,9 +12,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // Cache times
-      staleTime: 5 * 60 * 1000, // Default: 5 minutes
-      gcTime: 30 * 60 * 1000, // Keep in memory for 30 minutes
+      // Cache times - Optimized for offline support
+      staleTime: 10 * 60 * 1000, // Default: 10 minutes (increased for better offline support)
+      gcTime: 60 * 60 * 1000, // Keep in memory for 1 hour (increased for offline access)
       
       // Retry strategy
       retry: (failureCount, error: any) => {
@@ -32,8 +32,8 @@ export const queryClient = new QueryClient({
       refetchOnReconnect: true, // Refetch when connection restored
       refetchOnMount: true, // Refetch on mount (can be overridden per query)
       
-      // Network timeout
-      networkMode: 'online', // Only run queries when online
+      // Network-aware: Allow queries even when offline (will use cache)
+      networkMode: 'offlineFirst', // Try cache first, then network when available
     },
     mutations: {
       retry: 1, // Retry mutations once

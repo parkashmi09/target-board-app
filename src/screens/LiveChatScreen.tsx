@@ -38,9 +38,6 @@ const LiveChatScreen: React.FC = () => {
 
   const handleMessageSend = (message: string) => {
     // Handle message sending logic here
-    if (__DEV__) {
-      console.log('[LiveChatScreen] Message sent:', message);
-    }
   };
 
   return (
@@ -67,6 +64,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: getSpacing(2),
     paddingBottom: getSpacing(2),
+    paddingTop: getSpacing(1),
   },
 });
 

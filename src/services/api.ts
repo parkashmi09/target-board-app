@@ -36,6 +36,17 @@ async function request<T>(path: string, options: RequestInit & { timeoutMs?: num
       throw new ApiError(data?.message || `HTTP ${res.status}`, res.status, data);
     }
     return data as T;
+  } catch (error: any) {
+    // Handle network errors
+    if (error.name === 'AbortError' || error.message?.includes('network') || error.message?.includes('Network')) {
+      throw new ApiError(
+        'Network error. Please check your internet connection.',
+        0,
+        { networkError: true, originalError: error }
+      );
+    }
+    // Re-throw other errors
+    throw error;
   } finally {
     clearTimeout(timeout);
   }
