@@ -21,7 +21,10 @@ import './src/i18n';
 // Initialize TPStreams
 // @ts-ignore - react-native-tpstreams types may not be available
 import { TPStreams } from 'react-native-tpstreams';
-TPStreams.initialize('kuepke');
+import Config from 'react-native-config';
+
+const TPSTREAMS_ORG_ID = Config.TPSTREAMS_ORG_ID || 'kuepke';
+TPStreams.initialize(TPSTREAMS_ORG_ID);
 
 // Suppress InteractionManager deprecation warning from react-native-modal
 // This is a third-party library issue and will be fixed when the library is updated

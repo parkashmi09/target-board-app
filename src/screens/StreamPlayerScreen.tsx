@@ -4,6 +4,7 @@ import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 // @ts-ignore - react-native-tpstreams types may not be available
 import { TPStreams, TPStreamsPlayerView } from 'react-native-tpstreams';
+import Config from 'react-native-config';
 import { MainStackParamList } from '../navigation/MainStack';
 import { getStreamById } from '../services/api';
 import GradientBackground from '../components/GradientBackground';
@@ -15,11 +16,18 @@ import { moderateScale, getSpacing } from '../utils/responsive';
 type StreamPlayerScreenRouteProp = RouteProp<MainStackParamList, 'StreamPlayer'>;
 
 // TPStreams Configuration
-const ORG_ID = 'kuepke';
-const ACCESS_TOKEN = 'eb608abc-0b42-4dc4-b161-fe6512b996a8';
+// ⚠️ IMPORTANT: These values come from .env file
+// Make sure to rotate token if it was previously exposed
+const ORG_ID = Config.TPSTREAMS_ORG_ID || 'kuepke';
+const ACCESS_TOKEN = Config.TPSTREAMS_ACCESS_TOKEN || '';
 
 // Initialize TPStreams once at module load
 TPStreams.initialize(ORG_ID);
+
+// Validate that required credentials are present
+if (__DEV__ && (!ORG_ID || !ACCESS_TOKEN)) {
+  console.warn('[StreamPlayerScreen] Warning: TPStreams credentials are missing from environment variables');
+}
 
 const StreamPlayerScreen: React.FC = () => {
     const route = useRoute<StreamPlayerScreenRouteProp>();
