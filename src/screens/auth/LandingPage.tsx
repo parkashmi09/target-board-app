@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, ImageBackgr
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../theme/theme';
 import { moderateScale, getSpacing } from '../../utils/responsive';
+import { getFontFamily } from '../../utils/fonts';
 import { Images } from '../../assets/images';
 import { sendOtp } from '../../services/api';
 import { useToast } from '../../components/Toast';
@@ -393,11 +394,13 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(26),
     fontWeight: '600',
     letterSpacing: 0.5,
+    fontFamily: getFontFamily('200'),
   },
   destinationText: {
     fontSize: moderateScale(22),
     fontWeight: '400',
     marginTop: moderateScale(2),
+    fontFamily: getFontFamily('200'),
   },
   dividerContainer: {
     flexDirection: 'row',
@@ -411,11 +414,13 @@ const styles = StyleSheet.create({
   dividerText: {
     marginHorizontal: getSpacing(2),
     fontSize: moderateScale(14),
+    fontFamily: getFontFamily('200'),
   },
   label: {
     fontSize: moderateScale(15),
     marginBottom: getSpacing(1),
     fontWeight: '500',
+    fontFamily: getFontFamily('200'),
   },
   inputContainer: {
     marginBottom: getSpacing(3),
@@ -426,6 +431,7 @@ const styles = StyleSheet.create({
     paddingVertical: getSpacing(1.5),
     fontSize: moderateScale(15),
     borderWidth: 0,
+    fontFamily: getFontFamily('200'),
   },
   button: {
     width: '100%',
@@ -454,6 +460,7 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(16),
     fontWeight: '700',
     letterSpacing: 1,
+    fontFamily: getFontFamily('200'),
   },
   buttonArrowContainer: {
     marginLeft: getSpacing(1),

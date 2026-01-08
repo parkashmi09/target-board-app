@@ -103,33 +103,33 @@ export const borderRadius = {
 export const typography = {
   h1: {
     fontSize: 32,
-    fontWeight: 'bold' as const,
+    fontWeight: '200' as const,
     lineHeight: 40,
-    fontFamily: getFontFamily('bold'),
+    fontFamily: getFontFamily('200'),
   },
   h2: {
     fontSize: 24,
-    fontWeight: 'bold' as const,
+    fontWeight: '200' as const,
     lineHeight: 32,
-    fontFamily: getFontFamily('bold'),
+    fontFamily: getFontFamily('200'),
   },
   h3: {
     fontSize: 20,
-    fontWeight: '600' as const,
+    fontWeight: '200' as const,
     lineHeight: 28,
-    fontFamily: getFontFamily('600'),
+    fontFamily: getFontFamily('200'),
   },
   body: {
     fontSize: 16,
-    fontWeight: 'normal' as const,
+    fontWeight: '200' as const,
     lineHeight: 24,
-    fontFamily: getFontFamily('normal'),
+    fontFamily: getFontFamily('200'),
   },
   caption: {
     fontSize: 14,
-    fontWeight: 'normal' as const,
+    fontWeight: '200' as const,
     lineHeight: 20,
-    fontFamily: getFontFamily('normal'),
+    fontFamily: getFontFamily('200'),
   },
 };
 

@@ -4,6 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import TeacherCard from '../TeacherCard';
 import ResponsiveView from '../ResponsiveView';
 import { moderateScale, getSpacing } from '../../utils/responsive';
+import { getFontFamily } from '../../utils/fonts';
 import { Theme } from '../../theme/theme';
 
 interface TeachersSectionProps {
@@ -93,6 +94,7 @@ const styles = StyleSheet.create({
     teachersSection: {},
     teachersSectionTitle: {
         fontWeight: '800',
+        fontFamily: getFontFamily('200'),
     },
     teachersScrollContent: {
         paddingRight: getSpacing(2),

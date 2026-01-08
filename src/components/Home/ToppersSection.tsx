@@ -5,6 +5,7 @@ import Carousel from 'react-native-reanimated-carousel';
 import TopperCard from '../TopperCard';
 import { Images } from '../../assets/images';
 import { moderateScale, getSpacing } from '../../utils/responsive';
+import { getFontFamily } from '../../utils/fonts';
 import { Theme } from '../../theme/theme';
 
 interface ToppersSectionProps {
@@ -87,6 +88,7 @@ const styles = StyleSheet.create({
     },
     toppersSectionTitle: {
         fontWeight: '700',
+        fontFamily: getFontFamily('200'),
     },
     cardWrapper: {
         alignItems: 'stretch',

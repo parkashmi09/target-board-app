@@ -8,6 +8,7 @@ import notificationAnimation from '../../assets/lotties/notification.json';
 import downloadAnimation from '../../assets/lotties/download.json';
 import SVGIcon from '../SVGIcon';
 import { moderateScale, getSpacing } from '../../utils/responsive';
+import { getFontFamily } from '../../utils/fonts';
 import { Theme } from '../../theme/theme';
 import { Images } from '../../assets/images';
 import { useToast } from '../Toast';
@@ -215,11 +216,13 @@ const styles = StyleSheet.create({
         fontSize: moderateScale(14),
         fontWeight: '600',
         lineHeight: moderateScale(18),
+        fontFamily: getFontFamily('200'),
     },
     boardText: {
         fontSize: moderateScale(11),
         fontWeight: '400',
         lineHeight: moderateScale(14),
+        fontFamily: getFontFamily('200'),
     },
     rightIconsContainer: {
         flexDirection: 'row',

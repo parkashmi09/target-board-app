@@ -6,6 +6,7 @@ import Carousel from 'react-native-reanimated-carousel';
 import CourseCard from '../CourseCard';
 import ToppersSection from './ToppersSection';
 import { moderateScale, getSpacing } from '../../utils/responsive';
+import { getFontFamily } from '../../utils/fonts';
 import { Theme } from '../../theme/theme';
 
 interface CourseSectionProps {
@@ -140,6 +141,7 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(18),
     fontWeight: '700',
     marginBottom: getSpacing(0.8),
+    fontFamily: getFontFamily('200'),
   },
   cardWrapper: {
     alignItems: 'stretch', // 🔥 FULL WIDTH
