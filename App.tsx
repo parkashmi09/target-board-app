@@ -15,6 +15,7 @@ import AuthStack from './src/navigation/AuthStack';
 import MainStack from './src/navigation/MainStack';
 import { ToastProvider } from './src/components/Toast';
 import { GlobalLoaderProvider } from './src/components/GlobalLoader';
+import ErrorBoundary from './src/components/ErrorBoundary';
 import { queryClient } from './src/services/queryClient';
 import './src/i18n';
 
@@ -33,17 +34,19 @@ LogBox.ignoreLogs([
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <SafeAreaProvider>
-          <ToastProvider>
-            <GlobalLoaderProvider>
-              <AppContent />
-            </GlobalLoaderProvider>
-          </ToastProvider>
-        </SafeAreaProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <SafeAreaProvider>
+            <ToastProvider>
+              <GlobalLoaderProvider>
+                <AppContent />
+              </GlobalLoaderProvider>
+            </ToastProvider>
+          </SafeAreaProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 

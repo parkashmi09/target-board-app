@@ -228,7 +228,7 @@ const SettingsScreen: React.FC = () => {
               'file', 
               t('profile.termsAndConditions') || 'Terms & Conditions', 
               () => {
-                // Navigate to terms and conditions
+                navigation.navigate('TermsAndConditions');
               }
             )}
           </View>

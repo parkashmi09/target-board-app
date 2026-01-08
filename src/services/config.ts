@@ -15,6 +15,10 @@ export const RAZORPAY_KEY_SECRET = Config.RAZORPAY_KEY_SECRET || '';
 // Can be set via environment variable or use a default URL
 export const PRIVACY_POLICY_URL = Config.PRIVACY_POLICY_URL || '';
 
+// Terms & Conditions URL
+// Can be set via environment variable or use a default URL
+export const TERMS_AND_CONDITIONS_URL = Config.TERMS_AND_CONDITIONS_URL || 'https://targetboard.co/terms';
+
 // TPStreams Configuration
 // ⚠️ IMPORTANT: These values come from .env file
 export const TPSTREAMS_ORG_ID = Config.TPSTREAMS_ORG_ID || '';
