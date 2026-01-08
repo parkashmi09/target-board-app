@@ -202,14 +202,16 @@ export const updateUser = async (payload: { fullName?: string; city?: string }) 
     const requestUrl = `${BASE_URL}/auth/user/update`;
     const requestBody = JSON.stringify(requestPayload);
 
-    console.log('[API] updateUser - Full Request Details:');
-    console.log('[API] URL:', requestUrl);
-    console.log('[API] Method: PUT');
-    console.log('[API] Payload:', requestPayload);
-    console.log('[API] Token (first 30 chars):', cleanToken.substring(0, 30) + '...');
-    console.log('[API] Token (last 20 chars):', '...' + cleanToken.substring(cleanToken.length - 20));
-    console.log('[API] Token length:', cleanToken.length);
-    console.log('[API] Authorization header:', authHeader.substring(0, 50) + '...');
+    if (__DEV__) {
+      console.log('[API] updateUser - Full Request Details:');
+      console.log('[API] URL:', requestUrl);
+      console.log('[API] Method: PUT');
+      console.log('[API] Payload:', requestPayload);
+      console.log('[API] Token (first 30 chars):', cleanToken.substring(0, 30) + '...');
+      console.log('[API] Token (last 20 chars):', '...' + cleanToken.substring(cleanToken.length - 20));
+      console.log('[API] Token length:', cleanToken.length);
+      console.log('[API] Authorization header:', authHeader.substring(0, 50) + '...');
+    }
 
     const response = await fetch(requestUrl, {
       method: 'PUT',
@@ -221,39 +223,45 @@ export const updateUser = async (payload: { fullName?: string; city?: string }) 
       body: requestBody,
     });
 
-    console.log('[API] Response status:', response.status);
-    console.log('[API] Response headers:', Object.fromEntries(response.headers.entries()));
+    if (__DEV__) {
+      console.log('[API] Response status:', response.status);
+      console.log('[API] Response headers:', Object.fromEntries(response.headers.entries()));
+    }
 
     const isJson = (response.headers.get('content-type') || '').includes('application/json');
     const data = isJson ? await response.json() : undefined;
 
     if (!response.ok) {
-      console.error('[API] updateUser - Error Response:');
-      console.error('[API] Status:', response.status);
-      console.error('[API] Status Text:', response.statusText);
-      console.error('[API] Response Data:', data);
+      if (__DEV__) {
+        console.error('[API] updateUser - Error Response:');
+        console.error('[API] Status:', response.status);
+        console.error('[API] Status Text:', response.statusText);
+        console.error('[API] Response Data:', data);
+      }
       
       if (response.status === 401) {
         // Token might be expired or invalid
-        console.error('[API] 401 Unauthorized - Possible causes:');
-        console.error('[API] 1. Token expired');
-        console.error('[API] 2. Token invalid');
-        console.error('[API] 3. Token not properly formatted');
-        console.error('[API] 4. Server not accepting Bearer token format');
-        
-        // Check token structure
-        try {
-          const tokenParts = cleanToken.split('.');
-          console.error('[API] Token structure - Parts count:', tokenParts.length);
-          if (tokenParts.length === 3) {
-            console.error('[API] Token appears to be a valid JWT format');
-            console.error('[API] Token header (first part):', tokenParts[0].substring(0, 20) + '...');
-            console.error('[API] Token payload (second part):', tokenParts[1].substring(0, 20) + '...');
-          } else {
-            console.error('[API] Token does not appear to be in JWT format');
+        if (__DEV__) {
+          console.error('[API] 401 Unauthorized - Possible causes:');
+          console.error('[API] 1. Token expired');
+          console.error('[API] 2. Token invalid');
+          console.error('[API] 3. Token not properly formatted');
+          console.error('[API] 4. Server not accepting Bearer token format');
+          
+          // Check token structure
+          try {
+            const tokenParts = cleanToken.split('.');
+            console.error('[API] Token structure - Parts count:', tokenParts.length);
+            if (tokenParts.length === 3) {
+              console.error('[API] Token appears to be a valid JWT format');
+              console.error('[API] Token header (first part):', tokenParts[0].substring(0, 20) + '...');
+              console.error('[API] Token payload (second part):', tokenParts[1].substring(0, 20) + '...');
+            } else {
+              console.error('[API] Token does not appear to be in JWT format');
+            }
+          } catch (e) {
+            console.error('[API] Could not analyze token structure:', e);
           }
-        } catch (e) {
-          console.error('[API] Could not analyze token structure:', e);
         }
         
         throw new ApiError(
@@ -600,12 +608,14 @@ export const createPaymentLink = async (courseId: string, packageId?: string, di
     }
 
     // Log API endpoint URL and payload
-    console.log('[QR Code Generation] API Endpoint URL:', fullUrl);
-    console.log('[QR Code Generation] API Payload:', JSON.stringify(payload, null, 2));
+    if (__DEV__) {
+      console.log('[QR Code Generation] API Endpoint URL:', fullUrl);
+      console.log('[QR Code Generation] API Payload:', JSON.stringify(payload, null, 2));
+    }
 
     const response = await api.post<any>(url, payload);
-    console.log('[QR Code Generation] API Response:', response);
     if (__DEV__) {
+      console.log('[QR Code Generation] API Response:', response);
       console.log('[API] createPaymentLink response:', response);
     }
 

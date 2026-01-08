@@ -48,12 +48,10 @@ import { useToast } from '../components/Toast';
 type VideoPlayerScreenRouteProp = RouteProp<MainStackParamList, 'VideoPlayer'>;
 
 // TPStreams Configuration
-// ⚠️ IMPORTANT: This value comes from .env file
-import Config from 'react-native-config';
-const ORG_ID = Config.TPSTREAMS_ORG_ID || 'kuepke';
+import { TPSTREAMS_ORG_ID } from '../services/config';
 
 // Initialize TPStreams once at module load
-TPStreams.initialize(ORG_ID);
+TPStreams.initialize(TPSTREAMS_ORG_ID);
 
 const VideoPlayerScreen: React.FC = () => {
   const theme = useTheme();

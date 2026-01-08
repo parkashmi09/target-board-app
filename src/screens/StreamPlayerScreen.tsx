@@ -4,7 +4,6 @@ import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 // @ts-ignore - react-native-tpstreams types may not be available
 import { TPStreams, TPStreamsPlayerView } from 'react-native-tpstreams';
-import Config from 'react-native-config';
 import { MainStackParamList } from '../navigation/MainStack';
 import { getStreamById } from '../services/api';
 import GradientBackground from '../components/GradientBackground';
@@ -12,22 +11,12 @@ import ScreenHeader from '../components/ScreenHeader';
 import LiveChat from '../components/LiveChat';
 import { useTheme } from '../theme/theme';
 import { moderateScale, getSpacing } from '../utils/responsive';
+import { TPSTREAMS_ORG_ID, TPSTREAMS_ACCESS_TOKEN } from '../services/config';
 
 type StreamPlayerScreenRouteProp = RouteProp<MainStackParamList, 'StreamPlayer'>;
 
-// TPStreams Configuration
-// ⚠️ IMPORTANT: These values come from .env file
-// Make sure to rotate token if it was previously exposed
-const ORG_ID = Config.TPSTREAMS_ORG_ID || 'kuepke';
-const ACCESS_TOKEN = Config.TPSTREAMS_ACCESS_TOKEN || '';
-
 // Initialize TPStreams once at module load
-TPStreams.initialize(ORG_ID);
-
-// Validate that required credentials are present
-if (__DEV__ && (!ORG_ID || !ACCESS_TOKEN)) {
-  console.warn('[StreamPlayerScreen] Warning: TPStreams credentials are missing from environment variables');
-}
+TPStreams.initialize(TPSTREAMS_ORG_ID);
 
 const StreamPlayerScreen: React.FC = () => {
     const route = useRoute<StreamPlayerScreenRouteProp>();
@@ -213,7 +202,7 @@ const StreamPlayerScreen: React.FC = () => {
     const handleAccessTokenExpired = useCallback(
         async (videoId: string, callback: (token: string) => void) => {
             // Return the same token (in production, fetch a new token from backend)
-            callback(ACCESS_TOKEN);
+            callback(TPSTREAMS_ACCESS_TOKEN);
         },
         []
     );
@@ -243,7 +232,7 @@ const StreamPlayerScreen: React.FC = () => {
                     {isPlayerReady && (
                         <TPStreamsPlayerView
                             videoId={videoId}
-                            accessToken={ACCESS_TOKEN}
+                            accessToken={TPSTREAMS_ACCESS_TOKEN}
                             shouldAutoPlay={true}
                             showDefaultCaptions={false}
                             enableDownload={false}

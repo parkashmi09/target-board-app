@@ -67,19 +67,27 @@ class SocketService {
         if (!this.socket) return;
 
         this.socket.on('connect', () => {
-            console.log('✅ Connected to chat service', this.socket?.id);
+            if (__DEV__) {
+                console.log('✅ Connected to chat service', this.socket?.id);
+            }
         });
 
         this.socket.on('connect_error', (error) => {
-            console.error('❌ Connection error:', error.message);
+            if (__DEV__) {
+                console.error('❌ Connection error:', error.message);
+            }
         });
 
         this.socket.on('disconnect', (reason) => {
-            console.log('❌ Disconnected:', reason);
+            if (__DEV__) {
+                console.log('❌ Disconnected:', reason);
+            }
         });
 
         this.socket.on('error', (error) => {
-            console.error('Socket error event:', error);
+            if (__DEV__) {
+                console.error('Socket error event:', error);
+            }
         });
     }
 
