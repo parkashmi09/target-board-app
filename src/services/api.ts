@@ -135,7 +135,7 @@ export const loginWithPassword = (mobile: string, password: string) =>
 export const fetchUserDetails = () => api.get<any>('/auth/user/details');
 
 export const updateUserProfile = (payload: { city?: string; classId: string; stateBoardId: string }) =>
-  api.put<{ message?: string; user?: any }>('/auth/update-profile', payload);
+  api.put<{ message?: string; user?: any }>(`/auth/user/update`, payload);
 
 /**
  * Update user profile (fullName and city)
@@ -359,7 +359,10 @@ export const fetchUserCourses = async (): Promise<any[]> => {
 export const fetchStates = () => api.get<Array<{ id: number; state_name: string }>>('/states');
 export const fetchCities = (stateId: number | string) => api.get<Array<{ id: number; city_name: string }>>(`/states/${stateId}/cities`);
 export const fetchClasses = () => api.get<Array<{ _id: string; name: string; __v?: number }>>('/classes');
-export const fetchStateBoards = () => api.get<Array<{ _id: string; name: string; logo?: string; description?: string }>>('/state-board');
+export const fetchStateBoards = (classId?: string) => {
+  const url = classId ? `/state-board?classId=${classId}` : '/state-board';
+  return api.get<Array<{ _id: string; name: string; logo?: string; description?: string; classId?: string }>>(url);
+};
 export const fetchMediums = (stateBoardId: string) => api.get<Array<{ _id: string; name: string; stateBoardId: any }>>(`/medium?stateBoardId=${stateBoardId}`);
 
 // Courses endpoints
@@ -374,6 +377,7 @@ export const fetchCourses = async (
   try {
     let url = '/courses';
     const params: string[] = [];
+    
 
     if (categoryId && categoryId !== null && categoryId !== 'null' && categoryId !== '') {
       params.push(`class=${categoryId}`);

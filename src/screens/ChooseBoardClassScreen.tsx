@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image, ActivityIndicator, Animated, Modal } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '../theme/theme';
 import { moderateScale, getSpacing } from '../utils/responsive';
 import { useToast } from '../components/Toast';
-import { useRegistrationDataStore } from '../store';
 import SVGIcon from '../components/SVGIcon';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { updateUserProfile, fetchMediums } from '../services/api';
+import { updateUserProfile, fetchMediums, fetchClasses, fetchStateBoards, fetchUserDetails } from '../services/api';
+import { userDetailsKeys } from '../hooks/queries/useUserDetails';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { HomeStackParamList } from '../navigation/HomeStack';
 import GradientBackground from '../components/GradientBackground';
@@ -19,7 +20,7 @@ const ChooseBoardClassScreen: React.FC = () => {
     const theme = useTheme();
     const navigation = useNavigation<ChooseBoardClassNavigationProp>();
     const toast = useToast();
-    const { stateBoards, classes, loadAllData } = useRegistrationDataStore();
+    const queryClient = useQueryClient();
 
     const [selectedClassId, setSelectedClassId] = useState<string>('');
     const [selectedBoardId, setSelectedBoardId] = useState<string>('');
@@ -27,6 +28,14 @@ const ChooseBoardClassScreen: React.FC = () => {
 
     const [loading, setLoading] = useState(false);
     const [userData, setUserData] = useState<any>(null);
+
+    // Classes state
+    const [classes, setClasses] = useState<any[]>([]);
+    const [loadingClasses, setLoadingClasses] = useState(false);
+
+    // Boards state
+    const [stateBoards, setStateBoards] = useState<any[]>([]);
+    const [loadingBoards, setLoadingBoards] = useState(false);
 
     // Mediums state
     const [mediums, setMediums] = useState<any[]>([]);
@@ -37,9 +46,22 @@ const ChooseBoardClassScreen: React.FC = () => {
     const boardAnim = useRef(new Animated.Value(0)).current; // 0: hidden, 1: visible
 
     useEffect(() => {
-        loadAllData();
+        loadClasses();
         loadUserData();
-    }, [loadAllData]);
+    }, []);
+
+    const loadClasses = async () => {
+        setLoadingClasses(true);
+        try {
+            const data = await fetchClasses();
+            setClasses(data || []);
+        } catch (error) {
+            console.error('Failed to fetch classes', error);
+            toast.show({ text: 'Failed to load classes', type: 'error' });
+        } finally {
+            setLoadingClasses(false);
+        }
+    };
 
     const loadUserData = async () => {
         try {
@@ -54,14 +76,32 @@ const ChooseBoardClassScreen: React.FC = () => {
         }
     };
 
-    const handleClassSelect = (classId: string) => {
+    const handleClassSelect = async (classId: string) => {
         setSelectedClassId(classId);
-        // Animate boards in
-        Animated.timing(boardAnim, {
-            toValue: 1,
-            duration: 500,
-            useNativeDriver: true,
-        }).start();
+        setSelectedBoardId(''); // Reset board selection
+        setStateBoards([]); // Clear previous boards
+        
+        // Reset animation
+        boardAnim.setValue(0);
+        
+        // Fetch boards for selected class
+        setLoadingBoards(true);
+        try {
+            const data = await fetchStateBoards(classId);
+            setStateBoards(data || []);
+            
+            // Animate boards in
+            Animated.timing(boardAnim, {
+                toValue: 1,
+                duration: 500,
+                useNativeDriver: true,
+            }).start();
+        } catch (error) {
+            console.error('Failed to fetch boards', error);
+            toast.show({ text: 'Failed to load boards', type: 'error' });
+        } finally {
+            setLoadingBoards(false);
+        }
     };
 
     const handleBoardSelect = async (boardId: string) => {
@@ -103,26 +143,62 @@ const ChooseBoardClassScreen: React.FC = () => {
                 stateBoardId: selectedBoardId,
             };
 
+
+            console.log('payload', payload);
+
+            // Call updateUserProfile API
             await updateUserProfile(payload);
 
-            // Find selected objects to update local storage fully
-            const selectedClassObj = classes.find(c => c._id === selectedClassId);
-            const selectedBoardObj = stateBoards.find(b => b._id === selectedBoardId);
-            const selectedMediumObj = mediums.find(m => m._id === mediumId);
+            // Refetch user details from API to get updated data with proper class and stateBoard objects
+            try {
+                const userDetailsResponse = await fetchUserDetails();
+                if (userDetailsResponse?.user) {
+                    // Find selected objects to update local storage fully
+                    const selectedClassObj = classes.find(c => c._id === selectedClassId);
+                    const selectedBoardObj = stateBoards.find(b => b._id === selectedBoardId);
+                    const selectedMediumObj = mediums.find(m => m._id === mediumId);
 
-            // Update Local Storage
-            const updatedUser = {
-                ...userData,
-                classId: selectedClassId,
-                class_id: selectedClassId,
-                stateBoardId: selectedBoardId,
-                mediumId: mediumId, // Save locally
-                class: selectedClassObj || userData.class,
-                stateBoard: selectedBoardObj || userData.stateBoard,
-                medium: selectedMediumObj
-            };
+                    // Merge API response with selected objects for complete data
+                    const updatedUser = {
+                        ...userDetailsResponse.user,
+                        classId: selectedClassId,
+                        class_id: selectedClassId,
+                        stateBoardId: selectedBoardId,
+                        mediumId: mediumId,
+                        // Ensure class object is set (API might return null)
+                        class: userDetailsResponse.user.class || selectedClassObj || null,
+                        // Ensure stateBoard object is set
+                        stateBoard: userDetailsResponse.user.stateBoard || selectedBoardObj || null,
+                        medium: selectedMediumObj
+                    };
 
-            await AsyncStorage.setItem('userData', JSON.stringify(updatedUser));
+                    await AsyncStorage.setItem('userData', JSON.stringify(updatedUser));
+
+                    // Invalidate React Query cache so HomeScreen will refetch updated data
+                    queryClient.invalidateQueries({ queryKey: userDetailsKeys.details() });
+                }
+            } catch (fetchError) {
+                // If refetch fails, still update with what we have
+                console.warn('Failed to refetch user details, using local data:', fetchError);
+                const selectedClassObj = classes.find(c => c._id === selectedClassId);
+                const selectedBoardObj = stateBoards.find(b => b._id === selectedBoardId);
+                const selectedMediumObj = mediums.find(m => m._id === mediumId);
+
+                const updatedUser = {
+                    ...userData,
+                    classId: selectedClassId,
+                    class_id: selectedClassId,
+                    stateBoardId: selectedBoardId,
+                    mediumId: mediumId,
+                    class: selectedClassObj || userData.class,
+                    stateBoard: selectedBoardObj || userData.stateBoard,
+                    medium: selectedMediumObj
+                };
+
+                await AsyncStorage.setItem('userData', JSON.stringify(updatedUser));
+                // Still invalidate cache to trigger refetch
+                queryClient.invalidateQueries({ queryKey: userDetailsKeys.details() });
+            }
 
             toast.show({ text: 'Preferences updated!', type: 'success' });
             navigation.goBack();
@@ -154,97 +230,113 @@ const ChooseBoardClassScreen: React.FC = () => {
                         {/* Class Selection */}
                         <View style={styles.section}>
                             <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Select your class</Text>
-                            <View style={styles.classGrid}>
-                                {classes.map((item) => {
-                                    const isSelected = selectedClassId === item._id;
-                                    return (
-                                        <TouchableOpacity
-                                            key={item._id}
-                                            onPress={() => handleClassSelect(item._id)}
-                                            style={[
-                                                styles.classCard,
-                                                {
-                                                    backgroundColor: theme.colors.cardBackground,
-                                                }
-                                            ]}
-                                            activeOpacity={0.7}
-                                        >
-                                            <View style={[
-                                                styles.radioButton,
-                                                {
-                                                    borderColor: isSelected ? theme.colors.text : theme.colors.textSecondary,
-                                                }
-                                            ]}>
-                                                {isSelected && <View style={[styles.radioInner, { backgroundColor: theme.colors.text }]} />}
-                                            </View>
-                                            <Text style={[
-                                                styles.classText,
-                                                {
-                                                    color: theme.colors.text,
-                                                    fontWeight: '400'
-                                                }
-                                            ]}>
-                                                {item.name}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    );
-                                })}
-                            </View>
-                        </View>
-
-                        {/* Board Selection - Animated */}
-                        <Animated.View
-                            style={[
-                                styles.section,
-                                {
-                                    opacity: boardAnim,
-                                    transform: [{
-                                        translateY: boardAnim.interpolate({
-                                            inputRange: [0, 1],
-                                            outputRange: [50, 0]
-                                        })
-                                    }]
-                                }
-                            ]}
-                        >
-                            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Select your board</Text>
-                            <View style={styles.boardList}>
-                                {stateBoards.map((item) => {
-                                    const isSelected = selectedBoardId === item._id;
-                                    return (
-                                        <TouchableOpacity
-                                            key={item._id}
-                                            onPress={() => handleBoardSelect(item._id)}
-                                            style={[
-                                                styles.boardCard,
-                                                {
-                                                    backgroundColor: theme.colors.cardBackground,
-                                                }
-                                            ]}
-                                            activeOpacity={0.7}
-                                        >
-                                            <View style={styles.boardInfo}>
-                                                {item.logo ? (
-                                                    <Image source={{ uri: item.logo }} style={styles.boardLogo} resizeMode="contain" />
-                                                ) : (
-                                                    <View style={[styles.boardLogoPlaceholder, { backgroundColor: theme.colors.border }]} />
-                                                )}
+                            {loadingClasses ? (
+                                <ActivityIndicator size="large" color={theme.colors.primary} style={{ marginVertical: 20 }} />
+                            ) : (
+                                <View style={styles.classGrid}>
+                                    {classes.map((item) => {
+                                        const isSelected = selectedClassId === item._id;
+                                        return (
+                                            <TouchableOpacity
+                                                key={item._id}
+                                                onPress={() => handleClassSelect(item._id)}
+                                                style={[
+                                                    styles.classCard,
+                                                    {
+                                                        backgroundColor: theme.colors.cardBackground,
+                                                    }
+                                                ]}
+                                                activeOpacity={0.7}
+                                            >
+                                                <View style={[
+                                                    styles.radioButton,
+                                                    {
+                                                        borderColor: isSelected ? theme.colors.text : theme.colors.textSecondary,
+                                                    }
+                                                ]}>
+                                                    {isSelected && <View style={[styles.radioInner, { backgroundColor: theme.colors.text }]} />}
+                                                </View>
                                                 <Text style={[
-                                                    styles.boardName,
+                                                    styles.classText,
                                                     {
                                                         color: theme.colors.text,
-                                                        fontWeight: '500'
+                                                        fontWeight: '400'
                                                     }
                                                 ]}>
                                                     {item.name}
                                                 </Text>
-                                            </View>
-                                            <ChevronRight size={20} color={theme.colors.textSecondary} />
-                                        </TouchableOpacity>
-                                    );
-                                })}
-                            </View>
-                        </Animated.View>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </View>
+                            )}
+                        </View>
+
+                        {/* Board Selection - Animated */}
+                        {selectedClassId && (
+                            <Animated.View
+                                style={[
+                                    styles.section,
+                                    {
+                                        opacity: boardAnim,
+                                        transform: [{
+                                            translateY: boardAnim.interpolate({
+                                                inputRange: [0, 1],
+                                                outputRange: [50, 0]
+                                            })
+                                        }]
+                                    }
+                                ]}
+                            >
+                                <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Select your board</Text>
+                                {loadingBoards ? (
+                                    <ActivityIndicator size="large" color={theme.colors.primary} style={{ marginVertical: 20 }} />
+                                ) : (
+                                    <View style={styles.boardList}>
+                                        {stateBoards.length === 0 ? (
+                                            <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
+                                                No boards available for this class
+                                            </Text>
+                                        ) : (
+                                            stateBoards.map((item) => {
+                                                const isSelected = selectedBoardId === item._id;
+                                                return (
+                                                    <TouchableOpacity
+                                                        key={item._id}
+                                                        onPress={() => handleBoardSelect(item._id)}
+                                                        style={[
+                                                            styles.boardCard,
+                                                            {
+                                                                backgroundColor: theme.colors.cardBackground,
+                                                            }
+                                                        ]}
+                                                        activeOpacity={0.7}
+                                                    >
+                                                        <View style={styles.boardInfo}>
+                                                            {item.logo ? (
+                                                                <Image source={{ uri: item.logo }} style={styles.boardLogo} resizeMode="contain" />
+                                                            ) : (
+                                                                <View style={[styles.boardLogoPlaceholder, { backgroundColor: theme.colors.border }]} />
+                                                            )}
+                                                            <Text style={[
+                                                                styles.boardName,
+                                                                {
+                                                                    color: theme.colors.text,
+                                                                    fontWeight: '500'
+                                                                }
+                                                            ]}>
+                                                                {item.name}
+                                                            </Text>
+                                                        </View>
+                                                        <ChevronRight size={20} color={theme.colors.textSecondary} />
+                                                    </TouchableOpacity>
+                                                );
+                                            })
+                                        )}
+                                    </View>
+                                )}
+                            </Animated.View>
+                        )}
                     </View>
                 </ScrollView>
 
@@ -466,6 +558,12 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         zIndex: 100,
+    },
+    emptyText: {
+        fontSize: moderateScale(14),
+        textAlign: 'center',
+        marginVertical: getSpacing(2),
+        fontStyle: 'italic',
     },
 });
 

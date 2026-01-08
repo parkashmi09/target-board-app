@@ -15,6 +15,7 @@ import { useCourses } from '../hooks/queries/useCourses';
 import { useTeachers } from '../hooks/queries/useTeachers';
 import { useBanners } from '../hooks/queries/useBanners';
 import { useStickyBanners } from '../hooks/queries/useStickyBanners';
+import { useUserDetails } from '../hooks/queries/useUserDetails';
 import { fetchClasses } from '../services/api';
 import { useLoaderStore } from '../store/loaderStore';
 import { useUIStore } from '../store';
@@ -38,9 +39,13 @@ const HomeScreen: React.FC = () => {
 
   // State variables
   const [categoryId, setCategoryId] = useState<string | number | null>(null);
-  const [userData, setUserData] = useState<any>(null);
   const [classes, setClasses] = useState<Array<{ label: string; value: string | number }>>([]);
   const { setDrawerOpen } = useUIStore();
+
+  // Fetch user details using React Query
+  const { data: userData, refetch: refetchUserDetails } = useUserDetails({
+    enabled: true,
+  });
 
   // Fetch sticky banners data using custom hook
   const { data: stickyBannersData, isLoading: isLoadingStickyBanners, refetch: refetchStickyBanners } = useStickyBanners({
@@ -69,6 +74,7 @@ const HomeScreen: React.FC = () => {
     setRefreshing(true);
     try {
       await Promise.all([
+        refetchUserDetails(),
         refetchTeachers(),
         refetchCourses(),
         refetchStickyBanners(),
@@ -91,7 +97,7 @@ const HomeScreen: React.FC = () => {
     } finally {
       setRefreshing(false);
     }
-  }, [refetchTeachers, refetchCourses, refetchStickyBanners, refetchBanners]);
+  }, [refetchUserDetails, refetchTeachers, refetchCourses, refetchStickyBanners, refetchBanners]);
 
   const fullData = useMemo(() => ({
     slider: [],
@@ -186,23 +192,29 @@ const HomeScreen: React.FC = () => {
     return null;
   }, [stickyBannersData]);
 
+  // Memoize HomeHeader props to prevent unnecessary re-renders
+  const homeHeaderProps = useMemo(() => ({
+    theme,
+    setDrawerOpen,
+    classes,
+    categoryId,
+    boardName: userData?.stateBoard?.name,
+    className: userData?.class?.name,
+    logo: userData?.stateBoard?.logo,
+  }), [theme, setDrawerOpen, classes, categoryId, userData?.stateBoard?.name, userData?.class?.name, userData?.stateBoard?.logo]);
+
+  // Update categoryId when userData changes
+  useEffect(() => {
+    if (userData) {
+      const classId = userData.class?._id || userData.classId || null;
+      setCategoryId(classId);
+    }
+  }, [userData]);
+
   useFocusEffect(
     useCallback(() => {
-      const loadData = async () => {
-        try {
-          const userDataString = await AsyncStorage.getItem('userData');
-          if (userDataString) {
-            const userData = JSON.parse(userDataString);
-            setUserData(userData);
-            setCategoryId(userData?.class_id || userData?.classId || null);
-          }
-        } catch (error) {
-          if (__DEV__) {
-            console.error('Error reloading user data:', error);
-          }
-        }
-      };
-      loadData();
+      // Refetch user details when screen comes into focus
+      refetchUserDetails();
 
       const cleanupTimer = setTimeout(() => {
         const { isVisible, loadingCount } = useLoaderStore.getState();
@@ -214,19 +226,13 @@ const HomeScreen: React.FC = () => {
       return () => {
         clearTimeout(cleanupTimer);
       };
-    }, [forceHide])
+    }, [refetchUserDetails, forceHide])
   );
 
+  // Load classes on mount
   useEffect(() => {
-    const loadInitialData = async () => {
+    const loadClasses = async () => {
       try {
-        const userDataString = await AsyncStorage.getItem('userData');
-        if (userDataString) {
-          const userData = JSON.parse(userDataString);
-          setUserData(userData);
-          setCategoryId(userData?.class_id || userData?.classId || null);
-        }
-
         const classesData = await fetchClasses();
         if (Array.isArray(classesData)) {
           const formattedClasses = classesData.map((item: any) => ({
@@ -236,11 +242,13 @@ const HomeScreen: React.FC = () => {
           setClasses(formattedClasses);
         }
       } catch (error) {
-        // Silent error handling
+        if (__DEV__) {
+          console.error('Error loading classes:', error);
+        }
       }
     };
 
-    loadInitialData();
+    loadClasses();
   }, []);
 
   // Save sticky banner data to AsyncStorage
@@ -255,15 +263,7 @@ const HomeScreen: React.FC = () => {
   return (
     <GradientBackground>
       <View style={styles.contentWrapper}>
-        <HomeHeader
-          theme={theme}
-          setDrawerOpen={setDrawerOpen}
-          classes={classes}
-          categoryId={categoryId}
-          boardName={userData?.stateBoard?.name}
-          className={userData?.class?.name}
-          logo={userData?.stateBoard?.logo}
-        />
+        <HomeHeader {...homeHeaderProps} />
 
         <ScrollView
           showsVerticalScrollIndicator={false}

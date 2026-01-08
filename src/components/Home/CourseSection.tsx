@@ -14,6 +14,8 @@ interface CourseSectionProps {
 }
 
 const CourseSection: React.FC<CourseSectionProps> = memo(({ courses, theme }) => {
+
+  // console.log('courses', courses.length);
   const navigation = useNavigation<any>();
   const progress = useSharedValue(0);
   const windowWidth = Dimensions.get('window').width;
