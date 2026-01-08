@@ -138,6 +138,36 @@ export const updateUserProfile = (payload: { city?: string; classId: string; sta
   api.put<{ message?: string; user?: any }>(`/auth/user/update`, payload);
 
 /**
+ * Delete user account
+ * DELETE /auth/user/delete
+ * 
+ * TODO: Replace with actual API endpoint when backend is ready
+ * This is a placeholder that will call the delete endpoint
+ */
+export const deleteAccount = async (): Promise<{ message: string }> => {
+  try {
+    if (__DEV__) {
+      console.log('[API] deleteAccount called');
+    }
+    
+    // TODO: Replace '/auth/user/delete' with the actual endpoint when backend is ready
+    // For now, this will fail gracefully if the endpoint doesn't exist
+    const response = await api.delete<{ message: string }>('/auth/user/delete');
+    
+    if (__DEV__) {
+      console.log('[API] deleteAccount success:', response);
+    }
+    
+    return response;
+  } catch (error: any) {
+    if (__DEV__) {
+      console.error('[API] deleteAccount error:', error);
+    }
+    throw error;
+  }
+};
+
+/**
  * Update user profile (fullName and city)
  * PUT /auth/user/update
  */

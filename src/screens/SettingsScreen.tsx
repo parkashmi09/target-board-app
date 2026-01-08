@@ -9,6 +9,8 @@ import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../store';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import AlertBox from '../components/AlertBox';
+import { deleteAccount } from '../services/api';
 
 const LANGUAGE_STORAGE_KEY = '@app_language';
 
@@ -20,6 +22,9 @@ const SettingsScreen: React.FC = () => {
 
   // Get current language from i18n or default to 'en'
   const [currentLanguage, setCurrentLanguage] = useState<'en' | 'hi'>('en');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     const loadLanguage = async () => {
@@ -55,32 +60,73 @@ const SettingsScreen: React.FC = () => {
   }, [i18n]);
 
   const handleLogout = useCallback(async () => {
-    Alert.alert(
-      t('common.logout') || 'Logout',
-      t('common.logoutConfirm') || 'Are you sure you want to logout?',
-      [
-        { 
-          text: t('common.cancel') || 'Cancel', 
-          style: 'cancel' 
-        },
-        {
-          text: t('common.logout') || 'Logout',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await logout();
-              // Navigate to login screen if needed
-              // navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
-            } catch (error) {
-              if (__DEV__) {
-                console.error('Logout error:', error);
-              }
-            }
+    try {
+      await logout();
+      setShowLogoutModal(false);
+      // Navigate to login screen if needed
+      // navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+    } catch (error) {
+      if (__DEV__) {
+        console.error('Logout error:', error);
+      }
+      Alert.alert(
+        t('common.error') || 'Error',
+        t('common.logoutError') || 'Failed to logout. Please try again.',
+        [{ text: t('common.ok') || 'OK' }]
+      );
+    }
+  }, [logout, t]);
+
+  const handleDeleteAccount = useCallback(async () => {
+    setIsDeleting(true);
+    try {
+      // Call the delete account API
+      await deleteAccount();
+      
+      // Clear all local data
+      await AsyncStorage.multiRemove([
+        'token',
+        'userData',
+        'userId',
+        'fcmToken',
+        '@app_language', // Keep language preference, or remove if you want
+      ]);
+      
+      // Logout user
+      await logout();
+      
+      // Close modal
+      setShowDeleteModal(false);
+      
+      // Show success message
+      Alert.alert(
+        t('common.success') || 'Success',
+        t('profile.accountDeleted') || 'Your account has been deleted successfully.',
+        [
+          {
+            text: t('common.ok') || 'OK',
+            onPress: () => {
+              // Navigate to login screen
+              navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+            },
           },
-        },
-      ]
-    );
-  }, [logout, t, navigation]);
+        ]
+      );
+    } catch (error: any) {
+      if (__DEV__) {
+        console.error('Delete account error:', error);
+      }
+      
+      // Show error message
+      Alert.alert(
+        t('common.error') || 'Error',
+        error?.message || t('profile.deleteAccountError') || 'Failed to delete account. Please try again later.',
+        [{ text: t('common.ok') || 'OK' }]
+      );
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [logout, navigation, t]);
 
   const renderSettingItem = (
     icon: string, 
@@ -175,7 +221,7 @@ const SettingsScreen: React.FC = () => {
               'shield', 
               t('profile.privacyPolicy') || 'Privacy Policy', 
               () => {
-                // Navigate to privacy policy
+                navigation.navigate('PrivacyPolicy');
               }
             )}
             {renderSettingItem(
@@ -186,12 +232,26 @@ const SettingsScreen: React.FC = () => {
               }
             )}
           </View>
+
+          {/* Account Section */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}>
+              {t('profile.account') || 'Account'}
+            </Text>
+            {renderSettingItem(
+              'trash-2', 
+              t('profile.deleteAccount') || 'Delete Account', 
+              () => {
+                setShowDeleteModal(true);
+              }
+            )}
+          </View>
         </ScrollView>
 
         <View style={[styles.footerContainer, { borderTopColor: theme.colors.border }]}>
           <TouchableOpacity
             style={[styles.logoutButton, { backgroundColor: '#ffebee' }]}
-            onPress={handleLogout}
+            onPress={() => setShowLogoutModal(true)}
             activeOpacity={0.7}
           >
             <SVGIcon name="logout" size={moderateScale(20)} color="#ff4d4d" />
@@ -201,6 +261,33 @@ const SettingsScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Logout Confirmation Modal */}
+      <AlertBox
+        visible={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        title={t('common.logout') || 'Logout'}
+        message={t('common.logoutConfirm') || 'Are you sure you want to logout?'}
+        confirmText={t('common.logout') || 'Logout'}
+        cancelText={t('common.cancel') || 'Cancel'}
+        onConfirm={handleLogout}
+        type="warning"
+        icon="logout"
+      />
+
+      {/* Delete Account Confirmation Modal */}
+      <AlertBox
+        visible={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        title={t('profile.deleteAccount') || 'Delete Account'}
+        message={t('profile.deleteAccountWarning') || 'Are you sure you want to delete your account? This action cannot be undone. All your data, courses, and progress will be permanently deleted.'}
+        confirmText={t('profile.delete') || 'Delete'}
+        cancelText={t('common.cancel') || 'Cancel'}
+        onConfirm={handleDeleteAccount}
+        type="danger"
+        isLoading={isDeleting}
+        icon="trash-2"
+      />
     </GradientBackground>
   );
 };

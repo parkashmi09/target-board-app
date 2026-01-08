@@ -17,6 +17,7 @@ import ClassStreamsScreen from '../screens/ClassStreamsScreen';
 import StreamPlayerScreen from '../screens/StreamPlayerScreen';
 import VideoPlayerScreen from '../screens/VideoPlayerScreen';
 import LiveChatScreen from '../screens/LiveChatScreen';
+import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
 import { CategoryNode } from '../services/api';
 
 export type MainStackParamList = {
@@ -85,6 +86,9 @@ export type MainStackParamList = {
     roomId?: string;
     username?: string;
   };
+  PrivacyPolicy: {
+    url?: string;
+  };
 };
 
 const Stack = createNativeStackNavigator<MainStackParamList>();
@@ -121,6 +125,7 @@ const MainStack: React.FC = () => {
         }}
       />
       <Stack.Screen name="LiveChat" component={LiveChatScreen} />
+      <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
     </Stack.Navigator>
   );
 };

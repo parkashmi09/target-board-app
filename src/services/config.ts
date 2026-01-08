@@ -11,6 +11,10 @@ export const SOCKET_URL = Config.SOCKET_URL || '';
 export const RAZORPAY_KEY_ID = Config.RAZORPAY_KEY_ID || '';
 export const RAZORPAY_KEY_SECRET = Config.RAZORPAY_KEY_SECRET || '';
 
+// Privacy Policy URL
+// Can be set via environment variable or use a default URL
+export const PRIVACY_POLICY_URL = Config.PRIVACY_POLICY_URL || '';
+
 // Validate that required keys are present
 if (__DEV__ && (!RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET)) {
   console.warn('[Config] Warning: Razorpay keys are missing from environment variables');
