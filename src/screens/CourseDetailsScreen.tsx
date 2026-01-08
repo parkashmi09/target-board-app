@@ -62,9 +62,6 @@ const CourseDetailsScreen: React.FC = () => {
     enabled: !!courseId,
   });
 
-
-  console.log('course', course);
-
   // Check for live streams when course is loaded
   useEffect(() => {
     const checkLiveStreams = async () => {
@@ -127,6 +124,7 @@ const CourseDetailsScreen: React.FC = () => {
   }, [course, toast]);
 
   const isCoursePaid = course?.isPaid === true;
+  const isPurchased = course?.purchased === true;
   const hasLiveStreams = liveStreams.length > 0;
 
   // Get default package on mount
@@ -151,6 +149,42 @@ const CourseDetailsScreen: React.FC = () => {
   }, [openPurchaseModal, course, isLoading]);
 
   const handleBuyNow = useCallback(() => {
+    // If course is already purchased, don't show purchase modal
+    if (isPurchased) {
+      // If purchased and has live streams, navigate to stream
+      if (hasLiveStreams && liveStreams.length > 0) {
+        const firstLiveStream = liveStreams[0];
+        if (firstLiveStream && (firstLiveStream._id || firstLiveStream.id)) {
+          try {
+            navigation.navigate('StreamPlayer', {
+              streamId: firstLiveStream._id || firstLiveStream.id || '',
+              tpAssetId: firstLiveStream.tpAssetId,
+              hlsUrl: firstLiveStream.hlsUrl,
+            });
+          } catch (error) {
+            if (__DEV__) {
+              console.error('[CourseDetailsScreen] Navigation error:', error);
+            }
+            toast.show({ text: 'Failed to open stream', type: 'error' });
+          }
+        }
+      } else {
+        // Navigate to course content/categories
+        try {
+          navigation.navigate('Categories', { 
+            courseId: String(courseId), 
+            courseName: course?.name || 'Course' 
+          });
+        } catch (error) {
+          if (__DEV__) {
+            console.error('[CourseDetailsScreen] Navigation error:', error);
+          }
+          toast.show({ text: 'Failed to open course content', type: 'error' });
+        }
+      }
+      return;
+    }
+
     if (!isCoursePaid) {
       setPurchaseModalVisible(true);
       return;
@@ -176,7 +210,7 @@ const CourseDetailsScreen: React.FC = () => {
     }
 
     setPurchaseModalVisible(true);
-  }, [isCoursePaid, hasLiveStreams, liveStreams, navigation, toast]);
+  }, [isCoursePaid, isPurchased, hasLiveStreams, liveStreams, navigation, toast, courseId, course]);
 
   const handlePayment = useCallback(() => {
     if (!course || !courseId) {
@@ -335,6 +369,7 @@ const CourseDetailsScreen: React.FC = () => {
         originalPrice={originalPrice}
         discount={discount}
         isCoursePaid={isCoursePaid}
+        isPurchased={isPurchased}
         hasLiveStreams={hasLiveStreams}
         onBuyNow={handleBuyNow}
       />

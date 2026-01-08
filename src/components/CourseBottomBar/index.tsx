@@ -7,6 +7,7 @@ interface CourseBottomBarProps {
     originalPrice: number;
     discount: number;
     isCoursePaid: boolean;
+    isPurchased?: boolean;
     hasLiveStreams: boolean;
     onBuyNow: () => void;
 }
@@ -16,21 +17,53 @@ const CourseBottomBar: React.FC<CourseBottomBarProps> = React.memo(({
     originalPrice,
     discount,
     isCoursePaid,
+    isPurchased = false,
     hasLiveStreams,
     onBuyNow,
 }) => {
+    const getButtonText = () => {
+        if (isPurchased) {
+            if (hasLiveStreams) {
+                return 'Watch Live';
+            }
+            return 'View Content';
+        }
+        if (isCoursePaid && hasLiveStreams) {
+            return 'Watch Live';
+        }
+        return 'Buy Now';
+    };
+
+    const buttonStyle = isPurchased 
+        ? [styles.buyButton, styles.purchasedButton]
+        : styles.buyButton;
+
     return (
         <View style={styles.container}>
-            <View style={styles.priceContainer}>
-                <Text style={styles.priceMain}>₹{currentPrice}</Text>
-                <Text style={styles.priceOriginal}>₹{originalPrice}</Text>
-                <View style={styles.discountBadge}>
-                    <Text style={styles.discountText}>{discount}% OFF</Text>
+            {!isPurchased && (
+                <View style={styles.priceContainer}>
+                    <Text style={styles.priceMain}>₹{currentPrice}</Text>
+                    <Text style={styles.priceOriginal}>₹{originalPrice}</Text>
+                    {discount > 0 && (
+                        <View style={styles.discountBadge}>
+                            <Text style={styles.discountText}>{discount}% OFF</Text>
+                        </View>
+                    )}
                 </View>
-            </View>
-            <TouchableOpacity style={styles.buyButton} activeOpacity={0.9} onPress={onBuyNow}>
+            )}
+            {isPurchased && (
+                <View style={styles.purchasedContainer}>
+                    <Text style={styles.purchasedText}>Course Purchased</Text>
+                </View>
+            )}
+            <TouchableOpacity 
+                style={buttonStyle} 
+                activeOpacity={0.9} 
+                onPress={onBuyNow}
+                disabled={false}
+            >
                 <Text style={styles.buyButtonText}>
-                    {isCoursePaid && hasLiveStreams ? 'Watch Live' : 'Buy Now'}
+                    {getButtonText()}
                 </Text>
             </TouchableOpacity>
         </View>
@@ -93,6 +126,18 @@ const styles = StyleSheet.create({
         color: '#000',
         fontSize: 18,
         fontWeight: '700',
+    },
+    purchasedButton: {
+        backgroundColor: '#4CAF50',
+    },
+    purchasedContainer: {
+        flex: 1,
+        justifyContent: 'center',
+    },
+    purchasedText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '600',
     },
 });
 

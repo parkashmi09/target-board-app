@@ -414,7 +414,8 @@ export const fetchCourses = async (
 
 export const fetchCourseDetails = async (courseId: string | number) => {
   try {
-    const url = `/courses/${courseId}`;
+    // Try student-courses endpoint first (includes purchased status)
+    const url = `/student-courses/${courseId}`;
     const response = await api.get<any>(url);
 
     // Handle different response structures
@@ -439,10 +440,35 @@ export const fetchCourseDetails = async (courseId: string | number) => {
 
     return courseData;
   } catch (error: any) {
+    // Fallback to regular courses endpoint if student-courses fails
     if (__DEV__) {
-      console.error('[fetchCourseDetails] Error:', error?.message);
+      console.warn('[fetchCourseDetails] Student endpoint failed, trying regular endpoint:', error?.message);
     }
-    throw error;
+    
+    try {
+      const fallbackUrl = `/courses/${courseId}`;
+      const fallbackResponse = await api.get<any>(fallbackUrl);
+      
+      let courseData;
+      if (Array.isArray(fallbackResponse)) {
+        courseData = fallbackResponse[0];
+      } else if (fallbackResponse?.data) {
+        courseData = fallbackResponse.data;
+      } else {
+        courseData = fallbackResponse;
+      }
+
+      if (!courseData) {
+        throw new Error('No course data found in response');
+      }
+
+      return courseData;
+    } catch (fallbackError: any) {
+      if (__DEV__) {
+        console.error('[fetchCourseDetails] Error:', fallbackError?.message);
+      }
+      throw fallbackError;
+    }
   }
 };
 
