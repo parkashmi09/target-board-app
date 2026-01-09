@@ -4,7 +4,6 @@ import { useNavigation } from '@react-navigation/native';
 import TeacherCard from '../TeacherCard';
 import ResponsiveView from '../ResponsiveView';
 import { moderateScale, getSpacing } from '../../utils/responsive';
-import { getFontFamily } from '../../utils/fonts';
 import { Theme } from '../../theme/theme';
 
 interface TeachersSectionProps {
@@ -15,11 +14,12 @@ interface TeachersSectionProps {
 }
 
 const TeachersSection = memo(({ theme, teachers, title, hideTitle }: TeachersSectionProps) => {
-    const navigation = useNavigation<any>();
+    const navigation = useNavigation();
 
     const renderItem = useCallback(({ item, index }: { item: any, index: number }) => {
         if (!item) return null;
 
+        // Generate gradient colors based on index if not provided
         const gradients = [
             ['#FFF9C4', '#FFE082'],
             ['#FFFFFF', '#F0F8FF'],
@@ -36,6 +36,7 @@ const TeachersSection = memo(({ theme, teachers, title, hideTitle }: TeachersSec
             <TouchableOpacity
                 activeOpacity={0.9}
                 onPress={() => {
+                    // @ts-ignore - Navigation types are loosely defined in this project
                     navigation.navigate('TeacherDetails', { teacherId });
                 }}
             >
@@ -91,10 +92,11 @@ const TeachersSection = memo(({ theme, teachers, title, hideTitle }: TeachersSec
 });
 
 const styles = StyleSheet.create({
-    teachersSection: {},
+    teachersSection: {
+        // marginTop: getSpacing(2),
+    },
     teachersSectionTitle: {
         fontWeight: '800',
-        fontFamily: getFontFamily('200'),
     },
     teachersScrollContent: {
         paddingRight: getSpacing(2),
@@ -102,5 +104,3 @@ const styles = StyleSheet.create({
 });
 
 export default TeachersSection;
-
-

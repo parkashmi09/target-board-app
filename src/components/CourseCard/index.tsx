@@ -87,7 +87,24 @@ const CourseCard: React.FC<CourseCardProps> = React.memo(
           currentPrice,
         });
       }
-    }, [courseId, packages, originalPrice, currentPrice]);
+    }, [courseId, packages, originalPrice, currentPrice, navigation]);
+
+    const handleDetailsPress = useCallback(() => {
+      if (courseId) {
+        navigation.navigate('CourseDetails', { courseId: String(courseId) });
+      } else if (onExplore) {
+        onExplore();
+      }
+    }, [courseId, navigation, onExplore]);
+
+    const handleContentPress = useCallback(() => {
+      if (courseId) {
+        navigation.navigate('Categories', { 
+          courseId: String(courseId), 
+          courseName: title 
+        });
+      }
+    }, [courseId, navigation, title]);
 
     return (
       <View style={styles.card}>
@@ -132,27 +149,36 @@ const CourseCard: React.FC<CourseCardProps> = React.memo(
 
          </View>
             <View style={styles.actions}>
-              <TouchableOpacity
-                style={styles.detailsBtn}
-                onPress={onExplore}
-              >
-                <Text style={styles.detailsText}>DETAILS</Text>
-              </TouchableOpacity>
-
               {purchased ? (
-                <TouchableOpacity
-                  style={[styles.buyBtn, styles.purchasedBtn]}
-                  disabled={true}
-                >
-                  <Text style={styles.buyText}>PURCHASED</Text>
-                </TouchableOpacity>
+                <>
+                  <TouchableOpacity
+                    style={[styles.detailsBtn, { backgroundColor: theme.colors.info }]}
+                    onPress={handleDetailsPress}
+                  >
+                    <Text style={styles.detailsText}>DETAILS</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.contentBtn, { backgroundColor: theme.colors.warning }]}
+                    onPress={handleContentPress}
+                  >
+                    <Text style={styles.contentText}>CONTENT</Text>
+                  </TouchableOpacity>
+                </>
               ) : (
-                <TouchableOpacity
-                  style={styles.buyBtn}
-                  onPress={handleBuyNow}
-                >
-                  <Text style={styles.buyText}>BUY NOW</Text>
-                </TouchableOpacity>
+                <>
+                  <TouchableOpacity
+                    style={[styles.detailsBtn, { backgroundColor: '#FFD700' }]}
+                    onPress={onExplore}
+                  >
+                    <Text style={[styles.detailsText, { color: '#000000' }]}>DETAILS</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.buyBtn}
+                    onPress={handleBuyNow}
+                  >
+                    <Text style={styles.buyText}>BUY NOW</Text>
+                  </TouchableOpacity>
+                </>
               )}
             </View>
           </View>
@@ -240,12 +266,28 @@ const styles = StyleSheet.create({
   },
   detailsBtn: {
     flex: 1,
-    backgroundColor: '#FFD700',
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingVertical: getSpacing(1.25),
+    paddingHorizontal: getSpacing(2),
+    borderRadius: moderateScale(8),
+    justifyContent: 'center',
     alignItems: 'center',
   },
   detailsText: {
+    color: '#FFFFFF',
+    fontSize: moderateScale(14),
+    fontWeight: '700',
+  },
+  contentBtn: {
+    flex: 1,
+    paddingVertical: getSpacing(1.25),
+    paddingHorizontal: getSpacing(2),
+    borderRadius: moderateScale(8),
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  contentText: {
+    color: '#FFFFFF',
+    fontSize: moderateScale(14),
     fontWeight: '700',
   },
   buyBtn: {

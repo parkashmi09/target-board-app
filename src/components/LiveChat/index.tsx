@@ -1077,22 +1077,15 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     blockedContainer: {
-        // paddingHorizontal: getSpacing(2),
-
-        alignItems: 'center',        // paddingTop: getSpacing(1.5),
-        // paddingBottom: getSpacing(1.5),
+        alignItems: 'center',
         width: '40%',
-        display: 'flex',
         flexDirection: 'row',
         justifyContent: 'center',
-
-      paddingVertical: getSpacing(1),
+        paddingVertical: getSpacing(1),
         borderRadius: moderateScale(12),
         marginHorizontal: getSpacing(2),
-        // marginTop: getSpacing(1),
         marginBottom: getSpacing(2),
         alignSelf: 'center',
-
     },
     blockedText: {
         fontSize: safeFont(10),

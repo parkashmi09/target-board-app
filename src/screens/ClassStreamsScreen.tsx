@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, StatusBar, Animated, Easing } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, StatusBar, Animated, Easing, BackHandler } from 'react-native';
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -38,6 +38,39 @@ const ClassStreamsScreen: React.FC = () => {
     const [modalVisible, setModalVisible] = useState(false);
     const [purchaseModalVisible, setPurchaseModalVisible] = useState(false);
     const [activeTab, setActiveTab] = useState<StreamTabType>('live');
+
+    // Handle back button press - works with both header button and Android hardware back button
+    const handleBackPress = useCallback(() => {
+        try {
+            // Check if we can go back in navigation stack
+            if (navigation.canGoBack && navigation.canGoBack()) {
+                navigation.goBack();
+            } else {
+                // Fallback: Try parent navigator
+                const parent = navigation.getParent();
+                if (parent && parent.canGoBack && parent.canGoBack()) {
+                    parent.goBack();
+                }
+            }
+        } catch (error) {
+            // If navigation fails, try basic goBack
+            try {
+                navigation.goBack();
+            } catch (e) {
+                console.warn('[ClassStreamsScreen] Navigation back failed:', e);
+            }
+        }
+    }, [navigation]);
+
+    // Handle Android hardware back button separately - ensures it works independently
+    useEffect(() => {
+        const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+            handleBackPress();
+            return true; // Prevent default back behavior
+        });
+
+        return () => backHandler.remove();
+    }, [handleBackPress]);
 
     // Memoize filter tabs
     const filterTabs: FilterTab[] = useMemo(() => [
@@ -568,7 +601,7 @@ const ClassStreamsScreen: React.FC = () => {
                 translucent={false}
             />
             <View style={[styles.container, { backgroundColor: 'transparent' }]}>
-                <ScreenHeader showSearch={false} title="Live Classes" />
+                <ScreenHeader showSearch={false} title="Live Classes" onBackPress={handleBackPress} />
                 <FilterTabs
                     tabs={filterTabs}
                     activeTab={activeTab}

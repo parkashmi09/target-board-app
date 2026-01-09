@@ -1,335 +1,281 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, Platform, Animated, Dimensions, Easing } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { ChevronLeft, X, Mic, Search } from 'lucide-react-native';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  StyleSheet,
+  TouchableOpacity,
+  Animated,
+  Dimensions,
+  Easing,
+  BackHandler,
+} from 'react-native';
+import { ChevronLeft, X, Search } from 'lucide-react-native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../theme/theme';
 import { moderateScale, getSpacing } from '../../utils/responsive';
-import SVGIcon from '../SVGIcon';
 
 interface ScreenHeaderProps {
-    title?: string;
-    onBackPress?: () => void;
-    onSearch?: (searchText: string) => void;
-    onMenuPress?: () => void;
-    placeholder?: string;
-    defaultValue?: string;
-    showSearch?: boolean;
-    showMenu?: boolean;
-    rightComponent?: React.ReactNode;
+  title?: string;
+  showSearch?: boolean;
+  placeholder?: string;
+  defaultValue?: string;
+  rightComponent?: React.ReactNode;
 }
 
 const ScreenHeader: React.FC<ScreenHeaderProps> = ({
-    title,
-    onBackPress,
-    onSearch,
-    onMenuPress,
-    placeholder = 'Search',
-    defaultValue = '',
-    showSearch = true,
-    showMenu = false,
-    rightComponent
+  title,
+  showSearch = true,
+  placeholder = 'Search',
+  defaultValue = '',
+  rightComponent,
 }) => {
-    const theme = useTheme();
-    const { colors } = theme;
-    const backgroundColor = theme.isDark ? colors.background : colors.yellow;
-    const navigation = useNavigation();
-    const [searchText, setSearchText] = useState(defaultValue);
-    const [isSearchActive, setIsSearchActive] = useState(false);
-    const inputRef = useRef<TextInput>(null);
-    const slideAnim = useRef(new Animated.Value(0)).current;
-    const screenWidth = Dimensions.get('window').width;
+  const navigation = useNavigation<any>();
+  const { colors, isDark } = useTheme();
+  const backgroundColor = isDark ? colors.background : colors.yellow;
 
-    // Update local state when defaultValue changes
-    useEffect(() => {
-        setSearchText(defaultValue);
-    }, [defaultValue]);
+  const [searchText, setSearchText] = useState(defaultValue);
+  const [isSearchActive, setIsSearchActive] = useState(false);
 
-    // Reset search state when showSearch changes
-    useEffect(() => {
-        setIsSearchActive(false);
-    }, [showSearch]);
+  const inputRef = useRef<TextInput>(null);
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const screenWidth = Dimensions.get('window').width;
 
-    // Animate search bar sliding in from left when search is activated
-    useEffect(() => {
-        if (isSearchActive) {
-            // Start from left (off-screen to the left)
-            slideAnim.setValue(-screenWidth);
-            // Animate to center (0) with smooth easing
-            Animated.timing(slideAnim, {
-                toValue: 0,
-                duration: 300,
-                easing: Easing.out(Easing.ease),
-                useNativeDriver: true,
-            }).start(() => {
-                // Focus input after animation completes
-                setTimeout(() => {
-                    inputRef.current?.focus();
-                }, 100);
-            });
-        } else {
-            // Slide out to the left when deactivating
-            Animated.timing(slideAnim, {
-                toValue: -screenWidth,
-                duration: 250,
-                easing: Easing.in(Easing.ease),
-                useNativeDriver: true,
-            }).start();
-        }
-    }, [isSearchActive, screenWidth]);
+  /* ---------------- SMART BACK LOGIC ---------------- */
 
-    // const handleBackPress = () => {
-    //     if (onBackPress) {
-    //         onBackPress();
-    //     } else {
-    //         navigation.goBack();
-    //     }
-    // };
+  const goHomeOrBack = useCallback(() => {
+    const state = navigation.getState();
+    if (!state || !state.routes) return true;
 
-    // Always go back to previous route
-    const handleBackPress = () => {
+    const currentRoute = state.routes[state.index];
+
+    // Case 1: HomeStack
+    if (currentRoute.name === 'HomeStack') {
+      const stackState = currentRoute.state;
+
+      // Inside HomeStack (not HomeScreen)
+      if (stackState?.index > 0) {
         navigation.goBack();
-    };
+        return true;
+      }
 
-    const handleSearchChange = (text: string) => {
-        setSearchText(text);
-        if (onSearch) {
-            onSearch(text);
-        }
-    };
-
-    const handleClear = () => {
-        setSearchText('');
-        if (onSearch) {
-            onSearch('');
-        }
-        inputRef.current?.focus();
-    };
-
-    const handleMicPress = () => {
-        // Placeholder for voice search functionality
-        // You can implement voice search here later
-        inputRef.current?.focus();
-    };
-
-    const handleSearchIconPress = () => {
-        setIsSearchActive(true);
-    };
-
-    const handleCloseSearch = () => {
-        setIsSearchActive(false);
-        setSearchText('');
-        if (onSearch) {
-            onSearch('');
-        }
-    };
-
-    if (!showSearch) {
-        // Fallback to title-based header if search is disabled
-        const hasRightContent = !!rightComponent;
-        return (
-            <View style={[styles.header, { backgroundColor }]}>
-                <TouchableOpacity onPress={handleBackPress} style={styles.backButton}>
-                    <ChevronLeft size={moderateScale(28)} color={colors.text} />
-                </TouchableOpacity>
-                {title ? (
-                    <Text 
-                        style={[
-                            styles.headerTitle, 
-                            { color: colors.text },
-                            hasRightContent ? styles.headerTitleWithRight : styles.headerTitleCentered
-                        ]}
-                        numberOfLines={1}
-                        ellipsizeMode="tail"
-                    >
-                        {title}
-                    </Text>
-                ) : (
-                    <View style={styles.headerTitleSpacer} />
-                )}
-                {rightComponent ? (
-                    <View style={styles.rightIcons}>
-                        {rightComponent}
-                    </View>
-                ) : (
-                    <View style={styles.rightIconsPlaceholder} />
-                )}
-            </View>
-        );
+      // Already HomeScreen → refresh
+      navigation.navigate('HomeStack', {
+        screen: 'HomeScreen',
+        params: { refresh: Date.now() },
+      });
+      return true;
     }
 
+    // Case 2: Any other tab → Home
+    navigation.navigate('HomeStack', {
+      screen: 'HomeScreen',
+      params: { refresh: Date.now() },
+    });
+
+    return true;
+  }, [navigation]);
+
+  /* Android hardware back */
+  useFocusEffect(
+    useCallback(() => {
+      const onBack = () => goHomeOrBack();
+      const sub = BackHandler.addEventListener('hardwareBackPress', onBack);
+      return () => sub.remove();
+    }, [goHomeOrBack])
+  );
+
+  /* ---------------- SEARCH ANIMATION ---------------- */
+
+  useEffect(() => {
+    setSearchText(defaultValue);
+  }, [defaultValue]);
+
+  useEffect(() => {
+    if (!showSearch) setIsSearchActive(false);
+  }, [showSearch]);
+
+  useEffect(() => {
+    if (isSearchActive) {
+      slideAnim.setValue(-screenWidth);
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 280,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }).start(() => {
+        setTimeout(() => inputRef.current?.focus(), 80);
+      });
+    } else {
+      Animated.timing(slideAnim, {
+        toValue: -screenWidth,
+        duration: 220,
+        easing: Easing.in(Easing.ease),
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [isSearchActive, screenWidth]);
+
+  /* ---------------- HANDLERS ---------------- */
+
+  const handleBackPress = () => {
+    if (isSearchActive) {
+      setIsSearchActive(false);
+      setSearchText('');
+      return;
+    }
+    goHomeOrBack();
+  };
+
+  const handleSearchChange = (text: string) => {
+    setSearchText(text);
+  };
+
+  const closeSearch = () => {
+    setIsSearchActive(false);
+    setSearchText('');
+  };
+
+  /* ---------------- UI ---------------- */
+
+  if (!showSearch) {
     return (
-        <View style={[styles.headerContainer, { backgroundColor }]}>
-            {/* Default Header with Title and Search Icon */}
-            {!isSearchActive && (
-                <View style={[styles.header, { backgroundColor }]}>
-                    <TouchableOpacity onPress={handleBackPress} style={styles.backButton}>
-                        <ChevronLeft size={moderateScale(24)} color={colors.text} />
-                    </TouchableOpacity>
-                    {title ? (
-                        <Text 
-                            style={[
-                                styles.headerTitle, 
-                                { color: colors.text },
-                                (rightComponent || showSearch) ? styles.headerTitleWithRight : styles.headerTitleCentered
-                            ]}
-                            numberOfLines={1}
-                            ellipsizeMode="tail"
-                        >
-                            {title}
-                        </Text>
-                    ) : (
-                        <View style={styles.headerTitleSpacer} />
-                    )}
-                    <View style={styles.rightIcons}>
-                        {rightComponent}
-                        {showSearch && (
-                            <TouchableOpacity onPress={handleSearchIconPress} style={styles.searchIconButton}>
-                                <Search size={moderateScale(24)} color={colors.text} />
-                            </TouchableOpacity>
-                        )}
-                    </View>
-                    {!rightComponent && !showSearch && (
-                        <View style={styles.rightIconsPlaceholder} />
-                    )}
-                </View>
-            )}
+      <View style={[styles.header, { backgroundColor }]}>
+        <TouchableOpacity onPress={handleBackPress} style={styles.backButton}>
+          <ChevronLeft size={moderateScale(26)} color={colors.text} />
+        </TouchableOpacity>
 
-            {/* Search Bar - Slides in from left when activated */}
-            <Animated.View
-                style={[
-                    styles.searchHeader,
-                    {
-                        backgroundColor: colors.cardBackground,
-                        transform: [{ translateX: slideAnim }],
-                        opacity: isSearchActive ? 1 : 0,
-                        zIndex: isSearchActive ? 10 : -1,
-                    }
-                ]}
-                pointerEvents={isSearchActive ? 'auto' : 'none'}
-            >
-                <TouchableOpacity onPress={handleBackPress} style={styles.backButton}>
-                    <ChevronLeft size={moderateScale(24)} color={colors.text} />
-                </TouchableOpacity>
-                <TextInput
-                    ref={inputRef}
-                    style={[styles.searchInput, { color: colors.text, backgroundColor: colors.background }]}
-                    placeholder={placeholder}
-                    placeholderTextColor={colors.textSecondary}
-                    value={searchText}
-                    onChangeText={handleSearchChange}
-                    returnKeyType="search"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    editable={isSearchActive}
-                />
-                {searchText.length > 0 ? (
-                    <TouchableOpacity onPress={handleClear} style={styles.clearButton}>
-                        <X size={moderateScale(20)} color={colors.textSecondary} />
-                    </TouchableOpacity>
-                ) : (
-                    <TouchableOpacity onPress={handleCloseSearch} style={styles.closeButton}>
-                        <X size={moderateScale(20)} color={colors.textSecondary} />
-                    </TouchableOpacity>
-                )}
-            </Animated.View>
-        </View>
+        <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>
+          {title}
+        </Text>
+
+        <View style={styles.rightPlaceholder}>{rightComponent}</View>
+      </View>
     );
-};
+  }
 
-const styles = StyleSheet.create({
-    headerContainer: {
-        marginTop: getSpacing(2),
-        position: 'relative',
-        zIndex: 1000,
-        minHeight: moderateScale(56),
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: getSpacing(2),
-        paddingHorizontal: getSpacing(2),
-        paddingVertical: getSpacing(1.5),
-    },
-    searchHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        borderRadius: moderateScale(8),
-        paddingHorizontal: getSpacing(2),
-        paddingVertical: getSpacing(1.5),
-        minHeight: moderateScale(44),
-        position: 'absolute',
-        width: '100%',
-        left: 0,
-        right: 0,
-        top: 0,
-        elevation: 5,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-    },
-    backButton: {
-        marginRight: getSpacing(1.5),
-        padding: getSpacing(0.5),
-    },
-    headerTitle: {
-        fontSize: moderateScale(20),
-        fontWeight: '700',
-        textAlign: 'center',
-    },
-    headerTitleFull: {
-        flex: 1,
-    },
-    headerTitleCentered: {
-        position: 'absolute',
-        left: 0,
-        right: 0,
-        textAlign: 'center',
-    },
-    headerTitleWithRight: {
-        flex: 1,
-        marginRight: getSpacing(1),
-    },
-    headerTitleSpacer: {
-        flex: 1,
-    },
-    searchInput: {
-        flex: 1,
-        fontSize: moderateScale(16),
-        paddingVertical: getSpacing(1),
-        paddingHorizontal: getSpacing(1.5),
-        margin: 0,
-        minHeight: moderateScale(36),
-        borderRadius: moderateScale(8),
-    },
-    clearButton: {
-        padding: getSpacing(0.5),
-        marginLeft: getSpacing(0.5),
-    },
-    micButton: {
-        padding: getSpacing(0.5),
-        marginLeft: getSpacing(0.5),
-    },
-    rightIcons: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    rightIconsPlaceholder: {
-        width: moderateScale(40),
-    },
-    searchIconButton: {
-        padding: getSpacing(0.5),
-        marginLeft: getSpacing(1),
-    },
-    menuIconButton: {
-        padding: getSpacing(0.5),
-        marginLeft: getSpacing(1),
-    },
-    closeButton: {
-        padding: getSpacing(0.5),
-        marginLeft: getSpacing(0.5),
-    },
-});
+  return (
+    <View style={[styles.headerContainer, { backgroundColor }]}>
+      {/* NORMAL HEADER */}
+      {!isSearchActive && (
+        <View style={[styles.header, { backgroundColor }]}>
+          <TouchableOpacity onPress={handleBackPress} style={styles.backButton}>
+            <ChevronLeft size={moderateScale(24)} color={colors.text} />
+          </TouchableOpacity>
+
+          <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>
+            {title}
+          </Text>
+
+          <View style={styles.rightIcons}>
+            {rightComponent}
+            <TouchableOpacity
+              onPress={() => setIsSearchActive(true)}
+              style={styles.iconButton}
+            >
+              <Search size={moderateScale(22)} color={colors.text} />
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {/* SEARCH HEADER */}
+      <Animated.View
+        pointerEvents={isSearchActive ? 'auto' : 'none'}
+        style={[
+          styles.searchHeader,
+          {
+            backgroundColor: colors.cardBackground,
+            transform: [{ translateX: slideAnim }],
+            opacity: isSearchActive ? 1 : 0,
+          },
+        ]}
+      >
+        <TouchableOpacity onPress={handleBackPress} style={styles.backButton}>
+          <ChevronLeft size={moderateScale(24)} color={colors.text} />
+        </TouchableOpacity>
+
+        <TextInput
+          ref={inputRef}
+          value={searchText}
+          onChangeText={handleSearchChange}
+          placeholder={placeholder}
+          placeholderTextColor={colors.textSecondary}
+          style={[
+            styles.searchInput,
+            { color: colors.text, backgroundColor: colors.background },
+          ]}
+          returnKeyType="search"
+        />
+
+        <TouchableOpacity onPress={closeSearch} style={styles.iconButton}>
+          <X size={moderateScale(20)} color={colors.textSecondary} />
+        </TouchableOpacity>
+      </Animated.View>
+    </View>
+  );
+};
 
 export default ScreenHeader;
 
+/* ---------------- STYLES ---------------- */
+
+const styles = StyleSheet.create({
+  headerContainer: {
+    marginTop: getSpacing(4),
+    minHeight: moderateScale(56),
+    position: 'relative',
+    zIndex: 1000,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: getSpacing(2),
+    paddingHorizontal: getSpacing(2),
+    paddingVertical: getSpacing(1.5),
+  },
+  backButton: {
+    padding: getSpacing(0.5),
+    marginRight: getSpacing(1),
+  },
+  headerTitle: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: moderateScale(18),
+    fontWeight: '700',
+  },
+  rightIcons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  rightPlaceholder: {
+    width: moderateScale(40),
+    alignItems: 'flex-end',
+  },
+  iconButton: {
+    padding: getSpacing(0.5),
+    marginLeft: getSpacing(1),
+  },
+  searchHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: getSpacing(2),
+    paddingVertical: getSpacing(1.5),
+    borderRadius: moderateScale(8),
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: moderateScale(16),
+    paddingHorizontal: getSpacing(1.5),
+    borderRadius: moderateScale(8),
+    minHeight: moderateScale(36),
+  },
+});

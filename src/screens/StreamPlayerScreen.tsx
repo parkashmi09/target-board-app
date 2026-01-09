@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { View, StyleSheet, Dimensions, ActivityIndicator, Text } from 'react-native';
-import { useRoute, RouteProp } from '@react-navigation/native';
+import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 // @ts-ignore - react-native-tpstreams types may not be available
 import { TPStreams, TPStreamsPlayerView } from 'react-native-tpstreams';
@@ -21,8 +21,16 @@ TPStreams.initialize(TPSTREAMS_ORG_ID);
 
 const StreamPlayerScreen: React.FC = () => {
     const route = useRoute<StreamPlayerScreenRouteProp>();
+    const navigation = useNavigation();
     const { colors } = useTheme();
     const { streamId, tpAssetId, hlsUrl } = route.params || {};
+
+    // Handle back button press - works with both header button and Android hardware back button
+    const handleBackPress = useCallback(() => {
+        if (navigation.canGoBack()) {
+            navigation.goBack();
+        }
+    }, [navigation]);
 
     console.log('[StreamPlayerScreen] Props:', {
         streamId,
@@ -186,7 +194,7 @@ const StreamPlayerScreen: React.FC = () => {
     if (!videoId) {
         return (
             <GradientBackground>
-                <ScreenHeader title="Stream Player" showSearch={false} />
+                <ScreenHeader title="Stream Player" showSearch={false} onBackPress={handleBackPress} />
                 <View style={[styles.errorContainer, { backgroundColor: colors.background }]}>
                     <Text style={[styles.errorText, { color: colors.error || 'red' }]}>
                         Missing stream information
@@ -201,7 +209,7 @@ const StreamPlayerScreen: React.FC = () => {
 
     return (
         <GradientBackground>
-            <ScreenHeader title={isUpcoming ? "Upcoming Stream" : "Live Stream"} showSearch={false} />
+            <ScreenHeader title={isUpcoming ? "Upcoming Stream" : "Live Stream"} showSearch={false} onBackPress={handleBackPress} />
             <View style={[styles.container, { backgroundColor: colors.background }]}>
                 {/* Video Player Container */}
                 <View style={[styles.videoContainer, { height: videoHeight, backgroundColor: 'black' }]}>
