@@ -8,8 +8,8 @@ import ResponsiveView from '../components/ResponsiveView';
 import GradientBackground from '../components/GradientBackground';
 import CourseCard from '../components/CourseCard';
 import { useCourses } from '../hooks/queries/useCourses';
+import { useUserDetails } from '../hooks/queries/useUserDetails';
 import { Images } from '../assets/images';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import ScreenHeader from '../components/ScreenHeader';
 
 const MyCourseScreen: React.FC = () => {
@@ -18,55 +18,40 @@ const MyCourseScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [categoryId, setCategoryId] = useState<string | number | null>(null);
 
+  // Fetch user details using React Query (same as HomeScreen)
+  const { data: userData, refetch: refetchUserDetails } = useUserDetails({
+    enabled: true,
+  });
+
   // Fetch courses using the same API as HomeScreen
   const { data: coursesData, isLoading, refetch } = useCourses({
     categoryId: categoryId || null,
     enabled: true,
   });
 
-  // Load user data to get class ID
+  // Update categoryId when userData changes (same as HomeScreen)
   useEffect(() => {
-    const loadUserData = async () => {
-      try {
-        const userDataString = await AsyncStorage.getItem('userData');
-        if (userDataString) {
-          const userData = JSON.parse(userDataString);
-          setCategoryId(userData?.class_id || userData?.classId || null);
-        }
-      } catch (error) {
-        if (__DEV__) {
-          console.error('Error loading user data:', error);
-        }
-      }
-    };
-    loadUserData();
-  }, []);
+    if (userData) {
+      const classId = userData.class?._id || userData.classId || null;
+      setCategoryId(classId);
+    }
+  }, [userData]);
 
   useFocusEffect(
     useCallback(() => {
-      // Load user data and refresh courses when screen is focused
-      const loadUserData = async () => {
-        try {
-          const userDataString = await AsyncStorage.getItem('userData');
-          if (userDataString) {
-            const userData = JSON.parse(userDataString);
-            setCategoryId(userData?.class_id || userData?.classId || null);
-          }
-        } catch (error) {
-          if (__DEV__) {
-            console.error('Error loading user data:', error);
-          }
-        }
-      };
-      loadUserData();
+      // Refetch user details and courses when screen is focused
+      refetchUserDetails();
       refetch();
-    }, [refetch])
+    }, [refetchUserDetails, refetch])
   );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await refetch();
+      await Promise.all([
+        refetchUserDetails(),
+        refetch(),
+      ]);
     } catch (error) {
       if (__DEV__) {
         console.error('Refresh failed:', error);
@@ -74,7 +59,7 @@ const MyCourseScreen: React.FC = () => {
     } finally {
       setRefreshing(false);
     }
-  }, [refetch]);
+  }, [refetchUserDetails, refetch]);
 
   // Transform API courses data to match CourseCard expected format
   const transformedCourses = React.useMemo(() => {
@@ -119,6 +104,7 @@ const MyCourseScreen: React.FC = () => {
         packages: course.packages || [], // Include packages array
         strikeoutPrice: course.strikeoutPrice, // Include for fallback
         coursePrice: course.coursePrice, // Include for fallback
+        purchased: course.purchased || false, // Include purchased status (same as HomeScreen)
         _raw: course,
       };
     });
@@ -168,6 +154,8 @@ const MyCourseScreen: React.FC = () => {
                     bannerImage={item.bannerImage}
                     gradientColors={item.gradientColors}
                     courseId={item.id}
+                    purchased={item.purchased}
+                    packages={item.packages}
                     onPress={() => handlePress(item.id)}
                     onExplore={() => handlePress(item.id)}
                     // onBuyNow is handled internally by CourseCard to open the modal
