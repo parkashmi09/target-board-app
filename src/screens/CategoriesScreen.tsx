@@ -11,6 +11,7 @@ import {
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { useTheme } from '../theme/theme';
 import { moderateScale, getSpacing } from '../utils/responsive';
+import { getFontFamily } from '../utils/fonts';
 import GradientBackground from '../components/GradientBackground';
 import ScreenHeader from '../components/ScreenHeader';
 import SVGIcon from '../components/SVGIcon';
@@ -224,13 +225,13 @@ const styles = StyleSheet.create({
   },
   categoryName: {
     fontSize: moderateScale(16),
-    fontWeight: '600',
+    fontFamily: getFontFamily('600'),
     lineHeight: moderateScale(22),
     marginBottom: getSpacing(0.25),
   },
   categoryNameHindi: {
     fontSize: moderateScale(15),
-    fontWeight: '500',
+    fontFamily: getFontFamily('500'),
     lineHeight: moderateScale(20),
   },
   subcategoryHint: {
@@ -253,7 +254,7 @@ const styles = StyleSheet.create({
   fabText: {
     color: '#FFFFFF',
     fontSize: moderateScale(14),
-    fontWeight: '600',
+    fontFamily: getFontFamily('600'),
   },
   centerContainer: {
     flex: 1,

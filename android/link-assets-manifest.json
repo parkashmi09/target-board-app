@@ -1,0 +1,45 @@
+{
+  "migIndex": 1,
+  "data": [
+    {
+      "path": "src/assets/fonts/Metropolis-Bold.otf",
+      "sha1": "335e5e57450f52a95b5bc3cd03d91071ef389c28"
+    },
+    {
+      "path": "src/assets/fonts/Metropolis-Thin.otf",
+      "sha1": "37f2a7b036ac541011cb175c5197056ae814d98f"
+    },
+    {
+      "path": "src/assets/fonts/Metropolis-ExtraBold.otf",
+      "sha1": "5ba5282242a60d98632201da852da566f365398e"
+    },
+    {
+      "path": "src/assets/fonts/Poppins.ttf",
+      "sha1": "fdd3002e7d814ee47c1c1b8487c72c6bbb3a2d00"
+    },
+    {
+      "path": "src/assets/fonts/Metropolis-Light.otf",
+      "sha1": "e6651a2af53a77acbc2d19220c5af80bbfcc65dc"
+    },
+    {
+      "path": "src/assets/fonts/Metropolis-Regular.otf",
+      "sha1": "dc10ba3cd5aea203f7d0f5af99e72163514a55d5"
+    },
+    {
+      "path": "src/assets/fonts/Metropolis-Black.otf",
+      "sha1": "0b806ce10e950793a547fcc23d6ce71df4104e96"
+    },
+    {
+      "path": "src/assets/fonts/Metropolis-Medium.otf",
+      "sha1": "8d5181b06452ce20ac337391dc60b9dd07b083de"
+    },
+    {
+      "path": "src/assets/fonts/Metropolis-ExtraLight.otf",
+      "sha1": "6ca6abc086c1b75e676e93aa10abb32ebf4c0e81"
+    },
+    {
+      "path": "src/assets/fonts/Metropolis-SemiBold.otf",
+      "sha1": "4ebfc059e586c91d024d359f0ed3fc64d9ec4d2c"
+    }
+  ]
+}

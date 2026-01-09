@@ -9,6 +9,7 @@ import {
 import { Svg, Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { useTheme } from '../../theme/theme';
 import { moderateScale, getSpacing } from '../../utils/responsive';
+import { getFontFamily } from '../../utils/fonts';
 import { Images } from '../../assets/images';
 import SVGIcon from '../SVGIcon';
 
@@ -315,7 +316,7 @@ const styles = StyleSheet.create({
   rankText: {
     color: '#FFF',
     fontSize: moderateScale(12),
-    fontWeight: '900',
+    fontFamily: getFontFamily('900'),
     letterSpacing: 0.3,
   },
   logoContainer: {
@@ -419,7 +420,7 @@ const styles = StyleSheet.create({
   },
   studentName: {
     fontSize: moderateScale(14),
-    fontWeight: '800',
+    fontFamily: getFontFamily('800'),
     textAlign: 'center',
     marginBottom: getSpacing(0.75),
     letterSpacing: 0.2,
@@ -434,7 +435,7 @@ const styles = StyleSheet.create({
   },
   percentage: {
     fontSize: moderateScale(32),
-    fontWeight: '900',
+    fontFamily: getFontFamily('900'),
     letterSpacing: -0.5,
     lineHeight: moderateScale(32),
     textShadowColor: 'rgba(0, 0, 0, 0.1)',
@@ -444,7 +445,7 @@ const styles = StyleSheet.create({
   },
   scoreLabel: {
     fontSize: moderateScale(10),
-    fontWeight: '600',
+    fontFamily: getFontFamily('600'),
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginTop: 2,
@@ -471,7 +472,7 @@ const styles = StyleSheet.create({
   },
   achievementText: {
     fontSize: moderateScale(10),
-    fontWeight: '700',
+    fontFamily: getFontFamily('700'),
     letterSpacing: 0.2,
     textAlign: 'center',
   },

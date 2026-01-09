@@ -4,6 +4,7 @@ import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navig
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../theme/theme';
+import { getFontFamily } from '../utils/fonts';
 import { getCourseStreams, getUserStreams, getStreamById, Stream } from '../services/api';
 import { MainStackParamList } from '../navigation/MainStack';
 import { Calendar, PlayCircle, Radio } from 'lucide-react-native';
@@ -710,7 +711,7 @@ const styles = StyleSheet.create({
     },
     emptyCardTitle: {
         fontSize: moderateScale(18),
-        fontWeight: '700',
+        fontFamily: getFontFamily('700'),
         marginTop: getSpacing(2),
         marginBottom: getSpacing(1),
         textAlign: 'center',
@@ -750,7 +751,7 @@ const styles = StyleSheet.create({
     retryText: {
         color: '#FFFFFF',
         fontSize: moderateScale(14),
-        fontWeight: '600',
+        fontFamily: getFontFamily('600'),
     },
 });
 

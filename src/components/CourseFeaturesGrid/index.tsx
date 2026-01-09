@@ -2,6 +2,7 @@ import React from 'react';
 import { View, StyleSheet, Text } from 'react-native';
 import { Play, FileText, FileDown, MonitorPlay, ClipboardList, Award } from 'lucide-react-native';
 import { useTheme } from '../../theme/theme';
+import { getFontFamily } from '../../utils/fonts';
 
 interface CourseFeaturesGridProps {
   features: {
@@ -124,7 +125,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 14,
-    fontWeight: '800',
+    fontFamily: getFontFamily('800'),
   },
   subtitle: {
     fontSize: 10,

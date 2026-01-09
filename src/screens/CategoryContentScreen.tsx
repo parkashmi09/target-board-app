@@ -14,6 +14,7 @@ import {
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { useTheme } from '../theme/theme';
 import { moderateScale, getSpacing } from '../utils/responsive';
+import { getFontFamily } from '../utils/fonts';
 import GradientBackground from '../components/GradientBackground';
 import ScreenHeader from '../components/ScreenHeader';
 import { CategoryNode, fetchContentByCategory, ContentItem, Stream } from '../services/api';
@@ -830,7 +831,7 @@ const styles = StyleSheet.create({
   },
   categoryTitle: {
     fontSize: moderateScale(20),
-    fontWeight: '700',
+    fontFamily: getFontFamily('700'),
     marginBottom: getSpacing(0.5),
   },
   categoryLevel: {
@@ -841,7 +842,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: moderateScale(18),
-    fontWeight: '600',
+    fontFamily: getFontFamily('600'),
     marginBottom: getSpacing(1.5),
   },
   subcategoryCard: {
@@ -870,7 +871,7 @@ const styles = StyleSheet.create({
   },
   subcategoryName: {
     fontSize: moderateScale(16),
-    fontWeight: '600',
+    fontFamily: getFontFamily('600'),
     marginBottom: getSpacing(0.5),
   },
   subcategoryCount: {
@@ -937,12 +938,12 @@ const styles = StyleSheet.create({
   },
   contentTitle: {
     fontSize: moderateScale(16),
-    fontWeight: '600',
+    fontFamily: getFontFamily('600'),
     marginBottom: getSpacing(0.25),
   },
   contentTitleHindi: {
     fontSize: moderateScale(15),
-    fontWeight: '500',
+    fontFamily: getFontFamily('500'),
     marginBottom: getSpacing(0.25),
   },
   contentType: {
@@ -971,12 +972,12 @@ const styles = StyleSheet.create({
   },
   pdfButtonTitle: {
     fontSize: moderateScale(13),
-    fontWeight: '600',
+    fontFamily: getFontFamily('600'),
     marginBottom: getSpacing(0.25),
   },
   pdfButtonTitleHindi: {
     fontSize: moderateScale(12),
-    fontWeight: '500',
+    fontFamily: getFontFamily('500'),
   },
   streamHeader: {
     flexDirection: 'row',
@@ -992,7 +993,7 @@ const styles = StyleSheet.create({
   liveBadgeText: {
     color: '#FFFFFF',
     fontSize: moderateScale(10),
-    fontWeight: '700',
+    fontFamily: getFontFamily('700'),
   },
   streamDescription: {
     fontSize: moderateScale(12),
@@ -1019,7 +1020,7 @@ const styles = StyleSheet.create({
   },
   comingSoonTitle: {
     fontSize: moderateScale(24),
-    fontWeight: '700',
+    fontFamily: getFontFamily('700'),
     marginTop: getSpacing(2),
     textAlign: 'center',
   },

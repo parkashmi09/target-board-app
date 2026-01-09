@@ -3,6 +3,7 @@ import { View, StyleSheet, Text, Dimensions } from 'react-native';
 import RenderHtml from 'react-native-render-html';
 import { Hand } from 'lucide-react-native';
 import { useTheme } from '../../theme/theme';
+import { getFontFamily } from '../../utils/fonts';
 
 interface CourseDescriptionProps {
   description?: string;
@@ -74,12 +75,12 @@ const styles = StyleSheet.create({
   },
   headerText: {
     fontSize: 18,
-    fontWeight: '700',
+    fontFamily: getFontFamily('700'),
     marginLeft: 8,
   },
   strikeThrough: {
     textDecorationLine: 'line-through',
-    fontWeight: '400',
+    fontFamily: getFontFamily('400'),
   },
   divider: {
     height: 1,

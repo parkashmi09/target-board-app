@@ -139,9 +139,8 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: moderateScale(18),
-    fontWeight: '700',
     marginBottom: getSpacing(0.8),
-    fontFamily: getFontFamily('200'),
+    fontFamily: getFontFamily('700'),
   },
   cardWrapper: {
     width: '100%',

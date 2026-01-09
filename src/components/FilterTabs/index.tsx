@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useTheme } from '../../theme/theme';
 import { moderateScale, getSpacing } from '../../utils/responsive';
+import { getFontFamily } from '../../utils/fonts';
 
 export type FilterTabType = string;
 
@@ -51,7 +52,7 @@ const FilterTabs: React.FC<FilterTabsProps> = ({ tabs, activeTab, onTabChange })
                             styles.tabText,
                             { 
                                 color: isActive ? colors.secondaryText : colors.textSecondary,
-                                fontWeight: isActive ? '700' : '600'
+                                fontFamily: isActive ? getFontFamily('700') : getFontFamily('600')
                             }
                         ]}>
                             {tab.label}

@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'rea
 import Modal from 'react-native-modal';
 import { useTheme } from '../../theme/theme';
 import { moderateScale, getSpacing } from '../../utils/responsive';
+import { getFontFamily } from '../../utils/fonts';
 import SVGIcon from '../SVGIcon';
 
 export interface AlertBoxProps {
@@ -143,7 +144,7 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: moderateScale(20),
-    fontWeight: '700',
+    fontFamily: getFontFamily('700'),
     marginTop: getSpacing(1.5),
     textAlign: 'center',
   },
@@ -174,11 +175,11 @@ const styles = StyleSheet.create({
   },
   modalButtonText: {
     fontSize: moderateScale(16),
-    fontWeight: '600',
+    fontFamily: getFontFamily('600'),
   },
   confirmButtonText: {
     fontSize: moderateScale(16),
-    fontWeight: '600',
+    fontFamily: getFontFamily('600'),
   },
 });
 

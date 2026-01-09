@@ -4,6 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '../theme/theme';
 import { moderateScale, getSpacing } from '../utils/responsive';
+import { getFontFamily } from '../utils/fonts';
 import { useToast } from '../components/Toast';
 import SVGIcon from '../components/SVGIcon';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -260,7 +261,7 @@ const ChooseBoardClassScreen: React.FC = () => {
                                                     styles.classText,
                                                     {
                                                         color: theme.colors.text,
-                                                        fontWeight: '400'
+                                                        fontFamily: getFontFamily('400')
                                                     }
                                                 ]}>
                                                     {item.name}
@@ -322,7 +323,7 @@ const ChooseBoardClassScreen: React.FC = () => {
                                                                 styles.boardName,
                                                                 {
                                                                     color: theme.colors.text,
-                                                                    fontWeight: '500'
+                                                                    fontFamily: getFontFamily('500')
                                                                 }
                                                             ]}>
                                                                 {item.name}
@@ -422,7 +423,7 @@ const styles = StyleSheet.create({
     },
     headerTitle: {
         fontSize: moderateScale(18),
-        fontWeight: '600',
+        fontFamily: getFontFamily('600'),
     },
     content: {
         paddingHorizontal: getSpacing(2),
@@ -432,7 +433,7 @@ const styles = StyleSheet.create({
     },
     sectionTitle: {
         fontSize: moderateScale(16),
-        fontWeight: '500',
+        fontFamily: getFontFamily('500'),
         marginBottom: getSpacing(2),
     },
     classGrid: {
@@ -511,7 +512,7 @@ const styles = StyleSheet.create({
     },
     modalTitle: {
         fontSize: moderateScale(18),
-        fontWeight: '600',
+        fontFamily: getFontFamily('600'),
         marginBottom: getSpacing(3),
         textAlign: 'center',
     },
@@ -545,7 +546,7 @@ const styles = StyleSheet.create({
     },
     mediumName: {
         fontSize: moderateScale(16),
-        fontWeight: '500',
+        fontFamily: getFontFamily('500'),
     },
     closeButton: {
         marginTop: getSpacing(3),

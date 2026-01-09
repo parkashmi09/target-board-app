@@ -10,6 +10,7 @@ import { Svg, Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import LottieView from 'lottie-react-native';
 import { useTheme } from '../../theme/theme';
 import { moderateScale, getSpacing } from '../../utils/responsive';
+import { getFontFamily } from '../../utils/fonts';
 import SVGIcon from '../SVGIcon';
 import { Images } from '../../assets/images';
 import verifiedAnimation from '../../assets/lotties/Verified.json';
@@ -199,7 +200,7 @@ const styles = StyleSheet.create({
   experienceText: {
     color: '#FFFFFF',
     fontSize: moderateScale(11),
-    fontWeight: '800',
+    fontFamily: getFontFamily('800'),
     letterSpacing: 0.5,
     textAlign: 'center',
     // marginLeft: moderateScale(-19),
@@ -209,7 +210,7 @@ const styles = StyleSheet.create({
   experienceTextYear: {
     color: '#FFFFFF',
     fontSize: moderateScale(11),
-    fontWeight: '800',
+    fontFamily: getFontFamily('800'),
     letterSpacing: 0.5,
     textAlign: 'center',
     marginLeft: moderateScale(1),
@@ -222,7 +223,7 @@ const styles = StyleSheet.create({
   },
   logoText: {
     fontSize: moderateScale(8),
-    fontWeight: '600',
+    fontFamily: getFontFamily('600'),
     color: '#FFFFFF',
     letterSpacing: 0.5,
     textAlign: 'center',
@@ -240,7 +241,7 @@ const styles = StyleSheet.create({
   },
   teacherName: {
     fontSize: moderateScale(11),
-    fontWeight: '800',
+    fontFamily: getFontFamily('800'),
     letterSpacing: 0.5,
     marginRight: getSpacing(0.5),
     flexShrink: 1,
@@ -255,7 +256,7 @@ const styles = StyleSheet.create({
   },
   expertise: {
     fontSize: moderateScale(8),
-    fontWeight: '600',
+    fontFamily: getFontFamily('600'),
     marginBottom: getSpacing(1),
     letterSpacing: 0.3,
   },

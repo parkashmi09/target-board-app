@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '../theme/theme';
+import { getFontFamily } from '../utils/fonts';
 import { ArrowLeft, Share2, Check } from 'lucide-react-native';
 import GradientBackground from '../components/GradientBackground';
 import { fetchCourseDetails, getCourseStreams, Stream } from '../services/api';
@@ -428,7 +429,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: '600',
+    fontFamily: getFontFamily('600'),
     letterSpacing: 0.5,
   },
   scrollView: {
@@ -442,7 +443,7 @@ const styles = StyleSheet.create({
   },
   courseTitle: {
     fontSize: 18,
-    fontWeight: '500',
+    fontFamily: getFontFamily('500'),
     marginBottom: 16,
   },
   validityWrapper: {
@@ -459,10 +460,10 @@ const styles = StyleSheet.create({
   },
   validityText: {
     fontSize: 20,
-    fontWeight: '600',
+    fontFamily: getFontFamily('600'),
   },
   validityValue: {
-    fontWeight: '700',
+    fontFamily: getFontFamily('700'),
   },
   shareFab: {
     position: 'absolute',
@@ -482,7 +483,7 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   backButtonText: {
-    fontWeight: '600',
+    fontFamily: getFontFamily('600'),
   },
 });
 

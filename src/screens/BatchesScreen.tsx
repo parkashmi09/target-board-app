@@ -4,6 +4,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from '../theme/theme';
 import { moderateScale, getSpacing } from '../utils/responsive';
+import { getFontFamily } from '../utils/fonts';
 import ResponsiveView from '../components/ResponsiveView';
 import GradientBackground from '../components/GradientBackground';
 import CourseCard from '../components/CourseCard';
@@ -195,7 +196,7 @@ const styles = StyleSheet.create({
     paddingBottom: moderateScale(100), // Add padding for tab bar
   },
   title: {
-    fontWeight: 'bold',
+    fontFamily: getFontFamily('700'),
     marginBottom: getSpacing(2),
   },
   subtitle: {

@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Keyboa
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../../theme/theme';
 import { moderateScale, getSpacing } from '../../utils/responsive';
+import { getFontFamily } from '../../utils/fonts';
 import { Images } from '../../assets/images';
 import { useToast } from '../../components/Toast';
 import type { AuthStackParamList } from '../../navigation/AuthStack';
@@ -153,12 +154,13 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: moderateScale(24),
-    fontWeight: 'bold',
+    fontFamily: getFontFamily('700'),
     marginBottom: getSpacing(1),
     textAlign: 'center',
   },
   subtitle: {
     fontSize: moderateScale(14),
+    fontFamily: getFontFamily('400'),
     marginBottom: getSpacing(4),
     textAlign: 'center',
   },
@@ -167,7 +169,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: moderateScale(14),
-    fontWeight: '500',
+    fontFamily: getFontFamily('500'),
     marginBottom: getSpacing(1),
   },
   input: {
@@ -175,6 +177,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: getSpacing(2),
     paddingVertical: getSpacing(1.5),
     fontSize: moderateScale(16),
+    fontFamily: getFontFamily('400'),
   },
   button: {
     width: '100%',
@@ -189,7 +192,7 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#FFFFFF',
     fontSize: moderateScale(18),
-    fontWeight: '700',
+    fontFamily: getFontFamily('700'),
   },
 });
 

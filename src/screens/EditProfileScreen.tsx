@@ -12,6 +12,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../theme/theme';
 import { moderateScale, getSpacing } from '../utils/responsive';
+import { getFontFamily } from '../utils/fonts';
 import { updateUser, uploadProfileImage, fetchUserDetails } from '../services/api';
 import { useToast } from '../components/Toast';
 import { useGlobalLoaderManual } from '../components/GlobalLoader';
@@ -443,7 +444,7 @@ const styles = StyleSheet.create({
   },
   uploadButtonText: {
     fontSize: moderateScale(14),
-    fontWeight: '600',
+    fontFamily: getFontFamily('600'),
   },
   formSection: {
     marginTop: getSpacing(2),
@@ -454,7 +455,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: moderateScale(15),
     marginBottom: getSpacing(1),
-    fontWeight: '500',
+    fontFamily: getFontFamily('500'),
   },
   input: {
     borderRadius: moderateScale(8),
@@ -474,7 +475,7 @@ const styles = StyleSheet.create({
   },
   saveButtonText: {
     fontSize: moderateScale(16),
-    fontWeight: '700',
+    fontFamily: getFontFamily('700'),
     letterSpacing: 1,
   },
 });

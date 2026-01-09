@@ -12,6 +12,7 @@ import {
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useTheme } from '../theme/theme';
 import { moderateScale, getSpacing } from '../utils/responsive';
+import { getFontFamily } from '../utils/fonts';
 import { Images } from '../assets/images';
 import SVGIcon from '../components/SVGIcon';
 import ResponsiveView from '../components/ResponsiveView';
@@ -205,7 +206,7 @@ const styles = StyleSheet.create({
     },
     name: {
         fontSize: moderateScale(22),
-        fontWeight: '800',
+        fontFamily: getFontFamily('800'),
         marginBottom: getSpacing(1),
         textAlign: 'center',
     },
@@ -239,7 +240,7 @@ const styles = StyleSheet.create({
     },
     statValue: {
         fontSize: moderateScale(16),
-        fontWeight: '800',
+        fontFamily: getFontFamily('800'),
         marginRight: 4,
     },
     freeBadge: {
@@ -251,11 +252,11 @@ const styles = StyleSheet.create({
     freeBadgeText: {
         color: '#FFF',
         fontSize: 10,
-        fontWeight: '700',
+        fontFamily: getFontFamily('700'),
     },
     statLabel: {
         fontSize: moderateScale(12),
-        fontWeight: '500',
+        fontFamily: getFontFamily('500'),
     },
     section: {
         marginBottom: getSpacing(3),
@@ -268,7 +269,7 @@ const styles = StyleSheet.create({
     },
     sectionTitle: {
         fontSize: moderateScale(18),
-        fontWeight: '700',
+        fontFamily: getFontFamily('700'),
         marginLeft: getSpacing(1),
     },
     coursesScroll: {

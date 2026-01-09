@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Image } from 'rea
 import SVGIcon from '../SVGIcon';
 import { useTheme } from '../../theme/theme';
 import { moderateScale, getSpacing } from '../../utils/responsive';
+import { getFontFamily } from '../../utils/fonts';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { MainStackParamList } from '../../navigation/MainStack';
@@ -171,7 +172,7 @@ const styles = StyleSheet.create({
   },
   detailsTitle: {
     fontSize: moderateScale(16),
-    fontWeight: '700',
+    fontFamily: getFontFamily('700'),
     marginBottom: getSpacing(0.5),
   },
   expiryDate: {
@@ -213,7 +214,7 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#FFFFFF',
     fontSize: moderateScale(14),
-    fontWeight: '700',
+    fontFamily: getFontFamily('700'),
   },
 });
 

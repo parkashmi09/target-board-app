@@ -4,6 +4,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../theme/theme';
 import { moderateScale, getSpacing } from '../utils/responsive';
+import { getFontFamily } from '../utils/fonts';
 import SVGIcon from '../components/SVGIcon';
 import { Images } from '../assets/images';
 import { getFocusedRouteNameFromRoute, useNavigation } from '@react-navigation/native';
@@ -33,7 +34,7 @@ const TabIcon = React.memo(({ name, label, focused, theme }: any) => (
       <Text style={{
         color: theme.colors.text,
         fontSize: 10,
-        fontWeight: '600',
+        fontFamily: getFontFamily('600'),
         marginTop: 4
       }}>
         {label}
@@ -228,7 +229,7 @@ const TabNavigator: React.FC = () => {
     headerTitleAlign: 'center' as const,
     headerTitleStyle: {
       fontSize: moderateScale(18),
-      fontWeight: 'bold' as const,
+      fontFamily: getFontFamily('700'),
       color: theme.colors.text,
     },
     tabBarShowLabel: false, // Hide default labels, we handle them in TabIcon

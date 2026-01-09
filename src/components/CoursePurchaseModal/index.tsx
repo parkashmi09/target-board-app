@@ -5,6 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import { X, Check } from 'lucide-react-native';
 import { useTheme } from '../../theme/theme';
 import { moderateScale, getSpacing } from '../../utils/responsive';
+import { getFontFamily } from '../../utils/fonts';
 
 interface CoursePurchaseModalProps {
     visible: boolean;
@@ -235,7 +236,7 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: 16,
-        fontWeight: '700',
+        fontFamily: getFontFamily('700'),
     },
     packageContainer: {
         marginTop: 20,
@@ -244,7 +245,7 @@ const styles = StyleSheet.create({
     },
     packageTitle: {
         fontSize: 16,
-        fontWeight: '600',
+        fontFamily: getFontFamily('600'),
         marginBottom: 12,
     },
     packageOption: {
@@ -266,7 +267,7 @@ const styles = StyleSheet.create({
     },
     packageDuration: {
         fontSize: 16,
-        fontWeight: '600',
+        fontFamily: getFontFamily('600'),
     },
     defaultBadge: {
         backgroundColor: '#4CAF50',
@@ -277,11 +278,11 @@ const styles = StyleSheet.create({
     defaultText: {
         color: '#FFFFFF',
         fontSize: 10,
-        fontWeight: '700',
+        fontFamily: getFontFamily('700'),
     },
     packagePrice: {
         fontSize: 18,
-        fontWeight: '700',
+        fontFamily: getFontFamily('700'),
     },
     checkmark: {
         position: 'absolute',
@@ -302,7 +303,7 @@ const styles = StyleSheet.create({
     },
     price: {
         fontSize: 28,
-        fontWeight: '700',
+        fontFamily: getFontFamily('700'),
     },
     priceSubtext: {
         fontSize: 12,
@@ -320,7 +321,7 @@ const styles = StyleSheet.create({
     buyButtonText: {
         color: '#FFFFFF',
         fontSize: 16,
-        fontWeight: '700',
+        fontFamily: getFontFamily('700'),
     },
     pricingInfo: {
         paddingHorizontal: 16,

@@ -214,15 +214,13 @@ const styles = StyleSheet.create({
     },
     classText: {
         fontSize: moderateScale(14),
-        fontWeight: '600',
         lineHeight: moderateScale(18),
-        fontFamily: getFontFamily('200'),
+        fontFamily: getFontFamily('600'),
     },
     boardText: {
         fontSize: moderateScale(11),
-        fontWeight: '400',
         lineHeight: moderateScale(14),
-        fontFamily: getFontFamily('200'),
+        fontFamily: getFontFamily('400'),
     },
     rightIconsContainer: {
         flexDirection: 'row',

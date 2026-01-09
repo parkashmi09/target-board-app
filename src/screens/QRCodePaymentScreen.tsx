@@ -19,6 +19,7 @@ import {
   getSpacing,
   verticalScale,
 } from '../utils/responsive';
+import { getFontFamily } from '../utils/fonts';
 import GradientBackground from '../components/GradientBackground';
 import ScreenHeader from '../components/ScreenHeader';
 import type { MainStackParamList } from '../navigation/MainStack';
@@ -322,14 +323,14 @@ const styles = StyleSheet.create({
   },
   companyName: {
     fontSize: moderateScale(12),
-    fontWeight: '600',
+    fontFamily: getFontFamily('600'),
     marginBottom: getSpacing(2),
   },
   note: {
     maxWidth: 420,
   },
   noteLabel: {
-    fontWeight: '700',
+    fontFamily: getFontFamily('700'),
     marginBottom: 6,
   },
   noteText: {
@@ -361,7 +362,7 @@ const styles = StyleSheet.create({
   },
   btnText: {
     color: '#fff',
-    fontWeight: '700',
+    fontFamily: getFontFamily('700'),
   },
 });
 

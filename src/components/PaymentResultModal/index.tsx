@@ -9,6 +9,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { useTheme } from '../../theme/theme';
+import { getFontFamily } from '../../utils/fonts';
 import { Check, X } from 'lucide-react-native';
 
 const { width } = Dimensions.get('window');
@@ -182,7 +183,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    fontWeight: '700',
+    fontFamily: getFontFamily('700'),
     marginBottom: 12,
     textAlign: 'center',
   },
@@ -202,7 +203,7 @@ const styles = StyleSheet.create({
   closeButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '700',
+    fontFamily: getFontFamily('700'),
   },
 });
 

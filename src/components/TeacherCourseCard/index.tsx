@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { useTheme } from '../../theme/theme';
 import { moderateScale, getSpacing } from '../../utils/responsive';
+import { getFontFamily } from '../../utils/fonts';
 import { Images } from '../../assets/images';
 import SVGIcon from '../SVGIcon';
 
@@ -75,7 +76,7 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: moderateScale(14),
-        fontWeight: '600',
+        fontFamily: getFontFamily('600'),
         textAlign: 'center',
     },
 });

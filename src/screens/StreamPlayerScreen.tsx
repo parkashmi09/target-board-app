@@ -11,6 +11,7 @@ import ScreenHeader from '../components/ScreenHeader';
 import LiveChat from '../components/LiveChat';
 import { useTheme } from '../theme/theme';
 import { moderateScale, getSpacing } from '../utils/responsive';
+import { getFontFamily } from '../utils/fonts';
 import { TPSTREAMS_ORG_ID, TPSTREAMS_ACCESS_TOKEN } from '../services/config';
 import { getStreamStatus, getCountdown, formatDate } from '../utils/streamUtils';
 
@@ -333,7 +334,7 @@ const styles = StyleSheet.create({
     loadingText: {
         marginTop: getSpacing(1),
         fontSize: moderateScale(14),
-        fontWeight: '500',
+        fontFamily: getFontFamily('500'),
     },
     errorContainer: {
         flex: 1,
@@ -343,7 +344,7 @@ const styles = StyleSheet.create({
     },
     errorText: {
         fontSize: moderateScale(16),
-        fontWeight: '600',
+        fontFamily: getFontFamily('600'),
         textAlign: 'center',
         marginBottom: getSpacing(1),
     },
@@ -373,7 +374,7 @@ const styles = StyleSheet.create({
     },
     streamTitle: {
         fontSize: moderateScale(18),
-        fontWeight: '700',
+        fontFamily: getFontFamily('700'),
         marginBottom: getSpacing(0.5),
         lineHeight: moderateScale(24),
     },
@@ -394,7 +395,7 @@ const styles = StyleSheet.create({
     },
     upcomingTitle: {
         fontSize: moderateScale(22),
-        fontWeight: '700',
+        fontFamily: getFontFamily('700'),
         textAlign: 'center',
         marginBottom: getSpacing(2),
     },
@@ -414,7 +415,7 @@ const styles = StyleSheet.create({
     },
     countdownText: {
         fontSize: moderateScale(32),
-        fontWeight: '700',
+        fontFamily: getFontFamily('700'),
         letterSpacing: 2,
     },
     startTimeText: {

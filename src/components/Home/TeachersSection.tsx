@@ -4,6 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import TeacherCard from '../TeacherCard';
 import ResponsiveView from '../ResponsiveView';
 import { moderateScale, getSpacing } from '../../utils/responsive';
+import { getFontFamily } from '../../utils/fonts';
 import { Theme } from '../../theme/theme';
 
 interface TeachersSectionProps {
@@ -67,7 +68,6 @@ const TeachersSection = memo(({ theme, teachers, title, hideTitle }: TeachersSec
                             {
                                 color: theme.colors.text,
                                 fontSize: moderateScale(20),
-                                fontWeight: '800',
                                 marginBottom: getSpacing(2),
                             },
                         ]}
@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
         // marginTop: getSpacing(2),
     },
     teachersSectionTitle: {
-        fontWeight: '800',
+        fontFamily: getFontFamily('800'),
     },
     teachersScrollContent: {
         paddingRight: getSpacing(2),

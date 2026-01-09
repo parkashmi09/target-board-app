@@ -392,15 +392,13 @@ const styles = StyleSheet.create({
   },
   largestText: {
     fontSize: moderateScale(26),
-    fontWeight: '600',
     letterSpacing: 0.5,
-    fontFamily: getFontFamily('200'),
+    fontFamily: getFontFamily('600'),
   },
   destinationText: {
     fontSize: moderateScale(22),
-    fontWeight: '400',
     marginTop: moderateScale(2),
-    fontFamily: getFontFamily('200'),
+    fontFamily: getFontFamily('400'),
   },
   dividerContainer: {
     flexDirection: 'row',
@@ -414,13 +412,12 @@ const styles = StyleSheet.create({
   dividerText: {
     marginHorizontal: getSpacing(2),
     fontSize: moderateScale(14),
-    fontFamily: getFontFamily('200'),
+    fontFamily: getFontFamily('400'),
   },
   label: {
     fontSize: moderateScale(15),
     marginBottom: getSpacing(1),
-    fontWeight: '500',
-    fontFamily: getFontFamily('200'),
+    fontFamily: getFontFamily('500'),
   },
   inputContainer: {
     marginBottom: getSpacing(3),
@@ -431,7 +428,7 @@ const styles = StyleSheet.create({
     paddingVertical: getSpacing(1.5),
     fontSize: moderateScale(15),
     borderWidth: 0,
-    fontFamily: getFontFamily('200'),
+    fontFamily: getFontFamily('400'),
   },
   button: {
     width: '100%',
@@ -458,9 +455,8 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#FFFFFF',
     fontSize: moderateScale(16),
-    fontWeight: '700',
     letterSpacing: 1,
-    fontFamily: getFontFamily('200'),
+    fontFamily: getFontFamily('700'),
   },
   buttonArrowContainer: {
     marginLeft: getSpacing(1),

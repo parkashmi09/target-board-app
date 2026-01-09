@@ -50,7 +50,6 @@ const ToppersSection = memo(({ theme }: ToppersSectionProps) => {
                     {
                         color: theme.colors.text,
                         fontSize: moderateScale(18),
-                        fontWeight: '700',
                         marginLeft: horizontalPadding,
                         marginBottom: getSpacing(0.8),
                     },
@@ -87,8 +86,7 @@ const styles = StyleSheet.create({
         marginVertical: getSpacing(1.2),
     },
     toppersSectionTitle: {
-        fontWeight: '700',
-        fontFamily: getFontFamily('200'),
+        fontFamily: getFontFamily('700'),
     },
     cardWrapper: {
         alignItems: 'stretch',

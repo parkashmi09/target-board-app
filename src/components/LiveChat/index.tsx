@@ -18,6 +18,7 @@ import {
 import { Send, Smile, MoreVertical, X, Pin } from 'lucide-react-native';
 import { useTheme } from '../../theme/theme';
 import { moderateScale, getSpacing, safeFont, safeLetterSpacing } from '../../utils/responsive';
+import { getFontFamily } from '../../utils/fonts';
 import { socketService, ChatMessage, ChatSettings, ChatTag } from '../../services/socketService';
 import EmojiPicker, { type EmojiType } from 'rn-emoji-keyboard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -860,7 +861,7 @@ const styles = StyleSheet.create({
     backButtonText: {
         fontSize: safeFont(24),
         color: '#000000',
-        fontWeight: '400',
+        fontFamily: getFontFamily('400'),
     },
     headerTitleContainer: {
         flex: 1,
@@ -870,7 +871,7 @@ const styles = StyleSheet.create({
     },
     headerTitle: {
         fontSize: safeFont(20, 18),
-        fontWeight: '600',
+        fontFamily: getFontFamily('600'),
         letterSpacing: safeLetterSpacing(0.5),
     },
     liveIndicator: {
@@ -890,7 +891,7 @@ const styles = StyleSheet.create({
     },
     liveText: {
         fontSize: safeFont(11),
-        fontWeight: '600',
+        fontFamily: getFontFamily('600'),
         color: '#f55473',
         textTransform: 'uppercase',
     },
@@ -913,7 +914,7 @@ const styles = StyleSheet.create({
     },
     privateModeText: {
         fontSize: safeFont(10),
-        fontWeight: 'bold',
+        fontFamily: getFontFamily('700'),
         color: '#FF5252',
     },
     pinnedContainer: {
@@ -927,14 +928,14 @@ const styles = StyleSheet.create({
     },
     pinnedLabel: {
         fontSize: safeFont(10),
-        fontWeight: '900',
+        fontFamily: getFontFamily('900'),
         textTransform: 'uppercase',
         letterSpacing: safeLetterSpacing(0.5),
     },
     pinnedText: {
         fontSize: safeFont(13),
         flex: 1,
-        fontWeight: '500',
+        fontFamily: getFontFamily('500'),
     },
     listContent: {
         padding: getSpacing(2),
@@ -968,7 +969,7 @@ const styles = StyleSheet.create({
     },
     avatarText: {
         fontSize: safeFont(15),
-        fontWeight: '600',
+        fontFamily: getFontFamily('600'),
     },
     messageBubble: {
         borderRadius: moderateScale(12),
@@ -989,7 +990,7 @@ const styles = StyleSheet.create({
     },
     replySender: {
         fontSize: safeFont(11),
-        fontWeight: 'bold',
+        fontFamily: getFontFamily('700'),
         marginBottom: 2,
     },
     replyText: {
@@ -1003,7 +1004,7 @@ const styles = StyleSheet.create({
     },
     senderName: {
         fontSize: safeFont(11, 10),
-        fontWeight: '600',
+        fontFamily: getFontFamily('600'),
         letterSpacing: safeLetterSpacing(0.2),
     },
     pinnedIconInMessage: {
@@ -1033,7 +1034,7 @@ const styles = StyleSheet.create({
     timestamp: {
         fontSize: safeFont(9),
         opacity: 0.85,
-        fontWeight: '400',
+        fontFamily: getFontFamily('400'),
     },
     pinnedIconTimestamp: {
         marginLeft: getSpacing(0.5),
@@ -1150,7 +1151,7 @@ const styles = StyleSheet.create({
     },
     reportTitle: {
         fontSize: safeFont(18),
-        fontWeight: '700',
+        fontFamily: getFontFamily('700'),
     },
     closeReportButton: {
         padding: getSpacing(0.5),
@@ -1179,7 +1180,7 @@ const styles = StyleSheet.create({
     },
     reportLabel: {
         fontSize: safeFont(14),
-        fontWeight: '600',
+        fontFamily: getFontFamily('600'),
         marginBottom: getSpacing(1.5),
     },
     reportReasonOption: {
@@ -1237,7 +1238,7 @@ const styles = StyleSheet.create({
     },
     reportCancelText: {
         fontSize: safeFont(14),
-        fontWeight: '600',
+        fontFamily: getFontFamily('600'),
     },
     reportSubmitButton: {
         flex: 1,
@@ -1249,7 +1250,7 @@ const styles = StyleSheet.create({
     reportSubmitText: {
         color: '#FFFFFF',
         fontSize: safeFont(14),
-        fontWeight: '700',
+        fontFamily: getFontFamily('700'),
     },
     suggestedRepliesContainer: {
         paddingHorizontal: getSpacing(2),

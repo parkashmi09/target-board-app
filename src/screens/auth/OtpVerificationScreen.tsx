@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Image, ScrollView, KeyboardAv
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../../theme/theme';
 import { moderateScale, getSpacing } from '../../utils/responsive';
+import { getFontFamily } from '../../utils/fonts';
 import { Images } from '../../assets/images';
 import { verifyOtp, fetchUserDetails } from '../../services/api';
 import { useToast } from '../../components/Toast';
@@ -201,7 +202,7 @@ const OtpVerificationScreen: React.FC = () => {
                 pinCodeTextStyle: {
                   color: theme.colors.text,
                   fontSize: moderateScale(20),
-                  fontWeight: '600',
+                  fontFamily: getFontFamily('600'),
                 },
                 focusedPinCodeContainerStyle: {
                   borderColor: theme.colors.secondary,
@@ -224,7 +225,6 @@ const OtpVerificationScreen: React.FC = () => {
                 styles.resendText,
                 {
                   color: showTimer ? theme.colors.textSecondary : theme.colors.accent,
-                  fontWeight: 'bold',
                 }
               ]}>
                 Resend OTP
@@ -276,12 +276,13 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: moderateScale(24),
-    fontWeight: 'bold',
+    fontFamily: getFontFamily('700'),
     textAlign: 'center',
     marginBottom: getSpacing(1),
   },
   subtitle: {
     fontSize: moderateScale(14),
+    fontFamily: getFontFamily('400'),
     textAlign: 'center',
     marginBottom: getSpacing(3),
   },
@@ -302,10 +303,11 @@ const styles = StyleSheet.create({
   },
   resendText: {
     fontSize: moderateScale(15),
+    fontFamily: getFontFamily('700'),
   },
   timerText: {
     fontSize: moderateScale(15),
-    fontWeight: '600',
+    fontFamily: getFontFamily('600'),
   },
   verifyButton: {
     width: '100%',
@@ -318,7 +320,7 @@ const styles = StyleSheet.create({
   verifyButtonText: {
     color: '#FFFFFF',
     fontSize: moderateScale(18),
-    fontWeight: '700',
+    fontFamily: getFontFamily('700'),
   },
 });
 

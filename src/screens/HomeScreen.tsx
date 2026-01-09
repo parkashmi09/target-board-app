@@ -1,27 +1,42 @@
+// React & React Native
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   StyleSheet,
   ScrollView,
   RefreshControl,
-  Dimensions,
   Animated,
 } from 'react-native';
-import { useTranslation } from 'react-i18next';
+
+// Navigation
 import { useFocusEffect } from '@react-navigation/native';
-import { useTheme } from '../theme/theme';
-import { moderateScale, getSpacing } from '../utils/responsive';
+
+// Third-party
+import { useTranslation } from 'react-i18next';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Hooks & Queries
 import { useCourses } from '../hooks/queries/useCourses';
 import { useTeachers } from '../hooks/queries/useTeachers';
 import { useBanners } from '../hooks/queries/useBanners';
 import { useStickyBanners } from '../hooks/queries/useStickyBanners';
 import { useUserDetails } from '../hooks/queries/useUserDetails';
+
+// Services
 import { fetchClasses } from '../services/api';
+
+// Store
 import { useLoaderStore } from '../store/loaderStore';
 import { useUIStore } from '../store';
+
+// Theme & Utils
+import { useTheme } from '../theme/theme';
+import { moderateScale, getSpacing } from '../utils/responsive';
+
+// Assets
 import { Images } from '../assets/images';
 
+// Components
 import GradientBackground from '../components/GradientBackground';
 import HomeHeader from '../components/Home/HomeHeader';
 import ImageBanner from '../components/ImageBanner';
@@ -104,16 +119,17 @@ const HomeScreen: React.FC = React.memo(() => {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await Promise.all([
+      // Fetch all data in parallel
+      const [classesData] = await Promise.all([
+        fetchClasses(),
         refetchUserDetails(),
         refetchTeachers(),
         refetchCourses(),
         refetchStickyBanners(),
         refetchBanners(),
-        fetchClasses(),
       ]);
 
-      const classesData = await fetchClasses();
+      // Update classes state
       if (Array.isArray(classesData)) {
         const formattedClasses = classesData.map((item: any) => ({
           label: item?.name || '',

@@ -16,6 +16,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MainStackParamList } from '../../navigation/MainStack';
 import { useTheme, ThemeContext } from '../../theme/theme';
 import { moderateScale, getSpacing } from '../../utils/responsive';
+import { getFontFamily } from '../../utils/fonts';
 import SVGIcon from '../SVGIcon';
 import CustomToggle from '../CustomToggle';
 import { useUIStore } from '../../store';
@@ -279,7 +280,7 @@ const Drawer: React.FC = () => {
                   <Text
                     style={{
                       fontSize: moderateScale(24),
-                      fontWeight: 'bold',
+                      fontFamily: getFontFamily('700'),
                       color: '#000000',
                     }}
                   >
@@ -294,7 +295,6 @@ const Drawer: React.FC = () => {
                 {
                   color: theme.colors.text,
                   fontSize: moderateScale(16),
-                  fontWeight: 'bold',
                   marginTop: getSpacing(1),
                   textAlign: 'center',
                 },
@@ -457,13 +457,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   drawerItemText: {
-    fontWeight: '500',
+    fontFamily: getFontFamily('500'),
   },
   logoutButton: {
     marginBottom: getSpacing(2),
   },
   logoutText: {
-    fontWeight: '600',
+    fontFamily: getFontFamily('600'),
   },
   profileSection: {
     alignItems: 'center',
@@ -481,10 +481,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   userName: {
-    fontWeight: 'bold',
+    fontFamily: getFontFamily('700'),
   },
   userEmail: {
-    fontWeight: '400',
+    fontFamily: getFontFamily('400'),
   },
   divider: {
     height: 1,
@@ -493,7 +493,7 @@ const styles = StyleSheet.create({
     marginTop: getSpacing(0.5),
   },
   sectionTitle: {
-    fontWeight: '600',
+    fontFamily: getFontFamily('600'),
   },
   languageButtons: {
     flexDirection: 'row',
@@ -503,7 +503,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   languageButtonText: {
-    fontWeight: '600',
+    fontFamily: getFontFamily('600'),
   },
 });
 

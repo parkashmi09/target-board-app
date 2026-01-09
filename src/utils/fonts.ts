@@ -13,10 +13,11 @@ export const getFontFamily = (weight?: string | number): string => {
 
   switch (fontWeight) {
     case '100':
-    case '200':
       return Font.Thin;
-    case '300':
+    case '200':
       return Font.ExtraLight;
+    case '300':
+      return Font.Light;
     case '400':
     case 'normal':
       return Font.Regular;
@@ -32,7 +33,7 @@ export const getFontFamily = (weight?: string | number): string => {
     case '900':
       return Font.Black;
     default:
-      return Font.Thin;
+      return Font.Regular; // Default to Regular instead of Thin
   }
 };
 

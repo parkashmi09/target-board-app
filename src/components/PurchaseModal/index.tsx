@@ -4,6 +4,7 @@ import Modal from 'react-native-modal';
 import { X } from 'lucide-react-native';
 import { useTheme } from '../../theme/theme';
 import { moderateScale, getSpacing } from '../../utils/responsive';
+import { getFontFamily } from '../../utils/fonts';
 import { Stream } from '../../services/api';
 
 interface PurchaseModalProps {
@@ -144,7 +145,7 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: moderateScale(16),
-        fontWeight: '700',
+        fontFamily: getFontFamily('700'),
         lineHeight: moderateScale(22),
     },
     priceRow: {
@@ -155,7 +156,7 @@ const styles = StyleSheet.create({
     },
     price: {
         fontSize: moderateScale(28),
-        fontWeight: '700',
+        fontFamily: getFontFamily('700'),
     },
     buyButton: {
         backgroundColor: '#001F3F',
@@ -167,7 +168,7 @@ const styles = StyleSheet.create({
     buyButtonText: {
         color: '#FFFFFF',
         fontSize: moderateScale(16),
-        fontWeight: '700',
+        fontFamily: getFontFamily('700'),
     },
     pricingInfo: {
         padding: getSpacing(2),
@@ -181,7 +182,7 @@ const styles = StyleSheet.create({
     },
     pricingText: {
         fontSize: moderateScale(12),
-        fontWeight: '500',
+        fontFamily: getFontFamily('500'),
     },
 });
 

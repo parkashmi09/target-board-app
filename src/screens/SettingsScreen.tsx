@@ -2,6 +2,7 @@ import React, { useCallback, useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { useTheme } from '../theme/theme';
 import { moderateScale, getSpacing } from '../utils/responsive';
+import { getFontFamily } from '../utils/fonts';
 import GradientBackground from '../components/GradientBackground';
 import ScreenHeader from '../components/ScreenHeader';
 import SVGIcon from '../components/SVGIcon';
@@ -175,7 +176,7 @@ const SettingsScreen: React.FC = () => {
               >
                 <Text style={{
                   color: currentLanguage === 'en' ? theme.colors.text : theme.colors.textSecondary,
-                  fontWeight: '600',
+                  fontFamily: getFontFamily('600'),
                   fontSize: moderateScale(14),
                 }}>English</Text>
               </TouchableOpacity>
@@ -191,7 +192,7 @@ const SettingsScreen: React.FC = () => {
               >
                 <Text style={{
                   color: currentLanguage === 'hi' ? theme.colors.text : theme.colors.textSecondary,
-                  fontWeight: '600',
+                  fontFamily: getFontFamily('600'),
                   fontSize: moderateScale(14),
                 }}>हिंदी</Text>
               </TouchableOpacity>
@@ -305,7 +306,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: moderateScale(14),
-    fontWeight: '500',
+    fontFamily: getFontFamily('500'),
     marginBottom: getSpacing(1.5),
     marginLeft: getSpacing(1),
   },
@@ -323,6 +324,7 @@ const styles = StyleSheet.create({
   },
   itemText: {
     fontSize: moderateScale(16),
+    fontFamily: getFontFamily('400'),
     marginLeft: getSpacing(2),
   },
   languageContainer: {
@@ -351,7 +353,7 @@ const styles = StyleSheet.create({
   logoutText: {
     color: '#ff4d4d',
     fontSize: moderateScale(16),
-    fontWeight: '600',
+    fontFamily: getFontFamily('600'),
   },
   footerContainer: {
     padding: getSpacing(2),

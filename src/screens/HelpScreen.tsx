@@ -14,6 +14,7 @@ import LottieView from 'lottie-react-native';
 import { Svg, Defs, LinearGradient, Stop, Rect, Circle } from 'react-native-svg';
 import { useTheme } from '../theme/theme';
 import { moderateScale, getSpacing } from '../utils/responsive';
+import { getFontFamily } from '../utils/fonts';
 import SVGIcon from '../components/SVGIcon';
 import GradientBackground from '../components/GradientBackground';
 import ScreenHeader from '../components/ScreenHeader';
@@ -248,13 +249,14 @@ const styles = StyleSheet.create({
     },
     mainTitle: {
         fontSize: moderateScale(26),
-        fontWeight: '800',
+        fontFamily: getFontFamily('800'),
         marginBottom: getSpacing(1),
         textAlign: 'center',
         letterSpacing: -0.5,
     },
     subTitle: {
         fontSize: moderateScale(15),
+        fontFamily: getFontFamily('400'),
         textAlign: 'center',
         lineHeight: moderateScale(22),
         paddingHorizontal: getSpacing(2),
@@ -313,12 +315,13 @@ const styles = StyleSheet.create({
     },
     cardTitle: {
         fontSize: moderateScale(18),
-        fontWeight: '700',
+        fontFamily: getFontFamily('700'),
         marginBottom: moderateScale(6),
         letterSpacing: -0.3,
     },
     cardSubtitle: {
         fontSize: moderateScale(14),
+        fontFamily: getFontFamily('400'),
         lineHeight: moderateScale(20),
     },
     chevronContainer: {
@@ -341,6 +344,7 @@ const styles = StyleSheet.create({
     },
     infoText: {
         fontSize: moderateScale(13),
+        fontFamily: getFontFamily('400'),
         flex: 1,
         lineHeight: moderateScale(18),
     },

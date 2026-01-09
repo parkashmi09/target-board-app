@@ -13,6 +13,7 @@ import { Svg, Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { useQuery } from '@tanstack/react-query';
 import { useTheme } from '../../theme/theme';
 import { moderateScale, getSpacing } from '../../utils/responsive';
+import { getFontFamily } from '../../utils/fonts';
 import { Images } from '../../assets/images';
 import { fetchCourseDetails } from '../../services/api';
 import CoursePurchaseModal from '../CoursePurchaseModal';
@@ -285,7 +286,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: moderateScale(12),
-    fontWeight: '600',
+    fontFamily: getFontFamily('600'),
     marginBottom: getSpacing(0.5),
   },
   priceContainer: {
@@ -301,7 +302,7 @@ const styles = StyleSheet.create({
   },
   currentPrice: {
     fontSize: moderateScale(18),
-    fontWeight: '800',
+    fontFamily: getFontFamily('800'),
   },
   originalPrice: {
     fontSize: moderateScale(12),
@@ -321,7 +322,7 @@ const styles = StyleSheet.create({
   discountText: {
     color: '#fff',
     fontSize: 9,
-    fontWeight: '700',
+    fontFamily: getFontFamily('700'),
   },
   actions: {
     flexDirection: 'row',
@@ -339,7 +340,7 @@ const styles = StyleSheet.create({
   detailsText: {
     color: '#FFFFFF',
     fontSize: moderateScale(14),
-    fontWeight: '700',
+    fontFamily: getFontFamily('700'),
   },
   contentBtn: {
     flex: 1,
@@ -352,7 +353,7 @@ const styles = StyleSheet.create({
   contentText: {
     color: '#FFFFFF',
     fontSize: moderateScale(14),
-    fontWeight: '700',
+    fontFamily: getFontFamily('700'),
   },
   buyBtn: {
     flex: 1,
@@ -363,7 +364,7 @@ const styles = StyleSheet.create({
   },
   buyText: {
     color: '#fff',
-    fontWeight: '700',
+    fontFamily: getFontFamily('700'),
   },
   purchasedBtn: {
     backgroundColor: '#4CAF50',

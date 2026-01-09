@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Keyboa
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../../theme/theme';
 import { moderateScale, getSpacing } from '../../utils/responsive';
+import { getFontFamily } from '../../utils/fonts';
 import { useToast } from '../../components/Toast';
 import { useGlobalLoaderManual } from '../../components/GlobalLoader';
 import { useRegistrationDataStore, useAuthStore } from '../../store';
@@ -324,7 +325,7 @@ const RegisterStep2Screen: React.FC = () => {
                         styles.classText,
                         {
                           color: theme.colors.text,
-                          fontWeight: isSelected ? '600' : '400'
+                          fontFamily: isSelected ? getFontFamily('600') : getFontFamily('400')
                         }
                       ]}>
                         {item.name}
@@ -375,7 +376,7 @@ const RegisterStep2Screen: React.FC = () => {
                             styles.boardName,
                             {
                               color: theme.colors.text,
-                              fontWeight: isSelected ? '600' : '500'
+                              fontFamily: isSelected ? getFontFamily('600') : getFontFamily('500')
                             }
                           ]}>
                             {item.name}
@@ -491,7 +492,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: moderateScale(18),
-    fontWeight: '600',
+    fontFamily: getFontFamily('600'),
   },
   content: {
     paddingHorizontal: getSpacing(2),
@@ -501,12 +502,12 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: moderateScale(16),
-    fontWeight: '500',
+    fontFamily: getFontFamily('500'),
     marginBottom: getSpacing(2),
   },
   label: {
     fontSize: moderateScale(14),
-    fontWeight: '500',
+    fontFamily: getFontFamily('500'),
     marginBottom: getSpacing(1),
   },
   input: {
@@ -515,6 +516,7 @@ const styles = StyleSheet.create({
     paddingVertical: getSpacing(1.5),
     fontSize: moderateScale(16),
     borderWidth: 1,
+    fontFamily: getFontFamily('400'),
   },
   classGrid: {
     flexDirection: 'row',
@@ -546,6 +548,7 @@ const styles = StyleSheet.create({
   },
   classText: {
     fontSize: moderateScale(14),
+    fontFamily: getFontFamily('400'),
     flex: 1,
   },
   boardList: {
@@ -577,6 +580,7 @@ const styles = StyleSheet.create({
   },
   boardName: {
     fontSize: moderateScale(16),
+    fontFamily: getFontFamily('500'),
     flex: 1,
   },
   modalOverlay: {
@@ -592,7 +596,7 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: moderateScale(18),
-    fontWeight: '600',
+    fontFamily: getFontFamily('600'),
     marginBottom: getSpacing(3),
     textAlign: 'center',
   },
@@ -626,7 +630,7 @@ const styles = StyleSheet.create({
   },
   mediumName: {
     fontSize: moderateScale(16),
-    fontWeight: '500',
+    fontFamily: getFontFamily('500'),
   },
   closeButton: {
     marginTop: getSpacing(3),

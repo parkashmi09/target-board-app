@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, FlatList, ActivityIndicator, RefreshControl, An
 import { StatusBar } from 'react-native';
 import { useTheme } from '../theme/theme';
 import { moderateScale, getSpacing } from '../utils/responsive';
+import { getFontFamily } from '../utils/fonts';
 import GradientBackground from '../components/GradientBackground';
 import ScreenHeader from '../components/ScreenHeader';
 import FilterTabs, { FilterTab } from '../components/FilterTabs';
@@ -469,7 +470,7 @@ const styles = StyleSheet.create({
     },
     downloadItemTitle: {
         fontSize: moderateScale(16),
-        fontWeight: '600',
+        fontFamily: getFontFamily('600'),
         marginBottom: getSpacing(0.5),
     },
     downloadItemSubtitle: {
@@ -511,7 +512,7 @@ const styles = StyleSheet.create({
     },
     emptyCardTitle: {
         fontSize: moderateScale(18),
-        fontWeight: '600',
+        fontFamily: getFontFamily('600'),
         marginTop: getSpacing(2),
         textAlign: 'center',
     },

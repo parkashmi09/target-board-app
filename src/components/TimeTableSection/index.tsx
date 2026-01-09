@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Image } from 'react-native';
 import { CalendarDays } from 'lucide-react-native';
 import { useTheme } from '../../theme/theme';
+import { getFontFamily } from '../../utils/fonts';
 
 interface TimeTableSectionProps {
   timetableUrl?: string;
@@ -41,7 +42,7 @@ const styles = StyleSheet.create({
   },
   headerText: {
     fontSize: 18,
-    fontWeight: '700',
+    fontFamily: getFontFamily('700'),
     marginLeft: 8,
   },
   image: {

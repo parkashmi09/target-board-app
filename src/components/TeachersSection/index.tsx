@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useTheme } from '../../theme/theme';
+import { getFontFamily } from '../../utils/fonts';
 import CourseTeacherCard from '../CourseTeacherCard';
 
 interface TeachersSectionProps {
@@ -78,7 +79,7 @@ const styles = StyleSheet.create({
     },
     headerPillText: {
         fontSize: 16,
-        fontWeight: '600',
+        fontFamily: getFontFamily('600'),
     },
     grid: {
         flexDirection: 'row',

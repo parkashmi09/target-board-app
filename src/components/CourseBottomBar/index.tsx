@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { useTheme } from '../../theme/theme';
+import { getFontFamily } from '../../utils/fonts';
 
 interface CourseBottomBarProps {
     currentPrice: number;
@@ -95,7 +96,7 @@ const styles = StyleSheet.create({
     priceMain: {
         color: '#FFFFFF',
         fontSize: 28,
-        fontWeight: '700',
+        fontFamily: getFontFamily('700'),
     },
     priceOriginal: {
         color: '#B0BEC5',
@@ -113,7 +114,7 @@ const styles = StyleSheet.create({
     discountText: {
         color: '#000',
         fontSize: 12,
-        fontWeight: '700',
+        fontFamily: getFontFamily('700'),
     },
     buyButton: {
         backgroundColor: '#FFC107',
@@ -125,7 +126,7 @@ const styles = StyleSheet.create({
     buyButtonText: {
         color: '#000',
         fontSize: 18,
-        fontWeight: '700',
+        fontFamily: getFontFamily('700'),
     },
     purchasedButton: {
         backgroundColor: '#4CAF50',
@@ -137,7 +138,7 @@ const styles = StyleSheet.create({
     purchasedText: {
         color: '#FFFFFF',
         fontSize: 16,
-        fontWeight: '600',
+        fontFamily: getFontFamily('600'),
     },
 });
 

@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Animated, Image, TouchableOpacity } from 'react
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../theme/theme';
 import { moderateScale, getSpacing } from '../../utils/responsive';
+import { getFontFamily } from '../../utils/fonts';
 import SVGIcon from '../SVGIcon';
 import { Images } from '../../assets/images';
 import LottieView from 'lottie-react-native';
@@ -168,8 +169,7 @@ const CategoryTabs: React.FC<CategoryTabsProps> = () => {
                 {
                   color: colors.textColor,
                   fontSize: moderateScale(12),
-                  fontFamily: theme.typography.body.fontFamily,
-                  fontWeight: '600',
+                  fontFamily: getFontFamily('600'),
                   marginTop: getSpacing(0.5),
                 },
               ]}
@@ -217,8 +217,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     aspectRatio: 1,
-    elevation: 3,
-    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
+    shadowOffset: { width: 0, height: 1 },
     shadowRadius: 4,
     position: 'relative',
     overflow: 'visible',
