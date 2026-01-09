@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, StyleSheet, Dimensions, ActivityIndicator, Text } from 'react-native';
-import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
+import { useRoute, RouteProp } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 // @ts-ignore - react-native-tpstreams types may not be available
 import { TPStreams, TPStreamsPlayerView } from 'react-native-tpstreams';
@@ -21,7 +21,6 @@ TPStreams.initialize(TPSTREAMS_ORG_ID);
 
 const StreamPlayerScreen: React.FC = () => {
     const route = useRoute<StreamPlayerScreenRouteProp>();
-    const navigation = useNavigation();
     const { colors } = useTheme();
     const { streamId, tpAssetId, hlsUrl } = route.params || {};
 
@@ -31,10 +30,8 @@ const StreamPlayerScreen: React.FC = () => {
         hlsUrl,
     });
 
-    const [loading, setLoading] = useState(true);
     const [chatRoomId, setChatRoomId] = useState<string | undefined>(undefined);
     const [username, setUsername] = useState<string>('Guest');
-    const [error, setError] = useState<string | null>(null);
     const [isPlayerReady, setIsPlayerReady] = useState(false);
     const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
     const [streamStatus, setStreamStatus] = useState<string | undefined>(undefined);
@@ -181,53 +178,6 @@ const StreamPlayerScreen: React.FC = () => {
     }, [streamData]);
 
 
-    // TPStreams Player Event Handlers
-    const handlePlayerStateChanged = useCallback((state: number) => {
-        switch (state) {
-            case 0: // Player is idle
-            case 1: // Player is buffering
-                setLoading(true);
-                break;
-            case 2: // Player is ready
-                setLoading(false);
-                setError(null);
-                break;
-            case 3: // Video ended
-                setLoading(false);
-                // Check stream status from API response instead of player state
-                // Navigation will be handled by the stream status check
-                break;
-            default:
-                setLoading(false);
-        }
-    }, [navigation]);
-
-    const handleIsLoadingChanged = useCallback((isLoading: boolean) => {
-        // Only update loading state if it's actually changing
-        // This prevents unnecessary re-renders and buffering issues
-        setLoading(prevLoading => {
-            if (prevLoading !== isLoading) {
-                return isLoading;
-            }
-            return prevLoading;
-        });
-    }, []);
-
-    const handleError = useCallback((errorData: any) => {
-        if (__DEV__) {
-            console.error('[StreamPlayerScreen] TPStreams Player error:', errorData);
-        }
-        setLoading(false);
-        setError('Failed to load stream');
-    }, []);
-
-    const handleAccessTokenExpired = useCallback(
-        async (videoId: string, callback: (token: string) => void) => {
-            // Return the same token (in production, fetch a new token from backend)
-            callback(TPSTREAMS_ACCESS_TOKEN);
-        },
-        []
-    );
 
     // Check if stream is upcoming or live
     const isUpcoming = streamData ? getStreamStatus(streamData).label === 'UPCOMING' : false;
@@ -290,11 +240,7 @@ const StreamPlayerScreen: React.FC = () => {
                             shouldAutoPlay={true}
                             showDefaultCaptions={false}
                             enableDownload={false}
-                            style={[styles.video, { width: '100%', height: '100%' }]}
-                            onPlayerStateChanged={handlePlayerStateChanged}
-                            onIsLoadingChanged={handleIsLoadingChanged}
-                            onError={handleError}
-                            onAccessTokenExpired={handleAccessTokenExpired}
+                            style={styles.video}
                         />
                     ) : (
                         // Loading state
@@ -302,25 +248,6 @@ const StreamPlayerScreen: React.FC = () => {
                             <ActivityIndicator size="large" color={colors.primary} />
                             <Text style={[styles.loadingText, { color: colors.text }]}>
                                 {isLive ? 'Loading stream...' : 'Preparing stream...'}
-                            </Text>
-                        </View>
-                    )}
-
-                    {/* Loading Indicator */}
-                    {loading && (
-                        <View style={styles.loadingOverlay}>
-                            <ActivityIndicator size="large" color={colors.primary || '#9C27B0'} />
-                            <Text style={[styles.loadingText, { color: colors.text }]}>
-                                Loading stream...
-                            </Text>
-                        </View>
-                    )}
-
-                    {/* Error Overlay */}
-                    {error && (
-                        <View style={styles.errorOverlay}>
-                            <Text style={[styles.errorText, { color: colors.error || 'red' }]}>
-                                {error}
                             </Text>
                         </View>
                     )}
@@ -395,29 +322,10 @@ const styles = StyleSheet.create({
         height: '100%',
         backgroundColor: 'black',
     },
-    loadingOverlay: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    },
     loadingText: {
         marginTop: getSpacing(1),
         fontSize: moderateScale(14),
         fontWeight: '500',
-    },
-    errorOverlay: {
-        position: 'absolute',
-        bottom: getSpacing(2),
-        left: getSpacing(2),
-        right: getSpacing(2),
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-        padding: getSpacing(2),
-        borderRadius: moderateScale(8),
     },
     errorContainer: {
         flex: 1,
