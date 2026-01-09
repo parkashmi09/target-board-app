@@ -36,7 +36,7 @@ const StreamPlayerScreen: React.FC = () => {
     const [username, setUsername] = useState<string>('Guest');
     const [error, setError] = useState<string | null>(null);
     const [isPlayerReady, setIsPlayerReady] = useState(false);
-    const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
+    const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
     const [streamStatus, setStreamStatus] = useState<string | undefined>(undefined);
     const [streamTpStatus, setStreamTpStatus] = useState<string | undefined>(undefined);
     const [streamTitle, setStreamTitle] = useState<string | undefined>(undefined);
@@ -60,8 +60,12 @@ const StreamPlayerScreen: React.FC = () => {
         loadToken();
     }, []);
 
-    // Calculate responsive video height (16:9 aspect ratio)
-    const videoHeight = useMemo(() => screenWidth * (9 / 16), [screenWidth]);
+    // Calculate responsive video height (16:9 aspect ratio) with proper orientation handling
+    const videoHeight = useMemo(() => {
+        const width = screenDimensions.width;
+        const aspectRatio = 16 / 9;
+        return width / aspectRatio;
+    }, [screenDimensions.width]);
 
     // Use tpAssetId as videoId for TPStreamsPlayerView
     const videoId = useMemo(() => {
@@ -90,10 +94,10 @@ const StreamPlayerScreen: React.FC = () => {
         loadUsername();
     }, []);
 
-    // Track screen dimensions
+    // Track screen dimensions for orientation changes
     useEffect(() => {
         const subscription = Dimensions.addEventListener('change', ({ window }) => {
-            setScreenWidth(window.width);
+            setScreenDimensions(window);
         });
         return () => subscription?.remove();
     }, []);
@@ -199,7 +203,14 @@ const StreamPlayerScreen: React.FC = () => {
     }, [navigation]);
 
     const handleIsLoadingChanged = useCallback((isLoading: boolean) => {
-        setLoading(isLoading);
+        // Only update loading state if it's actually changing
+        // This prevents unnecessary re-renders and buffering issues
+        setLoading(prevLoading => {
+            if (prevLoading !== isLoading) {
+                return isLoading;
+            }
+            return prevLoading;
+        });
     }, []);
 
     const handleError = useCallback((errorData: any) => {
@@ -279,7 +290,7 @@ const StreamPlayerScreen: React.FC = () => {
                             shouldAutoPlay={true}
                             showDefaultCaptions={false}
                             enableDownload={false}
-                            style={styles.video}
+                            style={[styles.video, { width: '100%', height: '100%' }]}
                             onPlayerStateChanged={handlePlayerStateChanged}
                             onIsLoadingChanged={handleIsLoadingChanged}
                             onError={handleError}
@@ -376,6 +387,8 @@ const styles = StyleSheet.create({
         position: 'relative',
         justifyContent: 'center',
         alignItems: 'center',
+        // Prevent dimension stretching on orientation change
+        minHeight: 200,
     },
     video: {
         width: '100%',
