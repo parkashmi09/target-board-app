@@ -32,7 +32,7 @@ const CourseSection: React.FC<CourseSectionProps> = memo(({ courses, theme }) =>
 
   const renderItem = useCallback(
     ({ item }: { item: any }) => {
-      if (!item) return <View />;
+      if (!item) return <View style={{ width: cardWidth }} />;
 
       const selectedPackage =
         item?.packages?.find((p: any) => p.isDefault) ||
@@ -144,7 +144,9 @@ const styles = StyleSheet.create({
     fontFamily: getFontFamily('200'),
   },
   cardWrapper: {
-    alignItems: 'stretch', // 🔥 FULL WIDTH
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 

@@ -601,7 +601,7 @@ const ClassStreamsScreen: React.FC = () => {
                 translucent={false}
             />
             <View style={[styles.container, { backgroundColor: 'transparent' }]}>
-                <ScreenHeader showSearch={false} title="Live Classes" onBackPress={handleBackPress} />
+                <ScreenHeader showSearch={false} title="Live Classes" />
                 <FilterTabs
                     tabs={filterTabs}
                     activeTab={activeTab}

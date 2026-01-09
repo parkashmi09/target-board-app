@@ -410,7 +410,7 @@ const PaymentCheckoutScreen: React.FC = () => {
 
   // Handle phone call
   const handlePhoneCall = useCallback(async () => {
-    const phoneNumber = '+918929752338';
+    const phoneNumber = '8114532021';
     const url = `tel:${phoneNumber}`;
     try {
       const canOpen = await Linking.canOpenURL(url);

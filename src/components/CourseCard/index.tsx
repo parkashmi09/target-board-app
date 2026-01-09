@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Image,
   Dimensions,
+  LayoutChangeEvent,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Svg, Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
@@ -57,22 +58,50 @@ const CourseCard: React.FC<CourseCardProps> = React.memo(
   }) => {
     const theme = useTheme();
     const navigation = useNavigation<any>();
+    const cardRef = useRef<View>(null);
+    const [cardWidth, setCardWidth] = useState<number | null>(null);
 
-    // ✅ NO WIDTH CALCULATION HERE
+    // Calculate banner height based on actual card width (16:9 aspect ratio)
     const bannerHeight = useMemo(() => {
-      const width = Dimensions.get('window').width;
-      return width * (9 / 18);
-    }, []);
+      if (cardWidth) {
+        return cardWidth * (9 / 16);
+      }
+      // Fallback calculation using window width
+      const windowWidth = Dimensions.get('window').width;
+      const horizontalPadding = moderateScale(12);
+      const peekAmount = moderateScale(26);
+      const estimatedCardWidth = windowWidth - horizontalPadding * 2 - peekAmount;
+      return estimatedCardWidth * (9 / 16);
+    }, [cardWidth]);
+
+    const handleCardLayout = useCallback((event: LayoutChangeEvent) => {
+      const { width } = event.nativeEvent.layout;
+      if (width > 0 && width !== cardWidth) {
+        setCardWidth(width);
+      }
+    }, [cardWidth]);
 
     const gradient = gradientColors || ['#FFFACD', '#FFE4B5'];
 
     const [showModal, setShowModal] = useState(false);
+    const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
+    const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
     const { data: course } = useQuery({
       queryKey: ['courseDetails', courseId],
       queryFn: () => fetchCourseDetails(String(courseId)),
       enabled: showModal && !!courseId,
     });
+
+    // Set default package when course loads
+    React.useEffect(() => {
+      if (course?.packages && course.packages.length > 0) {
+        const defaultPackage = course.packages.find((pkg: any) => pkg.isDefault) || course.packages[0];
+        if (defaultPackage?._id) {
+          setSelectedPackageId(defaultPackage._id);
+        }
+      }
+    }, [course]);
 
     const handleBuyNow = useCallback(() => {
       if (!courseId) return;
@@ -88,6 +117,27 @@ const CourseCard: React.FC<CourseCardProps> = React.memo(
         });
       }
     }, [courseId, packages, originalPrice, currentPrice, navigation]);
+
+    const handlePackageSelect = useCallback((packageId: string) => {
+      setSelectedPackageId(packageId);
+    }, []);
+
+    const handlePayment = useCallback(() => {
+      if (!courseId || !selectedPackageId) return;
+      setIsProcessingPayment(true);
+      const selectedPackage = course?.packages?.find((pkg: any) => pkg._id === selectedPackageId);
+      const packagePrice = selectedPackage?.price || currentPrice;
+      
+      navigation.navigate('PaymentCheckout', {
+        courseId: String(courseId),
+        packageId: selectedPackageId,
+        originalPrice,
+        currentPrice: packagePrice,
+      });
+      
+      setShowModal(false);
+      setIsProcessingPayment(false);
+    }, [courseId, selectedPackageId, course, originalPrice, currentPrice, navigation]);
 
     const handleDetailsPress = useCallback(() => {
       if (courseId) {
@@ -107,7 +157,11 @@ const CourseCard: React.FC<CourseCardProps> = React.memo(
     }, [courseId, navigation, title]);
 
     return (
-      <View style={styles.card}>
+      <View 
+        ref={cardRef}
+        style={styles.card}
+        onLayout={handleCardLayout}
+      >
         <Svg style={StyleSheet.absoluteFill}>
           <Defs>
             <LinearGradient id={`grad-${title}`} x1="0%" y1="0%" x2="100%" y2="100%">
@@ -188,10 +242,17 @@ const CourseCard: React.FC<CourseCardProps> = React.memo(
           <CoursePurchaseModal
             visible={showModal}
             course={course}
+            courseFeatures={course.courseFeatures || {}}
             originalPrice={originalPrice}
             currentPrice={currentPrice}
-            onClose={() => setShowModal(false)}
-            onPayment={() => setShowModal(false)}
+            selectedPackageId={selectedPackageId}
+            isProcessingPayment={isProcessingPayment}
+            onClose={() => {
+              setShowModal(false);
+              setIsProcessingPayment(false);
+            }}
+            onPayment={handlePayment}
+            onPackageSelect={handlePackageSelect}
           />
         )}
       </View>
@@ -201,13 +262,16 @@ const CourseCard: React.FC<CourseCardProps> = React.memo(
 
 const styles = StyleSheet.create({
   card: {
-    width: '95%', // 🔥 FULL WIDTH
+    width: '95%', // Use full width of container
+    maxWidth: '100%', // Prevent stretching beyond container
     borderRadius: moderateScale(16),
     overflow: 'hidden',
-
+    // minHeight: moderateScale(200),
+    alignSelf: 'stretch', // Prevent stretching
   },
   content: {
     position: 'relative',
+    width: '100%',
   },
   banner: {
     width: '100%',

@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Image,
-  Share,
   Platform,
   PermissionsAndroid,
   Dimensions,
@@ -27,6 +26,8 @@ import { createPaymentLink } from '../services/api';
 import { useQuery } from '@tanstack/react-query';
 import { useToast } from '../components/Toast';
 import ReactNativeBlobUtil from 'react-native-blob-util';
+import Share from 'react-native-share';
+
 
 type QRCodePaymentRouteProp = RouteProp<
   MainStackParamList,
@@ -178,77 +179,44 @@ const QRCodePaymentScreen: React.FC = () => {
   };
 
   /* ---------------- SHARE ---------------- */
+  // import Share from 'react-native-share';
+
   const handleShare = async () => {
-    if (!qrImageUrl || sharing) {
-      if (!qrImageUrl) {
-        toast.show({ text: 'QR code not available', type: 'error' });
-      }
-      return;
-    }
-
-    const batchName =
-      paymentLinkData?.batchName ||
-      paymentLinkData?.courseName ||
-      'इस';
-
-    const shareText =
-      `हमें ${batchName} बैच में जुड़ना है।\n` +
-      `इसके लिए इस QR Code को scan करके पेमेंट कर दीजिए।`;
-
+    if (!qrImageUrl || sharing) return;
+  
     try {
       setSharing(true);
-
-      // First, download the image to a temporary location
+  
       const { dirs } = ReactNativeBlobUtil.fs;
-      const tempFileName = `QRCode_Share_${Date.now()}.png`;
-      const tempPath = `${dirs.CacheDir}/${tempFileName}`;
-
-      // Download the image to cache
+      const filePath = `${dirs.CacheDir}/QRCode_${Date.now()}.png`;
+  
       const response = await ReactNativeBlobUtil.config({
         fileCache: true,
-        path: tempPath,
+        path: filePath,
       }).fetch('GET', qrImageUrl);
-
-      const imagePath = response.path();
-
-      // Share the image file with text
-      // For both iOS and Android, use the file path format
-      const fileUri = Platform.OS === 'ios' 
-        ? `file://${imagePath}` 
-        : `file://${imagePath}`;
-
-      // Share with image file
-      const shareOptions: any = {
-        message: shareText,
+  
+      if (!(await ReactNativeBlobUtil.fs.exists(response.path()))) {
+        throw new Error('File not found');
+      }
+  
+      await Share.open({
         title: 'QR Code Payment',
-      };
-
-      // Add URL for sharing the image file
-      if (Platform.OS === 'android') {
-        shareOptions.url = fileUri;
-      } else {
-        shareOptions.url = fileUri;
-      }
-
-      await Share.share(shareOptions);
+        urls: [response.path()],
+        type: 'image/png',
+        failOnCancel: false,
+      });
+  
       toast.show({ text: 'QR code shared successfully', type: 'success' });
-    } catch (error: any) {
+    } catch (error) {
       console.error('Share error:', error);
-      
-      // Fallback to sharing URL if file share fails
-      try {
-        await Share.share({
-          message: shareText + '\n\n' + qrImageUrl,
-          title: 'QR Code Payment',
-        });
-        toast.show({ text: 'QR code shared successfully', type: 'success' });
-      } catch (fallbackError) {
-        toast.show({ text: 'Failed to share QR code', type: 'error' });
-      }
+      toast.show({ text: 'Failed to share QR code', type: 'error' });
     } finally {
       setSharing(false);
     }
   };
+  
+  
+  
 
   return (
     <GradientBackground>

@@ -747,7 +747,7 @@ const CategoryContentScreen: React.FC = () => {
                       </TouchableOpacity>
                       
                       {/* PDF Button for Video Items */}
-                      {item.type === 'video' && relatedPdf && (
+                      {/* {item.type === 'video' && relatedPdf && (
                         <TouchableOpacity
                           style={[styles.pdfButton, { backgroundColor: '#FFEBEE', borderColor: '#FF0000' }]}
                           onPress={() => handleContentPress(relatedPdf)}
@@ -767,7 +767,7 @@ const CategoryContentScreen: React.FC = () => {
                             </View>
                           </View>
                         </TouchableOpacity>
-                      )}
+                      )} */}
                     </View>
                   );
                 }}

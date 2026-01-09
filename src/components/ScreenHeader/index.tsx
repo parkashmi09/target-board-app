@@ -10,8 +10,8 @@ import {
   Easing,
   BackHandler,
 } from 'react-native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { ChevronLeft, X, Search } from 'lucide-react-native';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../theme/theme';
 import { moderateScale, getSpacing } from '../../utils/responsive';
 
@@ -21,6 +21,7 @@ interface ScreenHeaderProps {
   placeholder?: string;
   defaultValue?: string;
   rightComponent?: React.ReactNode;
+  onSearch?: (text: string) => void;
 }
 
 const ScreenHeader: React.FC<ScreenHeaderProps> = ({
@@ -29,6 +30,7 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
   placeholder = 'Search',
   defaultValue = '',
   rightComponent,
+  onSearch,
 }) => {
   const navigation = useNavigation<any>();
   const { colors, isDark } = useTheme();
@@ -49,11 +51,11 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
 
     const currentRoute = state.routes[state.index];
 
-    // Case 1: HomeStack
+    // HomeStack handling
     if (currentRoute.name === 'HomeStack') {
       const stackState = currentRoute.state;
 
-      // Inside HomeStack (not HomeScreen)
+      // Inner screen → goBack
       if (stackState?.index > 0) {
         navigation.goBack();
         return true;
@@ -67,7 +69,7 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
       return true;
     }
 
-    // Case 2: Any other tab → Home
+    // Any other tab → Home
     navigation.navigate('HomeStack', {
       screen: 'HomeScreen',
       params: { refresh: Date.now() },
@@ -85,7 +87,7 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
     }, [goHomeOrBack])
   );
 
-  /* ---------------- SEARCH ANIMATION ---------------- */
+  /* ---------------- SEARCH STATE ---------------- */
 
   useEffect(() => {
     setSearchText(defaultValue);
@@ -95,12 +97,14 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
     if (!showSearch) setIsSearchActive(false);
   }, [showSearch]);
 
+  /* ---------------- SEARCH ANIMATION ---------------- */
+
   useEffect(() => {
     if (isSearchActive) {
       slideAnim.setValue(-screenWidth);
       Animated.timing(slideAnim, {
         toValue: 0,
-        duration: 280,
+        duration: 300,
         easing: Easing.out(Easing.ease),
         useNativeDriver: true,
       }).start(() => {
@@ -122,6 +126,7 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
     if (isSearchActive) {
       setIsSearchActive(false);
       setSearchText('');
+      onSearch?.('');
       return;
     }
     goHomeOrBack();
@@ -129,11 +134,20 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
 
   const handleSearchChange = (text: string) => {
     setSearchText(text);
+    onSearch?.(text);
   };
 
+  const handleClear = () => {
+    setSearchText('');
+    onSearch?.('');
+    inputRef.current?.focus();
+  };
+
+  const openSearch = () => setIsSearchActive(true);
   const closeSearch = () => {
     setIsSearchActive(false);
     setSearchText('');
+    onSearch?.('');
   };
 
   /* ---------------- UI ---------------- */
@@ -169,10 +183,7 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
 
           <View style={styles.rightIcons}>
             {rightComponent}
-            <TouchableOpacity
-              onPress={() => setIsSearchActive(true)}
-              style={styles.iconButton}
-            >
+            <TouchableOpacity onPress={openSearch} style={styles.iconButton}>
               <Search size={moderateScale(22)} color={colors.text} />
             </TouchableOpacity>
           </View>
@@ -206,11 +217,19 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
             { color: colors.text, backgroundColor: colors.background },
           ]}
           returnKeyType="search"
+          autoCapitalize="none"
+          autoCorrect={false}
         />
 
-        <TouchableOpacity onPress={closeSearch} style={styles.iconButton}>
-          <X size={moderateScale(20)} color={colors.textSecondary} />
-        </TouchableOpacity>
+        {searchText.length > 0 ? (
+          <TouchableOpacity onPress={handleClear} style={styles.iconButton}>
+            <X size={moderateScale(20)} color={colors.textSecondary} />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity onPress={closeSearch} style={styles.iconButton}>
+            <X size={moderateScale(20)} color={colors.textSecondary} />
+          </TouchableOpacity>
+        )}
       </Animated.View>
     </View>
   );
@@ -222,7 +241,7 @@ export default ScreenHeader;
 
 const styles = StyleSheet.create({
   headerContainer: {
-    marginTop: getSpacing(4),
+    marginTop: getSpacing(2),
     minHeight: moderateScale(56),
     position: 'relative',
     zIndex: 1000,
@@ -235,8 +254,8 @@ const styles = StyleSheet.create({
     paddingVertical: getSpacing(1.5),
   },
   backButton: {
+    marginRight: getSpacing(1.5),
     padding: getSpacing(0.5),
-    marginRight: getSpacing(1),
   },
   headerTitle: {
     flex: 1,
