@@ -22,6 +22,12 @@ export interface ChatSettings {
     messageGapSeconds: number;
 }
 
+export interface ChatTag {
+    id: string;
+    tag: string;
+    order: number;
+}
+
 export interface RoomData {
     streamId: string;
     settings: ChatSettings;
@@ -30,6 +36,7 @@ export interface RoomData {
     userName: string;
     pinnedMessage: any | null;
     isAdmin: boolean;
+    isBlocked?: boolean;
 }
 
 export interface JoinRoomPayload {
@@ -168,6 +175,10 @@ class SocketService {
 
     onReportError(callback: (error: { message: string }) => void) {
         this.socket?.on('report-error', callback);
+    }
+
+    onChatTags(callback: (data: { tags: ChatTag[] }) => void) {
+        this.socket?.on('chat-tags', callback);
     }
 
     off(event: string) {

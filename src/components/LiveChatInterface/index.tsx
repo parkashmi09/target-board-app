@@ -19,7 +19,7 @@ import {
 } from 'react-native';
 import { Svg, Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { useTheme } from '../../theme/theme';
-import { moderateScale, getSpacing } from '../../utils/responsive';
+import { moderateScale, getSpacing, safeFont } from '../../utils/responsive';
 import { Send, Radio, Settings, X, Copy, Trash2, MessageSquare } from 'lucide-react-native';
 import { socketService, ChatMessage, ChatSettings, RoomData } from '../../services/socketService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -572,7 +572,7 @@ const LiveChatInterface: React.FC<LiveChatInterfaceProps> = ({
                 styles.textInput,
                 {
                   color: theme.colors.text,
-                  fontSize: moderateScale(14),
+                  fontSize: safeFont(14),
                 },
               ]}
               placeholder="Type your question..."
@@ -742,7 +742,7 @@ const styles = StyleSheet.create({
     gap: getSpacing(1),
   },
   headerTitle: {
-    fontSize: moderateScale(18),
+    fontSize: safeFont(18),
     fontWeight: '700',
     marginLeft: getSpacing(0.5),
   },
@@ -754,7 +754,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   connectionStatusText: {
-    fontSize: moderateScale(11),
+    fontSize: safeFont(11),
     fontWeight: '600',
     marginLeft: getSpacing(0.5),
     textTransform: 'uppercase',
@@ -770,7 +770,7 @@ const styles = StyleSheet.create({
   },
   liveBadgeText: {
     color: '#FFFFFF',
-    fontSize: moderateScale(10),
+    fontSize: safeFont(10),
     fontWeight: '700',
   },
   pinnedMessageContainer: {
@@ -779,14 +779,14 @@ const styles = StyleSheet.create({
     borderTopWidth: 0,
   },
   pinnedLabel: {
-    fontSize: moderateScale(10),
+    fontSize: safeFont(10),
     fontWeight: '700',
     marginBottom: getSpacing(0.5),
     textTransform: 'uppercase',
   },
   pinnedText: {
-    fontSize: moderateScale(13),
-    lineHeight: moderateScale(18),
+    fontSize: safeFont(13),
+    lineHeight: safeFont(18, 16),
   },
   messagesList: {
     flexGrow: 1,
@@ -816,16 +816,16 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   senderName: {
-    fontSize: moderateScale(11),
+    fontSize: safeFont(11),
     fontWeight: '600',
     marginBottom: getSpacing(0.5),
   },
   messageText: {
-    fontSize: moderateScale(14),
-    lineHeight: moderateScale(20),
+    fontSize: safeFont(14),
+    lineHeight: safeFont(20, 16),
   },
   timestamp: {
-    fontSize: moderateScale(10),
+    fontSize: safeFont(10),
     marginTop: getSpacing(0.5),
     alignSelf: 'flex-end',
   },
@@ -857,7 +857,7 @@ const styles = StyleSheet.create({
     marginLeft: getSpacing(1),
   },
   chatDisabledText: {
-    fontSize: moderateScale(11),
+    fontSize: safeFont(11),
     marginTop: getSpacing(0.5),
     textAlign: 'center',
     fontStyle: 'italic',
@@ -869,7 +869,7 @@ const styles = StyleSheet.create({
     paddingVertical: getSpacing(8),
   },
   emptyText: {
-    fontSize: moderateScale(14),
+    fontSize: safeFont(14),
     fontStyle: 'italic',
     marginTop: getSpacing(1),
   },
@@ -900,7 +900,7 @@ const styles = StyleSheet.create({
     borderBottomColor: 'rgba(0, 0, 0, 0.1)',
   },
   settingsTitle: {
-    fontSize: moderateScale(20),
+    fontSize: safeFont(20),
     fontWeight: '700',
   },
   closeSettingsButton: {
@@ -922,12 +922,12 @@ const styles = StyleSheet.create({
     marginRight: getSpacing(2),
   },
   settingLabel: {
-    fontSize: moderateScale(16),
+    fontSize: safeFont(16),
     fontWeight: '600',
     marginBottom: getSpacing(0.5),
   },
   settingDescription: {
-    fontSize: moderateScale(12),
+    fontSize: safeFont(12),
   },
   divider: {
     height: 1,
@@ -943,7 +943,7 @@ const styles = StyleSheet.create({
   },
   actionButtonText: {
     color: '#FFFFFF',
-    fontSize: moderateScale(14),
+    fontSize: safeFont(14),
     fontWeight: '600',
   },
 });

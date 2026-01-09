@@ -13,7 +13,7 @@
  */
 
 import Font from '../font';
-import { moderateScale } from '../responsive';
+import { moderateScale, safeFont } from '../responsive';
 
 const Typography = {
   // Font family styles
@@ -28,63 +28,63 @@ const Typography = {
   fontBlack: { fontFamily: Font.Black },
   fontPoppins: { fontFamily: Font.Poppins },
 
-  // Font sizes (using moderateScale for responsive sizing)
-  textSize10: { fontSize: moderateScale(10) },
-  textSize12: { fontSize: moderateScale(12) },
-  textSize14: { fontSize: moderateScale(14) },
-  textSize16: { fontSize: moderateScale(16) },
-  textSize18: { fontSize: moderateScale(18) },
-  textSize20: { fontSize: moderateScale(20) },
-  textSize22: { fontSize: moderateScale(22) },
-  textSize24: { fontSize: moderateScale(24) },
-  textSize26: { fontSize: moderateScale(26) },
-  textSize28: { fontSize: moderateScale(28) },
-  textSize30: { fontSize: moderateScale(30) },
-  textSize32: { fontSize: moderateScale(32) },
-  textSize36: { fontSize: moderateScale(36) },
-  textSize40: { fontSize: moderateScale(40) },
-  textSize48: { fontSize: moderateScale(48) },
+  // Font sizes (using safeFont for responsive sizing - prevents negative values)
+  textSize10: { fontSize: safeFont(10) },
+  textSize12: { fontSize: safeFont(12) },
+  textSize14: { fontSize: safeFont(14) },
+  textSize16: { fontSize: safeFont(16) },
+  textSize18: { fontSize: safeFont(18) },
+  textSize20: { fontSize: safeFont(20) },
+  textSize22: { fontSize: safeFont(22) },
+  textSize24: { fontSize: safeFont(24) },
+  textSize26: { fontSize: safeFont(26) },
+  textSize28: { fontSize: safeFont(28) },
+  textSize30: { fontSize: safeFont(30) },
+  textSize32: { fontSize: safeFont(32) },
+  textSize36: { fontSize: safeFont(36) },
+  textSize40: { fontSize: safeFont(40) },
+  textSize48: { fontSize: safeFont(48) },
 
   // Common typography combinations
   h1: {
     fontFamily: Font.Bold,
-    fontSize: moderateScale(32),
-    lineHeight: moderateScale(40),
+    fontSize: safeFont(32),
+    lineHeight: safeFont(40, 32),
   },
   h2: {
     fontFamily: Font.Bold,
-    fontSize: moderateScale(24),
-    lineHeight: moderateScale(32),
+    fontSize: safeFont(24),
+    lineHeight: safeFont(32, 24),
   },
   h3: {
     fontFamily: Font.SemiBold,
-    fontSize: moderateScale(20),
-    lineHeight: moderateScale(28),
+    fontSize: safeFont(20),
+    lineHeight: safeFont(28, 20),
   },
   body: {
     fontFamily: Font.Regular,
-    fontSize: moderateScale(16),
-    lineHeight: moderateScale(24),
+    fontSize: safeFont(16),
+    lineHeight: safeFont(24, 18),
   },
   bodySmall: {
     fontFamily: Font.Regular,
-    fontSize: moderateScale(14),
-    lineHeight: moderateScale(20),
+    fontSize: safeFont(14),
+    lineHeight: safeFont(20, 16),
   },
   caption: {
     fontFamily: Font.Regular,
-    fontSize: moderateScale(12),
-    lineHeight: moderateScale(16),
+    fontSize: safeFont(12),
+    lineHeight: safeFont(16, 14),
   },
   button: {
     fontFamily: Font.SemiBold,
-    fontSize: moderateScale(16),
-    lineHeight: moderateScale(24),
+    fontSize: safeFont(16),
+    lineHeight: safeFont(24, 18),
   },
   label: {
     fontFamily: Font.Medium,
-    fontSize: moderateScale(14),
-    lineHeight: moderateScale(20),
+    fontSize: safeFont(14),
+    lineHeight: safeFont(20, 16),
   },
 };
 

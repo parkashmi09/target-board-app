@@ -13,12 +13,13 @@ import {
     Modal,
     Animated,
     ScrollView,
+    Keyboard,
 } from 'react-native';
-import { Send, Smile, MoreVertical, X } from 'lucide-react-native';
+import { Send, Smile, MoreVertical, X, Pin } from 'lucide-react-native';
 import { useTheme } from '../../theme/theme';
-import { moderateScale, getSpacing } from '../../utils/responsive';
-import { socketService, ChatMessage, ChatSettings } from '../../services/socketService';
-import EmojiSelector from 'react-native-emoji-selector';
+import { moderateScale, getSpacing, safeFont, safeLetterSpacing } from '../../utils/responsive';
+import { socketService, ChatMessage, ChatSettings, ChatTag } from '../../services/socketService';
+import EmojiPicker, { type EmojiType } from 'rn-emoji-keyboard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface LiveChatProps {
@@ -69,9 +70,13 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
     const [reportReason, setReportReason] = useState<'spam' | 'harassment' | 'inappropriate' | 'other' | null>(null);
     const [reportDescription, setReportDescription] = useState('');
     const [isReporting, setIsReporting] = useState(false);
-    
+    const [chatTags, setChatTags] = useState<ChatTag[]>([]);
+    const [keyboardHeight, setKeyboardHeight] = useState(0);
+    const [isBlocked, setIsBlocked] = useState(false);
+
     // Animation refs
     const emojiButtonScale = useRef(new Animated.Value(1)).current;
+    const inputContainerTranslateY = useRef(new Animated.Value(0)).current;
 
     // Simple JWT Decode to get user ID
     useEffect(() => {
@@ -100,10 +105,13 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
         // Listeners
         socketService.onJoinedRoom((data) => {
             console.log('[LiveChat] Joined room:', data);
+            console.log('[LiveChat] Pinned message:', data.pinnedMessage);
+            console.log('[LiveChat] Is blocked:', data.isBlocked);
             setIsConnected(true);
             setMessages(data.recentMessages || []);
             setSettings(data.settings);
             setPinnedMessage(data.pinnedMessage);
+            setIsBlocked(data.isBlocked || false);
             setLoading(false);
         });
 
@@ -136,6 +144,11 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
             console.error('[LiveChat] Socket error:', error);
         });
 
+        socketService.onChatTags((data) => {
+            console.log('[LiveChat] Chat tags received:', data);
+            setChatTags(data.tags || []);
+        });
+
         return () => {
             socketService.leaveStream(streamId);
             socketService.disconnect();
@@ -148,9 +161,47 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
         }
     }, [messages]);
 
+    // Keyboard listeners
+    useEffect(() => {
+        const keyboardWillShow = (e: any) => {
+            const height = e.endCoordinates?.height || 0;
+            setKeyboardHeight(height);
+            Animated.timing(inputContainerTranslateY, {
+                toValue: -height * 0.1, // Shift slightly upwards
+                duration: 250,
+                useNativeDriver: true,
+            }).start();
+        };
 
-    const handleEmojiSelect = useCallback((emoji: string) => {
-        setInputText((prev) => prev + emoji);
+        const keyboardWillHide = () => {
+            setKeyboardHeight(0);
+            Animated.timing(inputContainerTranslateY, {
+                toValue: 0,
+                duration: 250,
+                useNativeDriver: true,
+            }).start();
+        };
+
+        if (Platform.OS === 'ios') {
+            const showSubscription = Keyboard.addListener('keyboardWillShow', keyboardWillShow);
+            const hideSubscription = Keyboard.addListener('keyboardWillHide', keyboardWillHide);
+            return () => {
+                showSubscription.remove();
+                hideSubscription.remove();
+            };
+        } else {
+            const showSubscription = Keyboard.addListener('keyboardDidShow', keyboardWillShow);
+            const hideSubscription = Keyboard.addListener('keyboardDidHide', keyboardWillHide);
+            return () => {
+                showSubscription.remove();
+                hideSubscription.remove();
+            };
+        }
+    }, [inputContainerTranslateY]);
+
+
+    const handleEmojiSelect = useCallback((emojiObject: EmojiType) => {
+        setInputText((prev) => prev + emojiObject.emoji);
         setShowEmojiPicker(false);
     }, []);
 
@@ -178,6 +229,30 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
         setInputText('');
     };
 
+    const handleTagSelect = useCallback((tag: string) => {
+        console.log('[LiveChat] Tag selected:', tag);
+        socketService.sendMessage(streamId, tag);
+    }, [streamId]);
+
+    const handlePinnedMessagePress = useCallback(() => {
+        if (!pinnedMessage?.messageId) return;
+
+        // Find the index of the pinned message
+        const messageIndex = messages.findIndex((msg) => msg.id === pinnedMessage.messageId);
+
+        if (messageIndex !== -1) {
+            // Scroll to the message
+            flatListRef.current?.scrollToIndex({
+                index: messageIndex,
+                animated: true,
+                viewPosition: 0.5, // Center the message
+            });
+        } else {
+            // Message not found in current messages, show alert
+            Alert.alert('Message Not Found', 'The pinned message is not in the current chat history.');
+        }
+    }, [pinnedMessage, messages]);
+
     const handleReportMessage = useCallback((message: ChatMessage) => {
         // Don't allow reporting own messages
         if (message.userId === currentUserId) {
@@ -204,7 +279,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
         try {
             // Try Socket.io first (preferred for real-time)
             socketService.reportMessage(streamId, selectedMessage.id, reportReason, reportDescription || undefined);
-            
+
             // Set up one-time listeners
             const successHandler = (data: { reportId: string; message: string }) => {
                 console.log('[LiveChat] Report success:', data);
@@ -217,7 +292,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
                 socketService.off('report-success');
                 socketService.off('report-error');
             };
-            
+
             const errorHandler = (error: { message: string }) => {
                 console.error('[LiveChat] Report error:', error);
                 Alert.alert('Error', error.message || 'Failed to report message. Please try again.');
@@ -225,10 +300,10 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
                 socketService.off('report-success');
                 socketService.off('report-error');
             };
-            
+
             socketService.onReportSuccess(successHandler);
             socketService.onReportError(errorHandler);
-            
+
             // Fallback to HTTP after 3 seconds if no socket response
             setTimeout(() => {
                 if (isReporting) {
@@ -247,10 +322,10 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
 
     const handleReportViaHTTP = useCallback(async () => {
         if (!selectedMessage || !reportReason || !streamId) return;
-        
+
         try {
             const CHAT_SERVICE_URL = 'https://shark-app-2-dzcvn.ondigitalocean.app';
-            
+
             console.log('[LiveChat] Reporting via HTTP:', {
                 url: `${CHAT_SERVICE_URL}/api/v1/chat/report/${streamId}`,
                 messageId: selectedMessage.id,
@@ -271,11 +346,11 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
             });
 
             const data = await response.json();
-            
+
             if (!response.ok) {
                 throw new Error(data?.message || `Failed to report message`);
             }
-            
+
             console.log('[LiveChat] Report success via HTTP:', data);
             Alert.alert('Success', 'Message reported successfully. Thank you for helping keep our community safe.');
             setShowReportModal(false);
@@ -324,6 +399,12 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
         const replyTo = item.originalMessageId ? getReplyMessage(item.originalMessageId) : null;
         const messageAnim = getMessageAnim(item.id);
         const canReport = !isOwnMessage && isConnected;
+        const isPinned = pinnedMessage?.messageId === item.id;
+
+        // Debug: Log pinned message check
+        if (isPinned) {
+            console.log('[LiveChat] Pinned message found:', { messageId: item.id, pinnedMessageId: pinnedMessage?.messageId });
+        }
 
         return (
             <TouchableOpacity
@@ -331,118 +412,134 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
                 onLongPress={() => canReport && handleReportMessage(item)}
                 delayLongPress={500}
             >
-            <Animated.View style={[
-                styles.messageRow,
-                isOwnMessage ? styles.ownMessageRow : styles.otherMessageRow,
-                {
-                    opacity: messageAnim,
-                    transform: [
-                        {
-                            translateY: messageAnim.interpolate({
-                                inputRange: [0, 1],
-                                outputRange: [20, 0],
-                            }),
-                        },
-                        {
-                            scale: messageAnim.interpolate({
-                                inputRange: [0, 1],
-                                outputRange: [0.9, 1],
-                            }),
-                        },
-                    ],
-                },
-            ]}>
-                {!isOwnMessage && (
-                    <View style={[styles.avatar, { 
-                        backgroundColor: isAdmin 
-                            ? '#FFD700' 
-                            : '#E0E0E0'
-                    }]}>
-                        <Text style={[styles.avatarText, { 
-                            color: isAdmin 
-                                ? '#000000' 
-                                : '#000000'
-                        }]}>
-                            {item.userName.charAt(0).toUpperCase()}
-                        </Text>
-                    </View>
-                )}
-
-                <View style={[
-                    styles.messageBubble,
-                    isOwnMessage ?
-                        { 
-                            backgroundColor: '#FFFFFF', 
-                            borderRadius: moderateScale(4),
-                            elevation: 1,
-                            shadowColor: '#000',
-                            shadowOffset: { width: 0, height: 1 },
-                            shadowOpacity: 0.08,
-                            shadowRadius: 1,
-                        } :
-                        { 
-                            backgroundColor: '#FF4444', 
-                            borderRadius: moderateScale(4),
-                            elevation: 1,
-                            shadowColor: '#000',
-                            shadowOffset: { width: 0, height: 1 },
-                            shadowOpacity: 0.1,
-                            shadowRadius: 1,
-                        },
-                    isAdmin && !isOwnMessage && { 
-                        backgroundColor: '#FF6666', 
-                    }
+                <Animated.View style={[
+                    styles.messageRow,
+                    isOwnMessage ? styles.ownMessageRow : styles.otherMessageRow,
+                    {
+                        opacity: messageAnim,
+                        transform: [
+                            {
+                                translateY: messageAnim.interpolate({
+                                    inputRange: [0, 1],
+                                    outputRange: [20, 0],
+                                }),
+                            },
+                            {
+                                scale: messageAnim.interpolate({
+                                    inputRange: [0, 1],
+                                    outputRange: [0.9, 1],
+                                }),
+                            },
+                        ],
+                    },
                 ]}>
-                    {replyTo && (
-                        <View style={[styles.replyContainer, { borderLeftColor: isOwnMessage ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.5)' }]}>
-                            <Text style={[styles.replySender, { color: isOwnMessage ? '#000000' : '#FFFFFF' }]}>{replyTo.userName}</Text>
-                            <Text numberOfLines={1} style={[styles.replyText, { color: isOwnMessage ? '#666666' : 'rgba(255,255,255,0.8)' }]}>
-                                {replyTo.message}
+                    {!isOwnMessage && (
+                        <View style={[styles.avatar, {
+                            backgroundColor: isAdmin
+                                ? '#FFD700'
+                                : '#E0E0E0'
+                        }]}>
+                            <Text style={[styles.avatarText, {
+                                color: isAdmin
+                                    ? '#000000'
+                                    : '#000000'
+                            }]}>
+                                {item.userName.charAt(0).toUpperCase()}
                             </Text>
                         </View>
                     )}
 
-                    {/* Show sender name for all messages */}
-                        <Text style={[styles.senderName, { 
-                            color: isOwnMessage 
-                                ? '#000000' 
-                                : '#FFFFFF'
-                        }]}>
-                            {isOwnMessage ? 'You' : item.userName} {isAdmin && '�️'}
+                    <View style={[
+                        styles.messageBubble,
+                        isOwnMessage ?
+                            {
+                                backgroundColor: '#f55473',
+                                borderRadius: moderateScale(12),
+                                position: 'relative',
+                                borderWidth: isPinned ? 1 : 0,
+                                borderColor: isPinned ? '#FFD700' : 'transparent',
+                                // elevation: 1,
+                                // shadowColor: '#000',
+                                // shadowOffset: { width: 0, height: 1 },
+                                // shadowOpacity: 0.1,
+                                // shadowRadius: 1,
+                            } :
+                            {
+                                backgroundColor: '#FFFFFF',
+                                position: 'relative',
+                                borderWidth: isPinned ? 1 : 0,
+                                borderColor: isPinned ? '#FFD700' : 'transparent',
+
+                            },
+                        isAdmin && !isOwnMessage && {
+                            backgroundColor: '#F5F5F5',
+                        }
+                    ]}>
+                        {replyTo && (
+                            <View style={[styles.replyContainer, { borderLeftColor: isOwnMessage ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.2)' }]}>
+                                <Text style={[styles.replySender, { color: isOwnMessage ? '#FFFFFF' : '#000000' }]}>{replyTo.userName}</Text>
+                                <Text numberOfLines={1} style={[styles.replyText, { color: isOwnMessage ? 'rgba(255,255,255,0.8)' : '#666666' }]}>
+                                    {replyTo.message}
+                                </Text>
+                            </View>
+                        )}
+
+                        {/* Show sender name only for received messages */}
+                        {!isOwnMessage && (
+                            <View style={styles.senderNameContainer}>
+                                <Text style={[styles.senderName, {
+                                    color: '#000000'
+                                }]}>
+                                    {item.userName} {isAdmin && '👑'}
+                                </Text>
+                                {/* {isPinned && (
+                                <Pin size={moderateScale(14)} color="#FFD700" fill="#FFD700" />
+                            )} */}
+                            </View>
+                        )}
+
+
+
+                        <Text style={[
+                            styles.messageText,
+                            {
+                                color: isOwnMessage
+                                    ? '#FFFFFF'
+                                    : '#000000'
+                            }
+                        ]}>
+                            {item.message}
                         </Text>
 
-                    <Text style={[
-                        styles.messageText,
-                        { 
-                            color: isOwnMessage 
-                                ? '#000000' 
-                                : '#FFFFFF'
-                        }
-                    ]}>
-                        {item.message}
-                    </Text>
-
-                    <Text style={[
-                        styles.timestamp,
-                        { 
-                            color: isOwnMessage 
-                                ? '#666666' 
-                                : 'rgba(255,255,255,0.85)'
-                        }
-                    ]}>
-                        {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </Text>
-                </View>
-                {canReport && (
-                    <TouchableOpacity
-                        style={styles.reportButton}
-                        onPress={() => handleReportMessage(item)}
-                        activeOpacity={0.7}
-                    >
-                        <MoreVertical size={moderateScale(20)} color="#999999" />
-                    </TouchableOpacity>
-                )}
-            </Animated.View>
+                        <View style={styles.timestampContainer}>
+                            {isPinned && !isOwnMessage && (
+                                <Pin size={moderateScale(12)} color="#FFD700" fill="#FFD700" />
+                            )}
+                            <Text style={[
+                                styles.timestamp,
+                                {
+                                    color: isOwnMessage
+                                        ? 'rgba(255,255,255,0.85)'
+                                        : '#666666'
+                                }
+                            ]}>
+                                {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </Text>
+                            {isPinned && isOwnMessage && (
+                                <Pin size={moderateScale(12)} color="rgba(255,255,255,0.9)" fill="rgba(255,255,255,0.9)" />
+                            )}
+                        </View>
+                    </View>
+                    {canReport && (
+                        <TouchableOpacity
+                            style={styles.reportButton}
+                            onPress={() => handleReportMessage(item)}
+                            activeOpacity={0.7}
+                        >
+                            <MoreVertical size={moderateScale(20)} color="#999999" />
+                        </TouchableOpacity>
+                    )}
+                </Animated.View>
             </TouchableOpacity>
         );
     };
@@ -462,56 +559,9 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
         >
-            {/* Header */}
-            <View style={[styles.header, { 
-                borderBottomColor: colors.border, 
-                backgroundColor: '#FFFFFF',
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.1,
-                shadowRadius: 4,
-                elevation: 4,
-            }]}>
-                <View style={styles.headerContent}>
-                    {onClose && (
-                        <TouchableOpacity onPress={onClose} style={styles.backButton}>
-                            <Text style={styles.backButtonText}>←</Text>
-                        </TouchableOpacity>
-                    )}
-                    <View style={styles.headerTitleContainer}>
-                        <Text style={[styles.headerTitle, { color: '#000000' }]}>
-                            Live Chat
-                        </Text>
-                        {isConnected && (
-                            <View style={styles.liveIndicator}>
-                                <View style={styles.liveDot} />
-                                <Text style={styles.liveText}>Live</Text>
-                    </View>
-                        )}
-                    </View>
-                    <TouchableOpacity style={styles.searchButton}>
-                        <Text style={styles.searchIcon}>🔍</Text>
-                    </TouchableOpacity>
-                    {settings?.isPrivateMode && (
-                        <View style={[styles.privateBadge, { 
-                            backgroundColor: colors.error + '20',
-                            borderColor: colors.error 
-                        }]}>
-                            <Text style={[styles.privateModeText, { color: colors.error }]}>Private</Text>
-                        </View>
-                    )}
-                </View>
-            </View>
 
-            {/* Pinned Message */}
-            {pinnedMessage && (
-                <View style={[styles.pinnedContainer, { backgroundColor: isDark ? '#332b00' : '#fff9c4', borderBottomColor: '#FFD700' }]}>
-                    <View style={styles.pinnedContent}>
-                        <Text style={[styles.pinnedLabel, { color: '#FFD700' }]}>Pinned</Text>
-                        <Text numberOfLines={1} style={[styles.pinnedText, { color: colors.text }]}>{pinnedMessage.message}</Text>
-                    </View>
-                </View>
-            )}
+
+
 
             {/* Messages List */}
             <FlatList
@@ -524,6 +574,15 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
                     { backgroundColor: '#F5F5F5' }
                 ]}
                 showsVerticalScrollIndicator={false}
+                onScrollToIndexFailed={(info) => {
+                    // Fallback: scroll to end if index not found
+                    setTimeout(() => {
+                        flatListRef.current?.scrollToOffset({
+                            offset: info.averageItemLength * info.index,
+                            animated: true,
+                        });
+                    }, 100);
+                }}
                 ListEmptyComponent={
                     <View style={styles.emptyContainer}>
                         <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
@@ -533,16 +592,53 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
                 }
             />
 
+            {/* Suggested Reply Buttons */}
+            {!isBlocked && chatTags.length > 0 && !inputText && (
+                <View style={styles.suggestedRepliesContainer}>
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.suggestedRepliesContent}
+                    >
+                        {chatTags
+                            .sort((a, b) => a.order - b.order)
+                            .map((tag) => (
+                                <TouchableOpacity
+                                    key={tag.id}
+                                    style={styles.suggestedReplyButton}
+                                    onPress={() => handleTagSelect(tag.tag)}
+                                    activeOpacity={0.7}
+                                >
+                                    <Text style={styles.suggestedReplyText}>{tag.tag}</Text>
+                                </TouchableOpacity>
+                            ))}
+                    </ScrollView>
+                </View>
+            )}
+
             {/* Input Area */}
-            {settings?.isChatEnabled !== false ? (
-                <View style={[styles.inputContainer, { 
-                    borderTopColor: '#E0E0E0', 
-                    backgroundColor: '#FFFFFF',
-                    paddingBottom: Math.max(insets.bottom, getSpacing(2)),
+            {isBlocked ? (
+                <View style={[styles.blockedContainer, {
+                    backgroundColor: '#f55473',
+                    // paddingBottom: Math.max(insets.bottom, getSpacing(2)),
                 }]}>
+                    <Text style={styles.blockedText}>You are blocked by admin</Text>
+                </View>
+            ) : settings?.isChatEnabled !== false ? (
+                <Animated.View
+                    style={[
+                        styles.inputContainer,
+                        {
+                            // borderTopColor: '#E0E0E0', 
+                            backgroundColor: '#FFFFFF',
+                            paddingBottom: Math.max(insets.bottom, getSpacing(2)),
+                            transform: [{ translateY: inputContainerTranslateY }],
+                        }
+                    ]}
+                >
                     <Animated.View style={{ transform: [{ scale: emojiButtonScale }] }}>
                         <TouchableOpacity
-                            style={styles.emojiButton}
+                            style={styles.emojiPickerButton}
                             onPress={toggleEmojiPicker}
                         >
                             <Smile size={moderateScale(22)} color="#666666" />
@@ -565,22 +661,22 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
                         blurOnSubmit={false}
                     />
                     <TouchableOpacity
-                        style={[styles.sendButton, { 
+                        style={[styles.sendButton, {
                             backgroundColor: inputText.trim() && isConnected
-                                ? '#FF4444' 
-                                : '#E0E0E0' 
+                                ? '#f55473'
+                                : '#E0E0E0'
                         }]}
                         onPress={handleSendMessage}
                         disabled={!inputText.trim() || !settings?.isChatEnabled || !isConnected}
                     >
-                        <Send 
-                            size={20} 
+                        <Send
+                            size={20}
                             color={inputText.trim() && isConnected
-                                ? '#FFFFFF' 
-                                : '#999999'} 
+                                ? '#FFFFFF'
+                                : '#999999'}
                         />
                     </TouchableOpacity>
-                </View>
+                </Animated.View>
             ) : (
                 <View style={[styles.disabledContainer, { backgroundColor: colors.cardBackground }]}>
                     <Text style={[styles.disabledText, { color: colors.textSecondary }]}>
@@ -589,47 +685,12 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
                 </View>
             )}
 
-            {/* Emoji Picker Modal */}
-            <Modal
-                visible={showEmojiPicker}
-                transparent
-                animationType="slide"
-                onRequestClose={() => setShowEmojiPicker(false)}
-            >
-                <TouchableOpacity
-                    style={styles.emojiModalOverlay}
-                    activeOpacity={1}
-                    onPress={() => setShowEmojiPicker(false)}
-                >
-                    <View style={[styles.emojiPickerContainer, {
-                        backgroundColor: colors.cardBackground,
-                        borderColor: colors.border
-                    }]}>
-                        <View style={[styles.emojiPickerHeader, {
-                            borderBottomColor: colors.border
-                        }]}>
-                            <Text style={[styles.emojiPickerTitle, { color: colors.text }]}>
-                                Select Emoji
-                            </Text>
-                            <TouchableOpacity
-                                onPress={() => setShowEmojiPicker(false)}
-                                style={styles.emojiPickerClose}
-                            >
-                                <Text style={[styles.emojiPickerCloseText, { color: colors.text }]}>
-                                    ✕
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
-                        <EmojiSelector
-                            onEmojiSelected={(emoji: string) => handleEmojiSelect(emoji)}
-                            showTabs={true}
-                            showSearchBar={true}
-                            showSectionTitles={true}
-                            columns={8}
-                        />
-                    </View>
-                </TouchableOpacity>
-            </Modal>
+            {/* Emoji Picker */}
+            <EmojiPicker
+                onEmojiSelected={handleEmojiSelect}
+                open={showEmojiPicker}
+                onClose={() => setShowEmojiPicker(false)}
+            />
 
             {/* Report Message Modal */}
             <Modal
@@ -638,7 +699,10 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
                 animationType="fade"
                 onRequestClose={() => !isReporting && setShowReportModal(false)}
             >
-                <View style={styles.modalOverlay}>
+                <KeyboardAvoidingView
+                    style={styles.modalOverlay}
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                >
                     <View style={[styles.reportModal, { backgroundColor: colors.cardBackground }]}>
                         <View style={styles.reportHeader}>
                             <View style={styles.reportHeaderLeft}>
@@ -648,7 +712,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
                                 </Text>
                             </View>
                             {!isReporting && (
-                                    <TouchableOpacity
+                                <TouchableOpacity
                                     onPress={() => setShowReportModal(false)}
                                     style={styles.closeReportButton}
                                 >
@@ -657,18 +721,14 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
                             )}
                         </View>
 
-                        <ScrollView style={styles.reportContent} showsVerticalScrollIndicator={false}>
-                            {selectedMessage && (
-                                <View style={[styles.reportedMessagePreview, { backgroundColor: colors.inputBackground }]}>
-                                    <Text style={[styles.reportedMessageText, { color: colors.textSecondary }]}>
-                                        "{selectedMessage.message}"
-                                    </Text>
-                                    <Text style={[styles.reportedMessageAuthor, { color: colors.textSecondary }]}>
-                                        - {selectedMessage.userName}
-                                    </Text>
-                                </View>
-                            )}
-
+                        <ScrollView
+                            style={styles.reportContent}
+                            contentContainerStyle={styles.reportContentContainer}
+                            showsVerticalScrollIndicator={true}
+                            keyboardShouldPersistTaps="handled"
+                            nestedScrollEnabled={true}
+                            bounces={false}
+                        >
                             <Text style={[styles.reportLabel, { color: colors.text }]}>
                                 Why are you reporting this message?
                             </Text>
@@ -700,8 +760,8 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
                                     <Text style={[styles.reportReasonText, { color: colors.text }]}>
                                         {reason.charAt(0).toUpperCase() + reason.slice(1).replace(/_/g, ' ')}
                                     </Text>
-                                    </TouchableOpacity>
-                                ))}
+                                </TouchableOpacity>
+                            ))}
 
                             {reportReason === 'other' && (
                                 <View style={styles.reportDescriptionContainer}>
@@ -760,7 +820,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
                             </View>
                         </ScrollView>
                     </View>
-                </View>
+                </KeyboardAvoidingView>
             </Modal>
         </KeyboardAvoidingView>
     );
@@ -777,7 +837,7 @@ const styles = StyleSheet.create({
         gap: 10,
     },
     loadingText: {
-        fontSize: moderateScale(14),
+        fontSize: safeFont(14),
     },
     header: {
         paddingHorizontal: getSpacing(2),
@@ -798,7 +858,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     backButtonText: {
-        fontSize: moderateScale(24),
+        fontSize: safeFont(24),
         color: '#000000',
         fontWeight: '400',
     },
@@ -809,9 +869,9 @@ const styles = StyleSheet.create({
         gap: getSpacing(1),
     },
     headerTitle: {
-        fontSize: moderateScale(20),
+        fontSize: safeFont(20, 18),
         fontWeight: '600',
-        letterSpacing: 0.5,
+        letterSpacing: safeLetterSpacing(0.5),
     },
     liveIndicator: {
         flexDirection: 'row',
@@ -819,19 +879,19 @@ const styles = StyleSheet.create({
         gap: 6,
         paddingHorizontal: 10,
         paddingVertical: 4,
-        backgroundColor: '#FF444420',
+        backgroundColor: '#f5547320',
         borderRadius: 12,
     },
     liveDot: {
         width: 8,
         height: 8,
         borderRadius: 4,
-        backgroundColor: '#FF4444',
+        backgroundColor: '#f55473',
     },
     liveText: {
-        fontSize: moderateScale(11),
+        fontSize: safeFont(11),
         fontWeight: '600',
-        color: '#FF4444',
+        color: '#f55473',
         textTransform: 'uppercase',
     },
     searchButton: {
@@ -841,7 +901,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     searchIcon: {
-        fontSize: moderateScale(20),
+        fontSize: safeFont(20),
     },
     privateBadge: {
         paddingHorizontal: 8,
@@ -852,7 +912,7 @@ const styles = StyleSheet.create({
         borderColor: '#FF5252',
     },
     privateModeText: {
-        fontSize: moderateScale(10),
+        fontSize: safeFont(10),
         fontWeight: 'bold',
         color: '#FF5252',
     },
@@ -863,16 +923,18 @@ const styles = StyleSheet.create({
     pinnedContent: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
+        gap: getSpacing(1),
     },
     pinnedLabel: {
-        fontSize: moderateScale(10),
+        fontSize: safeFont(10),
         fontWeight: '900',
         textTransform: 'uppercase',
+        letterSpacing: safeLetterSpacing(0.5),
     },
     pinnedText: {
-        fontSize: moderateScale(13),
+        fontSize: safeFont(13),
         flex: 1,
+        fontWeight: '500',
     },
     listContent: {
         padding: getSpacing(2),
@@ -905,19 +967,19 @@ const styles = StyleSheet.create({
         shadowRadius: 2,
     },
     avatarText: {
-        fontSize: moderateScale(15),
+        fontSize: safeFont(15),
         fontWeight: '600',
     },
     messageBubble: {
-        borderRadius: moderateScale(4),
-        paddingHorizontal: getSpacing(1.5),
-        paddingVertical: getSpacing(1),
-        maxWidth: '80%',
-        elevation: 1,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.08,
-        shadowRadius: 1,
+        borderRadius: moderateScale(12),
+        paddingHorizontal: getSpacing(2),
+        paddingVertical: getSpacing(0.8),
+        maxWidth: '100%',
+        // elevation: 1,
+        // shadowColor: '#000',
+        // shadowOffset: { width: 0, height: 1 },
+        // shadowOpacity: 0.08,
+        // shadowRadius: 1,
     },
     replyContainer: {
         borderLeftWidth: 3,
@@ -926,30 +988,55 @@ const styles = StyleSheet.create({
         opacity: 0.9,
     },
     replySender: {
-        fontSize: 11,
+        fontSize: safeFont(11),
         fontWeight: 'bold',
         marginBottom: 2,
     },
     replyText: {
-        fontSize: 12,
+        fontSize: safeFont(12),
+    },
+    senderNameContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: getSpacing(0.5),
+        marginBottom: 4,
     },
     senderName: {
-        fontSize: moderateScale(11),
+        fontSize: safeFont(11, 10),
         fontWeight: '600',
-        marginBottom: 4,
-        letterSpacing: 0.2,
+        letterSpacing: safeLetterSpacing(0.2),
+    },
+    pinnedIconInMessage: {
+        marginLeft: getSpacing(0.5),
+    },
+    pinnedIconContainer: {
+        alignSelf: 'flex-start',
+        marginBottom: getSpacing(0.5),
+    },
+    pinnedIconTopRight: {
+        position: 'absolute',
+        top: getSpacing(0.5),
+        right: getSpacing(0.5),
     },
     messageText: {
-        fontSize: moderateScale(14),
-        lineHeight: 20,
-        letterSpacing: 0.1,
+        fontSize: safeFont(14, 12),
+        lineHeight: safeFont(20, 16),
+        letterSpacing: safeLetterSpacing(0.1),
+    },
+    timestampContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'flex-end',
+        gap: getSpacing(0.5),
+        marginTop: 4,
     },
     timestamp: {
-        fontSize: moderateScale(9),
-        marginTop: 4,
-        alignSelf: 'flex-end',
+        fontSize: safeFont(9),
         opacity: 0.85,
         fontWeight: '400',
+    },
+    pinnedIconTimestamp: {
+        marginLeft: getSpacing(0.5),
     },
     inputContainer: {
         flexDirection: 'row',
@@ -958,24 +1045,15 @@ const styles = StyleSheet.create({
         paddingBottom: getSpacing(1.5),
         alignItems: 'center',
         gap: getSpacing(1.5),
-        borderTopWidth: 1,
+        // borderTopWidth: 1,
         minHeight: 60,
-    },
-    emojiButton: {
-        width: moderateScale(44),
-        height: moderateScale(44),
-        borderRadius: moderateScale(22),
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderWidth: 0,
-        backgroundColor: 'transparent',
     },
     input: {
         flex: 1,
         borderRadius: 22,
         paddingHorizontal: 16,
         paddingVertical: 12,
-        fontSize: moderateScale(15),
+        fontSize: safeFont(15),
         maxHeight: 100,
         borderWidth: 0,
         minHeight: 44,
@@ -995,7 +1073,30 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     disabledText: {
-        fontSize: moderateScale(14),
+        fontSize: safeFont(14),
+        textAlign: 'center',
+    },
+    blockedContainer: {
+        // paddingHorizontal: getSpacing(2),
+
+        alignItems: 'center',        // paddingTop: getSpacing(1.5),
+        // paddingBottom: getSpacing(1.5),
+        width: '40%',
+        display: 'flex',
+        flexDirection: 'row',
+        justifyContent: 'center',
+
+      paddingVertical: getSpacing(1),
+        borderRadius: moderateScale(12),
+        marginHorizontal: getSpacing(2),
+        // marginTop: getSpacing(1),
+        marginBottom: getSpacing(2),
+        alignSelf: 'center',
+
+    },
+    blockedText: {
+        fontSize: safeFont(10),
+        color: '#FFFFFF',
         textAlign: 'center',
     },
     emptyContainer: {
@@ -1005,44 +1106,22 @@ const styles = StyleSheet.create({
         paddingVertical: getSpacing(8),
     },
     emptyText: {
-        fontSize: moderateScale(14),
+        fontSize: safeFont(14),
         fontStyle: 'italic',
         textAlign: 'center',
     },
-    emojiModalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        justifyContent: 'flex-end',
-    },
-    emojiPickerContainer: {
-        maxHeight: '50%',
-        borderTopLeftRadius: moderateScale(20),
-        borderTopRightRadius: moderateScale(20),
-        borderTopWidth: 1,
-        borderLeftWidth: 1,
-        borderRightWidth: 1,
-    },
-    emojiPickerHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
+    emojiPickerButton: {
+        width: moderateScale(44),
+        height: moderateScale(44),
+        borderRadius: moderateScale(22),
+        justifyContent: 'center',
         alignItems: 'center',
-        padding: getSpacing(2),
-        borderBottomWidth: 1,
-    },
-    emojiPickerTitle: {
-        fontSize: moderateScale(18),
-        fontWeight: '700',
-    },
-    emojiPickerClose: {
-        padding: getSpacing(0.5),
-    },
-    emojiPickerCloseText: {
-        fontSize: moderateScale(20),
-        fontWeight: 'bold',
+        borderWidth: 0,
+        backgroundColor: 'transparent',
     },
     reportButton: {
         alignSelf: 'flex-start',
-        marginLeft: getSpacing(0.5),
+        marginLeft: getSpacing(0),
         marginTop: getSpacing(0.5),
         padding: getSpacing(0.5),
         zIndex: 2,
@@ -1056,9 +1135,12 @@ const styles = StyleSheet.create({
     reportModal: {
         margin: getSpacing(3),
         borderRadius: moderateScale(20),
-        maxHeight: '80%',
+        maxHeight: '85%',
+        minHeight: moderateScale(450),
         overflow: 'hidden',
         width: '90%',
+        flexShrink: 1,
+        flexDirection: 'column',
     },
     reportHeader: {
         flexDirection: 'row',
@@ -1074,15 +1156,19 @@ const styles = StyleSheet.create({
         gap: getSpacing(1),
     },
     reportTitle: {
-        fontSize: moderateScale(18),
+        fontSize: safeFont(18),
         fontWeight: '700',
     },
     closeReportButton: {
         padding: getSpacing(0.5),
     },
     reportContent: {
+        flex: 1,
+    },
+    reportContentContainer: {
         padding: getSpacing(2),
-        maxHeight: moderateScale(400),
+        paddingBottom: getSpacing(3),
+        flexGrow: 1,
     },
     reportedMessagePreview: {
         padding: getSpacing(1.5),
@@ -1090,16 +1176,16 @@ const styles = StyleSheet.create({
         marginBottom: getSpacing(2),
     },
     reportedMessageText: {
-        fontSize: moderateScale(13),
+        fontSize: safeFont(13),
         fontStyle: 'italic',
         marginBottom: getSpacing(0.5),
     },
     reportedMessageAuthor: {
-        fontSize: moderateScale(11),
+        fontSize: safeFont(11),
         alignSelf: 'flex-end',
     },
     reportLabel: {
-        fontSize: moderateScale(14),
+        fontSize: safeFont(14),
         fontWeight: '600',
         marginBottom: getSpacing(1.5),
     },
@@ -1126,7 +1212,7 @@ const styles = StyleSheet.create({
         borderRadius: moderateScale(5),
     },
     reportReasonText: {
-        fontSize: moderateScale(14),
+        fontSize: safeFont(14),
         flex: 1,
     },
     reportDescriptionContainer: {
@@ -1136,7 +1222,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderRadius: moderateScale(12),
         padding: getSpacing(1.5),
-        fontSize: moderateScale(14),
+        fontSize: safeFont(14),
         minHeight: moderateScale(80),
         textAlignVertical: 'top',
         marginTop: getSpacing(1),
@@ -1157,7 +1243,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     reportCancelText: {
-        fontSize: moderateScale(14),
+        fontSize: safeFont(14),
         fontWeight: '600',
     },
     reportSubmitButton: {
@@ -1169,8 +1255,32 @@ const styles = StyleSheet.create({
     },
     reportSubmitText: {
         color: '#FFFFFF',
-        fontSize: moderateScale(14),
+        fontSize: safeFont(14),
         fontWeight: '700',
+    },
+    suggestedRepliesContainer: {
+        paddingHorizontal: getSpacing(2),
+        paddingVertical: getSpacing(1),
+        backgroundColor: '#FFFFFF',
+        borderTopWidth: 1,
+        borderTopColor: '#E0E0E0',
+    },
+    suggestedRepliesContent: {
+        paddingVertical: getSpacing(0.5),
+        gap: getSpacing(1),
+    },
+    suggestedReplyButton: {
+        paddingHorizontal: getSpacing(2),
+        paddingVertical: getSpacing(1),
+        borderRadius: moderateScale(20),
+        backgroundColor: '#F5F5F5',
+        borderWidth: 1,
+        borderColor: '#E0E0E0',
+        marginRight: getSpacing(1),
+    },
+    suggestedReplyText: {
+        fontSize: safeFont(13),
+        color: '#000000',
     },
 });
 

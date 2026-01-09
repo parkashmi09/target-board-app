@@ -33,9 +33,17 @@ export const verticalScale = (size: number): number => {
 
 /**
  * Moderate scale - less aggressive scaling
+ * Safeguarded to prevent negative values that cause Android crashes
  */
 export const moderateScale = (size: number, factor: number = 0.5): number => {
-  return size + (scale(size) - size) * factor;
+  const { width: SCREEN_WIDTH } = getDimensions();
+  // Prevent division by zero or negative screen dimensions
+  if (SCREEN_WIDTH <= 0) {
+    return Math.max(size, 0);
+  }
+  const scaled = size + (scale(size) - size) * factor;
+  // Prevent negative values - critical for fontSize and letterSpacing
+  return Math.max(scaled, 0);
 };
 
 /**
@@ -79,5 +87,23 @@ export const isTablet = (): boolean => {
  */
 export const getSpacing = (multiplier: number = 1): number => {
   return moderateScale(8 * multiplier);
+};
+
+/**
+ * Safe font size - ensures positive value to prevent Android crashes
+ * @param size - Base font size
+ * @param min - Minimum allowed font size (default: 10)
+ */
+export const safeFont = (size: number, min: number = 10): number => {
+  const scaled = moderateScale(size);
+  return Math.max(scaled, min);
+};
+
+/**
+ * Safe letter spacing - ensures non-negative value to prevent Android crashes
+ * @param value - Letter spacing value
+ */
+export const safeLetterSpacing = (value: number): number => {
+  return Math.max(value, 0);
 };
 
