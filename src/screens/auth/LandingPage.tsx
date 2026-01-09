@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, ImageBackground, ScrollView, Dimensions, KeyboardAvoidingView, Platform, Animated } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, ScrollView, Dimensions, KeyboardAvoidingView, Platform, Animated, Keyboard } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../theme/theme';
 import { moderateScale, getSpacing } from '../../utils/responsive';
@@ -26,16 +26,15 @@ const LandingPage: React.FC = () => {
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const progressAnim = useRef(new Animated.Value(0)).current;
+  const scrollViewRef = useRef<ScrollView>(null);
+  const inputRef = useRef<TextInput>(null);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   
   // Animation values
   const logoOpacity = useRef(new Animated.Value(0)).current;
   const logoScale = useRef(new Animated.Value(0.5)).current;
-  const heading1Opacity = useRef(new Animated.Value(0)).current;
-  const heading1TranslateY = useRef(new Animated.Value(20)).current;
-  const heading2Opacity = useRef(new Animated.Value(0)).current;
-  const heading2TranslateY = useRef(new Animated.Value(20)).current;
-  const dividerOpacity = useRef(new Animated.Value(0)).current;
-  const dividerScale = useRef(new Animated.Value(0.8)).current;
+  const titleOpacity = useRef(new Animated.Value(0)).current;
+  const titleTranslateY = useRef(new Animated.Value(20)).current;
   const inputOpacity = useRef(new Animated.Value(0)).current;
   const inputTranslateY = useRef(new Animated.Value(30)).current;
   const buttonOpacity = useRef(new Animated.Value(0)).current;
@@ -45,97 +44,102 @@ const LandingPage: React.FC = () => {
     loadAllData();
   }, [loadAllData]);
 
+  // Keyboard listeners to handle scroll to input
+  useEffect(() => {
+    const keyboardWillShow = (e: any) => {
+      const height = e.endCoordinates?.height || 0;
+      setKeyboardHeight(height);
+      
+      // Scroll to input when keyboard opens
+      setTimeout(() => {
+        inputRef.current?.focus();
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    };
+
+    const keyboardWillHide = () => {
+      setKeyboardHeight(0);
+    };
+
+    if (Platform.OS === 'ios') {
+      const showSubscription = Keyboard.addListener('keyboardWillShow', keyboardWillShow);
+      const hideSubscription = Keyboard.addListener('keyboardWillHide', keyboardWillHide);
+      return () => {
+        showSubscription.remove();
+        hideSubscription.remove();
+      };
+    } else {
+      const showSubscription = Keyboard.addListener('keyboardDidShow', keyboardWillShow);
+      const hideSubscription = Keyboard.addListener('keyboardDidHide', keyboardWillHide);
+      return () => {
+        showSubscription.remove();
+        hideSubscription.remove();
+      };
+    }
+  }, []);
+
   // Initial animations on mount
   useEffect(() => {
-    // Logo animation
+    // Logo animation - smoother with easing
     Animated.parallel([
       Animated.timing(logoOpacity, {
         toValue: 1,
-        duration: 800,
+        duration: 1000,
         useNativeDriver: true,
       }),
       Animated.spring(logoScale, {
         toValue: 1,
-        tension: 50,
-        friction: 7,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    // Heading animations (staggered)
-    Animated.sequence([
-      Animated.parallel([
-        Animated.timing(heading1Opacity, {
-          toValue: 1,
-          duration: 600,
-          useNativeDriver: true,
-        }),
-        Animated.timing(heading1TranslateY, {
-          toValue: 0,
-          duration: 600,
-          useNativeDriver: true,
-        }),
-      ]),
-      Animated.parallel([
-        Animated.timing(heading2Opacity, {
-          toValue: 1,
-          duration: 600,
-          useNativeDriver: true,
-        }),
-        Animated.timing(heading2TranslateY, {
-          toValue: 0,
-          duration: 600,
-          useNativeDriver: true,
-        }),
-      ]),
-    ]).start();
-
-    // Divider animation
-    Animated.parallel([
-      Animated.timing(dividerOpacity, {
-        toValue: 1,
-        duration: 500,
-        delay: 400,
-        useNativeDriver: true,
-      }),
-      Animated.spring(dividerScale, {
-        toValue: 1,
-        tension: 50,
+        tension: 40,
         friction: 8,
-        delay: 400,
         useNativeDriver: true,
       }),
     ]).start();
 
-    // Input animation
+    // Title animation - smoother transition
+    Animated.parallel([
+      Animated.timing(titleOpacity, {
+        toValue: 1,
+        duration: 800,
+        delay: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(titleTranslateY, {
+        toValue: 0,
+        duration: 800,
+        delay: 300,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Input animation - smoother transition
     Animated.parallel([
       Animated.timing(inputOpacity, {
         toValue: 1,
-        duration: 600,
-        delay: 600,
+        duration: 800,
+        delay: 500,
         useNativeDriver: true,
       }),
       Animated.timing(inputTranslateY, {
         toValue: 0,
-        duration: 600,
-        delay: 600,
+        duration: 800,
+        delay: 500,
         useNativeDriver: true,
       }),
     ]).start();
 
-    // Button animation
+    // Button animation - smoother spring
     Animated.parallel([
       Animated.timing(buttonOpacity, {
         toValue: 1,
-        duration: 600,
-        delay: 800,
+        duration: 800,
+        delay: 700,
         useNativeDriver: true,
       }),
       Animated.spring(buttonScale, {
         toValue: 1,
-        tension: 50,
-        friction: 7,
-        delay: 800,
+        tension: 40,
+        friction: 8,
+        delay: 700,
         useNativeDriver: true,
       }),
     ]).start();
@@ -151,7 +155,6 @@ const LandingPage: React.FC = () => {
       useNativeDriver: false,
     }).start();
   }, [phone, progressAnim]);
-
 
   const handleContinue = async () => {
     if (!phone || phone.trim().length === 0) {
@@ -187,32 +190,51 @@ const LandingPage: React.FC = () => {
     }
   };
 
-  const isValid = /^\d{10}$/.test(phone);
-  const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-  const BACKGROUND_HEIGHT = SCREEN_HEIGHT * 0.5;
-  const CONTENT_HEIGHT = SCREEN_HEIGHT * 0.5;
+  const isValid = /^\d{10}$/.test(phone.replace(/\D/g, ''));
 
   return (
     <KeyboardAvoidingView
-      style={[styles.mainContainer, { backgroundColor: theme.colors.background }]}
+      style={[styles.mainContainer, { backgroundColor: '#F8FBFF' }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
     >
+      <View style={styles.backgroundContainer}>
+        <Image 
+          source={Images.TOP_RIGHT_BG} 
+          resizeMode='contain' 
+          style={styles.topRightBg} 
+        />
+        <Image 
+          source={Images.LEFT_FLOWER} 
+          resizeMode='contain' 
+          style={styles.leftFlower} 
+        />
+        <Image 
+          source={Images.RIGHT_FLOWER} 
+          resizeMode='contain' 
+          style={styles.rightFlower} 
+        />
+        <Image 
+          source={Images.BOTTOM_ROUND_BG} 
+          resizeMode='cover' 
+          style={styles.bottomRoundBg} 
+        />
+      </View>
+      
       <ScrollView
-        contentContainerStyle={styles.scrollContainer}
+        ref={scrollViewRef}
+        contentContainerStyle={[
+          styles.scrollContainer,
+          { paddingBottom: keyboardHeight > 0 ? keyboardHeight + 20 : moderateScale(120) }
+        ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         bounces={false}
+        keyboardDismissMode="on-drag"
       >
-        <ImageBackground
-          source={Images.LOGIN_BG}
-          style={[styles.backgroundImage, { height: BACKGROUND_HEIGHT }]}
-          resizeMode="cover"
-        >
-       
-        </ImageBackground>
-
-        <View style={[styles.contentOverlay, { backgroundColor: theme.colors.background, minHeight: CONTENT_HEIGHT }]}>
-        <Animated.View
+        <View style={styles.contentOverlay}>
+          {/* Logo */}
+          <Animated.View
             style={[
               styles.logoContainer,
               {
@@ -227,131 +249,137 @@ const LandingPage: React.FC = () => {
               resizeMode="contain"
             />
           </Animated.View>
-          <View style={styles.contentContainer}>
-            {/* <View style={styles.headingContainer}>
-              <Animated.Text
-                style={[
-                  styles.largestText,
-                  {
-                    color: theme.colors.secondary,
-                    opacity: heading1Opacity,
-                    transform: [{ translateY: heading1TranslateY }],
-                  },
-                ]}
-              >
-                Largest Learning
-              </Animated.Text>
-              <Animated.Text
-                style={[
-                  styles.destinationText,
-                  {
-                    color: theme.colors.text,
-                    opacity: heading2Opacity,
-                    transform: [{ translateY: heading2TranslateY }],
-                  },
-                ]}
-              >
-                Destination
-              </Animated.Text>
-            </View> */}
 
-            <Animated.View
-              style={[
-                styles.dividerContainer,
-                {
-                  opacity: dividerOpacity,
-                  transform: [{ scale: dividerScale }],
-                },
-              ]}
-            >
-              <View style={[styles.dividerLine, { backgroundColor: theme.colors.border }]} />
-              <Text style={[styles.dividerText, { color: theme.colors.textSecondary }]}>Log in/Sign up</Text>
-              <View style={[styles.dividerLine, { backgroundColor: theme.colors.border }]} />
-            </Animated.View>
+          {/* Welcome Text */}
+          <Animated.View
+            style={[
+              styles.welcomeContainer,
+              {
+                opacity: titleOpacity,
+                transform: [{ translateY: titleTranslateY }],
+              },
+            ]}
+          >
+            <View style={styles.welcomeTextContainer}>
+              <Text style={styles.welcomeText}>Welcome to </Text>
+              <Text style={styles.targetboardText}>Targetboard</Text>
+            </View>
+          </Animated.View>
 
+          {/* Title */}
+          <Animated.View
+            style={[
+              styles.titleContainer,
+              {
+                opacity: titleOpacity,
+                transform: [{ translateY: titleTranslateY }],
+              },
+            ]}
+          >
+            <Text style={styles.mainTitle}>Let's Get Started</Text>
+          </Animated.View>
 
-            <Animated.View
-              style={[
-                styles.inputContainer,
-                {
-                  opacity: inputOpacity,
-                  transform: [{ translateY: inputTranslateY }],
-                },
-              ]}
-            >
-              <Text style={[styles.label, { color: theme.colors.text }]}>Mobile Number</Text>
-              <TextInput
-                value={phone}
-                maxLength={10}
-                keyboardType="numeric"
-                onChangeText={setPhone}
-                style={[styles.input, {
-                  backgroundColor: theme.colors.inputBackground,
-                  color: theme.colors.text,
-                  borderBottomWidth: 2,
-                  borderBottomColor: theme.colors.primaryText,
-                }]}
-                placeholder="Enter Your 10 digit Mobile no."
-                placeholderTextColor={theme.colors.textSecondary}
-              />
-            </Animated.View>
-
-            <Animated.View
-              style={{
-                opacity: buttonOpacity,
-                transform: [{ scale: buttonScale }],
+          {/* Input Field */}
+          <Animated.View
+            style={[
+              styles.inputContainer,
+              {
+                opacity: inputOpacity,
+                transform: [{ translateY: inputTranslateY }],
+              },
+            ]}
+          >
+            <Text style={[styles.label, { color: theme.colors.text }]}>Mobile Number</Text>
+            <TextInput
+              ref={inputRef}
+              value={phone}
+              onChangeText={(text) => {
+                // Only allow numbers
+                const numbersOnly = text.replace(/\D/g, '');
+                if (numbersOnly.length <= 10) {
+                  setPhone(numbersOnly);
+                }
               }}
-            >
-              <TouchableOpacity
-                onPress={handleContinue}
-                disabled={!isValid || loading}
-                style={[styles.button, {
-                  backgroundColor: theme.colors.border,
-                  overflow: 'hidden',
-                }]}
-                activeOpacity={0.8}
-              >
-              <Animated.View
-                style={[
-                  styles.buttonProgress,
-                  {
-                    backgroundColor: theme.colors.secondary,
-                    width: progressAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: ['0%', '100%'],
-                    }),
-                    borderTopLeftRadius: moderateScale(8),
-                    borderBottomLeftRadius: moderateScale(8),
-                    borderTopRightRadius: progressAnim.interpolate({
-                      inputRange: [0.99, 1],
-                      outputRange: [0, moderateScale(8)],
-                      extrapolate: 'clamp',
-                    }),
-                    borderBottomRightRadius: progressAnim.interpolate({
-                      inputRange: [0.99, 1],
-                      outputRange: [0, moderateScale(8)],
-                      extrapolate: 'clamp',
-                    }),
-                  },
-                ]}
-              />
-              <View style={styles.buttonContent}>
-                <Text style={[styles.buttonText, { color: theme.colors.secondaryText }]}>
-                  {loading ? 'Processing...' : "Let's Get Started"}
-                </Text>
-                <View style={styles.buttonArrowContainer}>
-                  <SVGIcon
-                    name="chevron-right"
-                    size={moderateScale(20)}
-                    color={theme.colors.secondaryText}
-                  />
-                </View>
-              </View>
-            </TouchableOpacity>
-            </Animated.View>
-          </View>
+              keyboardType="numeric"
+              maxLength={10}
+              style={[styles.input, {
+                backgroundColor: theme.colors.inputBackground || '#F5F5F5',
+                color: theme.colors.text,
+                borderBottomWidth: 2,
+                borderBottomColor: theme.colors.primaryText || '#1A1A1A',
+              }]}
+              placeholder="Enter Your 10 digit Mobile no."
+              placeholderTextColor={theme.colors.textSecondary || '#999'}
+              returnKeyType="done"
+              blurOnSubmit={true}
+              onFocus={() => {
+                setTimeout(() => {
+                  scrollViewRef.current?.scrollToEnd({ animated: true });
+                }, 100);
+              }}
+            />
+          </Animated.View>
         </View>
       </ScrollView>
+
+      {/* Button inside bottom background */}
+      <View style={styles.bottomButtonContainer}>
+        <Animated.View
+          style={{
+            opacity: buttonOpacity,
+            transform: [{ scale: buttonScale }],
+            width: '100%',
+            paddingHorizontal: getSpacing(3),
+          }}
+        >
+          <TouchableOpacity
+            onPress={handleContinue}
+            disabled={!isValid || loading}
+            style={[styles.button, {
+              backgroundColor: isValid ? '#FFCC3E' : '#E0E0E0',
+              overflow: 'hidden',
+            }]}
+            // activeOpacity={0.8}
+          >
+            <Animated.View
+              style={[
+                styles.buttonProgress,
+                {
+                  backgroundColor: '#FFCC3E',
+                  width: progressAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: ['0%', '100%'],
+                  }),
+                  borderTopLeftRadius: moderateScale(8),
+                  borderBottomLeftRadius: moderateScale(8),
+                  borderTopRightRadius: progressAnim.interpolate({
+                    inputRange: [0.99, 1],
+                    outputRange: [0, moderateScale(8)],
+                    extrapolate: 'clamp',
+                  }),
+                  borderBottomRightRadius: progressAnim.interpolate({
+                    inputRange: [0.99, 1],
+                    outputRange: [0, moderateScale(8)],
+                    extrapolate: 'clamp',
+                  }),
+                },
+              ]}
+            />
+            <View style={styles.buttonContent}>
+              <Text style={[styles.buttonText, { color: isValid ? '#1A1A1A' : '#1A1A1A' }]}>
+                {loading ? 'Processing...' : "Let's Get Started"}
+              </Text>
+              <View style={styles.buttonArrowContainer}>
+                <SVGIcon
+                  name="chevron-right"
+                  size={moderateScale(20)}
+                  color={'#1A1A1A'}
+                />
+              </View>
+            </View>
+          </TouchableOpacity>
+        </Animated.View>
+      </View>
     </KeyboardAvoidingView>
   );
 };
@@ -360,67 +388,113 @@ const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
   },
+  backgroundContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 0,
+  },
+  topRightBg: {
+    position: 'absolute',
+    top: 0,
+    right: moderateScale(-25),
+    width: '100%',
+    height: '25%',
+  },
+  bottomRoundBg: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    width: '100%',
+    height: '25%',
+  },
   scrollContainer: {
     flexGrow: 1,
-  },
-  backgroundImage: {
-    width: '100%',
+    zIndex: 1,
   },
   contentOverlay: {
     width: '100%',
-    paddingTop: moderateScale(20),
-  },
-  contentContainer: {
     paddingHorizontal: getSpacing(3),
-    paddingVertical: moderateScale(20),
+    paddingTop: moderateScale(180),
+    paddingBottom: moderateScale(20), // Reduced, will be handled by ScrollView
+    flexGrow: 1,
   },
   logoContainer: {
-    position: 'absolute',
-    // top: '30%',
-    top:'-10%',
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-  },
-  logo: {
-    width: moderateScale(80),
-    height: moderateScale(80),
-  },
-  headingContainer: {
     alignItems: 'center',
     marginBottom: moderateScale(30),
+    marginTop: moderateScale(20),
   },
-  largestText: {
-    fontSize: moderateScale(26),
-    letterSpacing: 0.5,
-    fontFamily: getFontFamily('600'),
+  logo: {
+    width: moderateScale(120),
+    height: moderateScale(120),
   },
-  destinationText: {
-    fontSize: moderateScale(22),
-    marginTop: moderateScale(2),
-    fontFamily: getFontFamily('400'),
+  welcomeContainer: {
+    alignItems: 'center',
+    marginBottom: moderateScale(20),
   },
-  dividerContainer: {
+  welcomeTextContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: moderateScale(25),
+    justifyContent: 'center',
+    flexWrap: 'wrap',
   },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-  },
-  dividerText: {
-    marginHorizontal: getSpacing(2),
-    fontSize: moderateScale(14),
+  welcomeText: {
+    fontSize: moderateScale(28),
     fontFamily: getFontFamily('400'),
+    color: '#1A1A1A',
+  },
+  targetboardText: {
+    fontSize: moderateScale(28),
+    fontFamily: getFontFamily('700'),
+    color: '#FFCC3E',
+    textShadowColor: '#000000',
+    textShadowOffset: { width: 3, height: 3 },
+    textShadowRadius: 8,
+    // Additional shadow layers effect
+    includeFontPadding: false,
+  },
+  titleContainer: {
+    alignItems: 'center',
+    marginBottom: moderateScale(40),
+  },
+  mainTitle: {
+    fontSize: moderateScale(24),
+    fontFamily: getFontFamily('700'),
+    color: '#1A1A1A',
+    letterSpacing: 0.5,
+  },
+  inputContainer: {
+    marginBottom: moderateScale(20),
+  },
+  leftFlower: {
+    position: 'absolute',
+    bottom: moderateScale(165),
+    left: 0,
+    width: moderateScale(100),
+    height: moderateScale(100),
+  },
+  leftFLowerImage: {
+    width: moderateScale(100),
+    height: moderateScale(100),
+  },
+  rightFlowerImage: {
+    width: moderateScale(100),
+    height: moderateScale(100),
+  },
+  rightFlower: {
+    position: 'absolute',
+    bottom: moderateScale(165),
+    right: 0,
+    width: moderateScale(100),
+    height: moderateScale(100),
   },
   label: {
     fontSize: moderateScale(15),
     marginBottom: getSpacing(1),
     fontFamily: getFontFamily('500'),
-  },
-  inputContainer: {
-    marginBottom: getSpacing(3),
   },
   input: {
     borderRadius: moderateScale(8),
@@ -429,6 +503,14 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(15),
     borderWidth: 0,
     fontFamily: getFontFamily('400'),
+  },
+  bottomButtonContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingBottom: moderateScale(40),
+    zIndex: 2,
   },
   button: {
     width: '100%',
@@ -453,7 +535,6 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   buttonText: {
-    color: '#FFFFFF',
     fontSize: moderateScale(16),
     letterSpacing: 1,
     fontFamily: getFontFamily('700'),
@@ -466,5 +547,3 @@ const styles = StyleSheet.create({
 });
 
 export default LandingPage;
-
-

@@ -18,7 +18,6 @@ import { GlobalLoaderProvider } from './src/components/GlobalLoader';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import { queryClient } from './src/services/queryClient';
 import { useNetworkStore } from './src/store/networkStore';
-import { useLoaderStore } from './src/store/loaderStore';
 import './src/i18n';
 
 // Initialize TPStreams
@@ -55,15 +54,10 @@ function App() {
 function AppContent() {
   const theme = useTheme();
   const [showSplash, setShowSplash] = useState(true);
-  const [isInitializing, setIsInitializing] = useState(true);
   const { isLoggedIn, checkAuthStatus } = useAuthStore();
   const { initialize: initializeNetwork } = useNetworkStore();
-  const { show: showLoader, hide: hideLoader } = useLoaderStore();
 
   useEffect(() => {
-    // Show global loader during initialization (without message)
-    showLoader();
-
     // Initialize network monitoring
     initializeNetwork();
 
@@ -83,19 +77,16 @@ function AppContent() {
         // Network check is already done by initializeNetwork()
         
         // Simulate minimum initialization time for smooth UX
-        await new Promise<void>(resolve => setTimeout(() => resolve(), 800));
+        await new Promise<void>(resolve => setTimeout(() => resolve(), 1000));
       } catch (error) {
         if (__DEV__) {
           console.warn('App initialization failed:', error);
         }
       } finally {
-        setIsInitializing(false);
-        hideLoader();
-        
         // Hide splash after initialization
         setTimeout(() => {
           setShowSplash(false);
-        }, 200); // Small delay for smooth transition
+        }, 300); // Small delay for smooth transition
       }
     };
 
@@ -105,11 +96,9 @@ function AppContent() {
       if (__DEV__) {
         console.error('Failed to initialize app:', error);
       }
-      setIsInitializing(false);
-      hideLoader();
-      setTimeout(() => setShowSplash(false), 200);
+      setTimeout(() => setShowSplash(false), 300);
     }
-  }, [checkAuthStatus, initializeNetwork, showLoader, hideLoader]);
+  }, [checkAuthStatus, initializeNetwork]);
 
   return (
     <NavigationContainer

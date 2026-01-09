@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Image, ScrollView, KeyboardAvoidingView, Platform, Animated, Dimensions, Keyboard } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../../theme/theme';
 import { moderateScale, getSpacing } from '../../utils/responsive';
@@ -14,6 +14,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { OtpInput } from 'react-native-otp-entry';
 import type { AuthStackParamList } from '../../navigation/AuthStack';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import SVGIcon from '../../components/SVGIcon';
 
 type OtpVerificationNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'OtpVerification'>;
 
@@ -33,6 +34,117 @@ const OtpVerificationScreen: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [showTimer, setShowTimer] = useState(true);
   const [timer, setTimer] = useState(90);
+  const scrollViewRef = useRef<ScrollView>(null);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  // Animation values
+  const logoOpacity = useRef(new Animated.Value(0)).current;
+  const logoScale = useRef(new Animated.Value(0.5)).current;
+  const titleOpacity = useRef(new Animated.Value(0)).current;
+  const titleTranslateY = useRef(new Animated.Value(20)).current;
+  const contentOpacity = useRef(new Animated.Value(0)).current;
+  const contentTranslateY = useRef(new Animated.Value(30)).current;
+  const buttonOpacity = useRef(new Animated.Value(0)).current;
+  const buttonScale = useRef(new Animated.Value(0.9)).current;
+
+  useEffect(() => {
+    // Logo animation - smoother with easing
+    Animated.parallel([
+      Animated.timing(logoOpacity, {
+        toValue: 1,
+        duration: 1000,
+        useNativeDriver: true,
+      }),
+      Animated.spring(logoScale, {
+        toValue: 1,
+        tension: 40,
+        friction: 8,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Title animation - smoother transition
+    Animated.parallel([
+      Animated.timing(titleOpacity, {
+        toValue: 1,
+        duration: 800,
+        delay: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(titleTranslateY, {
+        toValue: 0,
+        duration: 800,
+        delay: 300,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Content animation - smoother transition
+    Animated.parallel([
+      Animated.timing(contentOpacity, {
+        toValue: 1,
+        duration: 800,
+        delay: 500,
+        useNativeDriver: true,
+      }),
+      Animated.timing(contentTranslateY, {
+        toValue: 0,
+        duration: 800,
+        delay: 500,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Button animation - smoother spring
+    Animated.parallel([
+      Animated.timing(buttonOpacity, {
+        toValue: 1,
+        duration: 800,
+        delay: 700,
+        useNativeDriver: true,
+      }),
+      Animated.spring(buttonScale, {
+        toValue: 1,
+        tension: 40,
+        friction: 8,
+        delay: 700,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  // Keyboard listeners to handle scroll to input
+  useEffect(() => {
+    const keyboardWillShow = (e: any) => {
+      const height = e.endCoordinates?.height || 0;
+      setKeyboardHeight(height);
+      
+      // Scroll to OTP input when keyboard opens
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    };
+
+    const keyboardWillHide = () => {
+      setKeyboardHeight(0);
+    };
+
+    if (Platform.OS === 'ios') {
+      const showSubscription = Keyboard.addListener('keyboardWillShow', keyboardWillShow);
+      const hideSubscription = Keyboard.addListener('keyboardWillHide', keyboardWillHide);
+      return () => {
+        showSubscription.remove();
+        hideSubscription.remove();
+      };
+    } else {
+      const showSubscription = Keyboard.addListener('keyboardDidShow', keyboardWillShow);
+      const hideSubscription = Keyboard.addListener('keyboardDidHide', keyboardWillHide);
+      return () => {
+        showSubscription.remove();
+        hideSubscription.remove();
+      };
+    }
+  }, []);
 
   useEffect(() => {
     const loadMobile = async () => {
@@ -152,142 +264,284 @@ const OtpVerificationScreen: React.FC = () => {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: theme.colors.background }}
+      style={[styles.mainContainer, { backgroundColor: '#F8FBFF' }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
     >
+      <View style={styles.backgroundContainer}>
+        <Image 
+          source={Images.TOP_RIGHT_BG} 
+          resizeMode='contain' 
+          style={styles.topRightBg} 
+        />
+        <Image 
+          source={Images.LEFT_FLOWER} 
+          resizeMode='contain' 
+          style={styles.leftFlower} 
+        />
+        <Image 
+          source={Images.RIGHT_FLOWER} 
+          resizeMode='contain' 
+          style={styles.rightFlower} 
+        />
+        <Image 
+          source={Images.BOTTOM_ROUND_BG} 
+          resizeMode='cover' 
+          style={styles.bottomRoundBg} 
+        />
+      </View>
+
       <ScrollView
-        contentContainerStyle={styles.scrollContainer}
+        ref={scrollViewRef}
+        contentContainerStyle={[
+          styles.scrollContainer,
+          { paddingBottom: keyboardHeight > 0 ? keyboardHeight + 20 : moderateScale(120) }
+        ]}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+        keyboardDismissMode="on-drag"
       >
-        <View style={styles.imageContainer}>
-          <Image
-            source={Images.OTP_BACKGROUND}
-            style={styles.otpImage}
-            resizeMode="cover"
-          />
-        </View>
-
-        <View style={styles.contentContainer}>
-          <Text style={[styles.title, { color: theme.colors.text }]}>
-            Enter OTP
-          </Text>
-          <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>
-            We've sent a 6-digit OTP to {mobile || 'your mobile number'}
-          </Text>
-
-          <View style={styles.otpContainer}>
-            <OtpInput
-              numberOfDigits={6}
-              onTextChange={(text: string) => setOtp(text)}
-              onFilled={(text: string) => {
-                setOtp(text);
-                // Auto-verify when OTP is complete - pass the text directly to avoid state timing issues
-                if (text.length === 6) {
-                  // Use setTimeout to ensure state is updated and prevent race conditions
-                  setTimeout(() => {
-                    handleVerifyOtp(text);
-                  }, 100);
-                }
-              }}
-              theme={{
-                containerStyle: styles.otpContainerStyle,
-                pinCodeContainerStyle: {
-                  backgroundColor: theme.colors.inputBackground,
-                  borderColor: theme.colors.border,
-                  borderWidth: 1,
-                  borderRadius: moderateScale(8),
-                  width: moderateScale(50),
-                  height: moderateScale(60),
-                },
-                pinCodeTextStyle: {
-                  color: theme.colors.text,
-                  fontSize: moderateScale(20),
-                  fontFamily: getFontFamily('600'),
-                },
-                focusedPinCodeContainerStyle: {
-                  borderColor: theme.colors.secondary,
-                  borderWidth: 2,
-                },
-              }}
-              autoFocus
+        <View style={styles.contentOverlay}>
+          {/* Logo */}
+          <Animated.View
+            style={[
+              styles.logoContainer,
+              {
+                opacity: logoOpacity,
+                transform: [{ scale: logoScale }],
+              },
+            ]}
+          >
+            <Image
+              source={Images.TB_LOGO}
+              style={styles.logo}
+              resizeMode="contain"
             />
-          </View>
+          </Animated.View>
 
-          <View style={styles.resendContainer}>
-            <TouchableOpacity
-              onPress={() => {
-                setShowTimer(true);
-                setTimer(90);
-              }}
-              disabled={showTimer}
-            >
-              <Text style={[
-                styles.resendText,
-                {
-                  color: showTimer ? theme.colors.textSecondary : theme.colors.accent,
-                }
-              ]}>
-                Resend OTP
-              </Text>
-            </TouchableOpacity>
-            {showTimer && (
-              <Text style={[styles.timerText, { color: theme.colors.textSecondary }]}>
-                {formatTime(timer)}
-              </Text>
-            )}
-          </View>
+          {/* Title */}
+          <Animated.View
+            style={[
+              styles.titleContainer,
+              {
+                opacity: titleOpacity,
+                transform: [{ translateY: titleTranslateY }],
+              },
+            ]}
+          >
+            <Text style={styles.title}>Enter OTP</Text>
+            <Text style={styles.subtitle}>
+              We've sent a 6-digit OTP to {mobile || 'your mobile number'}
+            </Text>
+          </Animated.View>
 
+          {/* OTP Input */}
+          <Animated.View
+            style={[
+              styles.otpWrapper,
+              {
+                opacity: contentOpacity,
+                transform: [{ translateY: contentTranslateY }],
+              },
+            ]}
+          >
+            <View style={styles.otpContainer}>
+              <OtpInput
+                numberOfDigits={6}
+                onTextChange={(text: string) => {
+                  setOtp(text);
+                  // Scroll to ensure input is visible when typing
+                  if (text.length > 0) {
+                    setTimeout(() => {
+                      scrollViewRef.current?.scrollToEnd({ animated: true });
+                    }, 100);
+                  }
+                }}
+                onFilled={(text: string) => {
+                  setOtp(text);
+                  if (text.length === 6) {
+                    setTimeout(() => {
+                      handleVerifyOtp(text);
+                    }, 100);
+                  }
+                }}
+                theme={{
+                  containerStyle: styles.otpContainerStyle,
+                  pinCodeContainerStyle: {
+                    backgroundColor: theme.colors.inputBackground || '#F5F5F5',
+                    borderColor: theme.colors.border || '#E0E0E0',
+                    borderWidth: 1,
+                    borderRadius: moderateScale(8),
+                    width: moderateScale(50),
+                    height: moderateScale(60),
+                  },
+                  pinCodeTextStyle: {
+                    color: theme.colors.text,
+                    fontSize: moderateScale(20),
+                    fontFamily: getFontFamily('600'),
+                  },
+                  focusedPinCodeContainerStyle: {
+                    borderColor: '#FFCC3E',
+                    borderWidth: 2,
+                  },
+                }}
+                autoFocus
+              />
+            </View>
+
+            {/* Resend Container */}
+            <View style={styles.resendContainer}>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowTimer(true);
+                  setTimer(90);
+                }}
+                disabled={showTimer}
+              >
+                <Text style={[
+                  styles.resendText,
+                  {
+                    color: showTimer ? theme.colors.textSecondary || '#999' : '#FFCC3E',
+                  }
+                ]}>
+                  Resend OTP
+                </Text>
+              </TouchableOpacity>
+              {showTimer && (
+                <Text style={[styles.timerText, { color: theme.colors.textSecondary || '#999' }]}>
+                  {formatTime(timer)}
+                </Text>
+              )}
+            </View>
+          </Animated.View>
+        </View>
+      </ScrollView>
+
+      {/* Button inside bottom background */}
+      <View style={styles.bottomButtonContainer}>
+        <Animated.View
+          style={{
+            opacity: buttonOpacity,
+            transform: [{ scale: buttonScale }],
+            width: '100%',
+            paddingHorizontal: getSpacing(3),
+          }}
+        >
           <TouchableOpacity
             onPress={() => handleVerifyOtp()}
             disabled={loading || otp.length !== 6}
             style={[
               styles.verifyButton,
               {
-                backgroundColor: otp.length === 6 ? theme.colors.secondary : theme.colors.border,
+                backgroundColor: otp.length === 6 ? '#FFCC3E' : '#E0E0E0',
               }
             ]}
+            activeOpacity={0.8}
           >
-            <Text style={styles.verifyButtonText}>
-              {loading ? 'Verifying...' : 'Verify OTP'}
-            </Text>
+            <View style={styles.buttonContent}>
+              <Text style={[styles.verifyButtonText, { color: otp.length === 6 ? '#1A1A1A' : '#999' }]}>
+                {loading ? 'Verifying...' : 'Verify OTP'}
+              </Text>
+              <View style={styles.buttonArrowContainer}>
+                <SVGIcon
+                  name="chevron-right"
+                  size={moderateScale(20)}
+                  color={otp.length === 6 ? '#1A1A1A' : '#999'}
+                />
+              </View>
+            </View>
           </TouchableOpacity>
-        </View>
-      </ScrollView>
+        </Animated.View>
+      </View>
     </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
+  mainContainer: {
+    flex: 1,
+  },
+  backgroundContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 0,
+  },
+  topRightBg: {
+    position: 'absolute',
+    top: 0,
+    right: moderateScale(-25),
+    width: '100%',
+    height: '25%',
+  },
+  bottomRoundBg: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    width: '100%',
+    height: '25%',
+  },
+  leftFlower: {
+    position: 'absolute',
+    bottom: moderateScale(165),
+    left: 0,
+    width: moderateScale(100),
+    height: moderateScale(100),
+  },
+  rightFlower: {
+    position: 'absolute',
+    bottom: moderateScale(165),
+    right: 0,
+    width: moderateScale(100),
+    height: moderateScale(100),
+  },
   scrollContainer: {
     flexGrow: 1,
+    zIndex: 1,
   },
-  imageContainer: {
+  contentOverlay: {
     width: '100%',
-    height: moderateScale(200),
-  },
-  otpImage: {
-    width: '100%',
-    height: '100%',
-  },
-  contentContainer: {
-    flex: 1,
     paddingHorizontal: getSpacing(3),
-    paddingTop: getSpacing(3),
+    paddingTop: moderateScale(180),
+    paddingBottom: moderateScale(20), // Reduced, will be handled by ScrollView
+    flexGrow: 1,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: moderateScale(30),
+    marginTop: moderateScale(20),
+  },
+  logo: {
+    width: moderateScale(120),
+    height: moderateScale(120),
+  },
+  titleContainer: {
+    alignItems: 'center',
+    marginBottom: moderateScale(40),
   },
   title: {
     fontSize: moderateScale(24),
     fontFamily: getFontFamily('700'),
+    color: '#1A1A1A',
     textAlign: 'center',
     marginBottom: getSpacing(1),
+    letterSpacing: 0.5,
   },
   subtitle: {
     fontSize: moderateScale(14),
     fontFamily: getFontFamily('400'),
+    color: '#666',
     textAlign: 'center',
-    marginBottom: getSpacing(3),
+  },
+  otpWrapper: {
+    marginBottom: moderateScale(20),
   },
   otpContainer: {
-    marginBottom: getSpacing(2),
+    marginBottom: getSpacing(3),
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -298,8 +552,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: getSpacing(3),
-    marginBottom: getSpacing(2),
+    marginTop: getSpacing(2),
   },
   resendText: {
     fontSize: moderateScale(15),
@@ -309,21 +562,38 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(15),
     fontFamily: getFontFamily('600'),
   },
+  bottomButtonContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingBottom: moderateScale(40),
+    zIndex: 2,
+  },
   verifyButton: {
     width: '100%',
-    paddingVertical: getSpacing(2.5),
-    borderRadius: moderateScale(12),
+    paddingVertical: getSpacing(1.5),
+    borderRadius: moderateScale(8),
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: getSpacing(2),
+    flexDirection: 'row',
+    minHeight: moderateScale(50),
+  },
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   verifyButtonText: {
-    color: '#FFFFFF',
-    fontSize: moderateScale(18),
+    fontSize: moderateScale(16),
+    letterSpacing: 1,
     fontFamily: getFontFamily('700'),
+  },
+  buttonArrowContainer: {
+    marginLeft: getSpacing(1),
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 
 export default OtpVerificationScreen;
-
-

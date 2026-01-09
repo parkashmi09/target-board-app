@@ -7,6 +7,10 @@ export const Images = {
   TEACHER: require('./teacher.webp'),
   BADGE_STRIPE: require('./strip.webp'),
   NEW_BADGE: require('./new.webp'),
+  TOP_RIGHT_BG: require('./top-right.webp'),
+  BOTTOM_ROUND_BG: require('./bottom-round.webp'),
+  LEFT_FLOWER: require('./left-flower.webp'),
+  RIGHT_FLOWER: require('./right-flower.webp'),
 } as const;
 
 export type ImageKey = keyof typeof Images;
