@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, StatusBar, Animated, Easing, BackHandler } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, StatusBar, Animated, Easing, BackHandler, ActivityIndicator } from 'react-native';
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -18,6 +18,7 @@ import StreamDetailsModal from '../components/StreamDetailsModal';
 import PurchaseModal from '../components/PurchaseModal';
 import { getStreamStatus, formatDate, getCountdown } from '../utils/streamUtils';
 import { Svg, Circle, Rect, Path, G, Text as SvgText, TSpan } from 'react-native-svg';
+import { useLoaderStore } from '../store/loaderStore';
 
 type ClassStreamsScreenNavigationProp = NativeStackNavigationProp<MainStackParamList, 'ClassStreams'>;
 type ClassStreamsScreenRouteProp = RouteProp<MainStackParamList, 'ClassStreams'>;
@@ -30,6 +31,7 @@ const ClassStreamsScreen: React.FC = () => {
     const navigation = useNavigation<ClassStreamsScreenNavigationProp>();
     const route = useRoute<ClassStreamsScreenRouteProp>();
     const { courseId } = route.params || {};
+    const { show: showLoader, hide: hideLoader } = useLoaderStore();
 
     const [streams, setStreams] = useState<Stream[]>([]);
     const [loading, setLoading] = useState(true);
@@ -39,6 +41,7 @@ const ClassStreamsScreen: React.FC = () => {
     const [modalVisible, setModalVisible] = useState(false);
     const [purchaseModalVisible, setPurchaseModalVisible] = useState(false);
     const [activeTab, setActiveTab] = useState<StreamTabType>('live');
+    const [isCheckingStream, setIsCheckingStream] = useState(false);
 
     // Handle back button press - works with both header button and Android hardware back button
     const handleBackPress = useCallback(() => {
@@ -72,6 +75,14 @@ const ClassStreamsScreen: React.FC = () => {
 
         return () => backHandler.remove();
     }, [handleBackPress]);
+
+    // Cleanup: Hide loader when component unmounts
+    useEffect(() => {
+        return () => {
+            const { hide: hideLoader } = useLoaderStore.getState();
+            hideLoader();
+        };
+    }, []);
 
     // Memoize filter tabs
     const filterTabs: FilterTab[] = useMemo(() => [
@@ -171,18 +182,70 @@ const ClassStreamsScreen: React.FC = () => {
             return;
         }
 
-        try {
-            // Check stream status first
-            const statusInfo = getStreamStatus(stream);
-            const isLive = statusInfo.label === 'LIVE';
+        // Prevent multiple simultaneous checks
+        if (isCheckingStream) {
+            return;
+        }
 
-            // Call API to get stream with purchase status
+        // CRITICAL: If we're on the "upcoming" tab, NEVER navigate to player
+        // Always show modal for upcoming streams
+        if (activeTab === 'upcoming') {
+            try {
+                showLoader('Loading stream details...');
+                const response = await getStreamById(streamId);
+                const streamData = response.stream || stream;
+                hideLoader();
+                setSelectedStream(streamData);
+                setPurchaseModalVisible(true);
+            } catch (error: any) {
+                if (__DEV__) {
+                    console.error('[ClassStreamsScreen] Error fetching stream details:', error);
+                }
+                hideLoader();
+                setSelectedStream(stream);
+                setPurchaseModalVisible(true);
+            }
+            return;
+        }
+
+        // For "live" tab, check conditions before navigating
+        setIsCheckingStream(true);
+        showLoader('Checking stream status...');
+
+        try {
+            // Check initial stream status
+            const initialStatusInfo = getStreamStatus(stream);
+            const initialIsLive = initialStatusInfo.label === 'LIVE';
+
+            // Call API to get latest stream data with purchase status
             const response = await getStreamById(streamId);
             const streamData = response.stream || stream;
 
-            // Only LIVE streams can play directly
-            if (isLive && response.isUserPurchased === true) {
-                // User has purchased and stream is LIVE - navigate to player
+            // Re-check status with latest data (status might have changed)
+            const latestStatusInfo = getStreamStatus(streamData);
+            const latestIsLive = latestStatusInfo.label === 'LIVE';
+            const isUpcoming = latestStatusInfo.label === 'UPCOMING';
+
+            // If stream is UPCOMING, always show modal (even in live tab)
+            if (isUpcoming) {
+                hideLoader();
+                setIsCheckingStream(false);
+                setSelectedStream(streamData);
+                setPurchaseModalVisible(true);
+                return;
+            }
+
+            // Critical check: Only navigate directly if ALL conditions are met:
+            // 1. Stream is LIVE (checked with latest data)
+            // 2. User has purchased (explicitly true)
+            // 3. Stream has required video data (tpAssetId or hlsUrl)
+            const hasVideoData = !!(streamData.tpAssetId || streamData.hlsUrl);
+            const isPurchased = response.isUserPurchased === true;
+
+            if (latestIsLive && isPurchased && hasVideoData) {
+                // All conditions met - navigate directly to player
+                hideLoader();
+                setIsCheckingStream(false);
                 navigation.navigate('StreamPlayer', {
                     streamId: streamData._id || streamData.id || streamId,
                     tpAssetId: streamData.tpAssetId || stream.tpAssetId,
@@ -191,28 +254,30 @@ const ClassStreamsScreen: React.FC = () => {
                 return;
             }
 
-            // For UPCOMING streams or if not purchased - always show modal
+            // For any other case (not purchased, missing video data, etc.) - show modal
+            hideLoader();
+            setIsCheckingStream(false);
             setSelectedStream(streamData);
             setPurchaseModalVisible(true);
         } catch (error: any) {
             if (__DEV__) {
                 console.error('[ClassStreamsScreen] Error fetching stream details:', error);
             }
-            // Fallback: check status and show modal
+            
+            // On error, check status from original stream data
             const statusInfo = getStreamStatus(stream);
             const isLive = statusInfo.label === 'LIVE';
+            const isUpcoming = statusInfo.label === 'UPCOMING';
             
-            // Only try to play if LIVE, otherwise show modal
-            if (!isLive) {
-                setSelectedStream(stream);
-                setPurchaseModalVisible(true);
-            } else {
-                // For LIVE streams on error, still show modal to be safe
-                setSelectedStream(stream);
-                setPurchaseModalVisible(true);
-            }
+            hideLoader();
+            setIsCheckingStream(false);
+            
+            // Only show modal - never navigate directly on error
+            // This ensures user sees purchase option or stream info
+            setSelectedStream(stream);
+            setPurchaseModalVisible(true);
         }
-    }, [navigation]);
+    }, [navigation, isCheckingStream, showLoader, hideLoader, activeTab]);
 
     const handlePlayStream = useCallback(() => {
         if (!selectedStream) return;

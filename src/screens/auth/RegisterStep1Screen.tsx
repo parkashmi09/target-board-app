@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Image, Animated } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Image, Animated, Keyboard } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../../theme/theme';
 import { moderateScale, getSpacing } from '../../utils/responsive';
@@ -21,6 +21,7 @@ const RegisterStep1Screen: React.FC = () => {
   const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
   const progressAnim = useRef(new Animated.Value(0)).current;
+  const imageHeightAnim = useRef(new Animated.Value(moderateScale(180))).current;
 
   useEffect(() => {
     const nameLength = fullName.trim().length;
@@ -33,6 +34,35 @@ const RegisterStep1Screen: React.FC = () => {
       useNativeDriver: false,
     }).start();
   }, [fullName, progressAnim]);
+
+  useEffect(() => {
+    const keyboardWillShow = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => {
+        Animated.timing(imageHeightAnim, {
+          toValue: moderateScale(100),
+          duration: 250,
+          useNativeDriver: false,
+        }).start();
+      }
+    );
+
+    const keyboardWillHide = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => {
+        Animated.timing(imageHeightAnim, {
+          toValue: moderateScale(180),
+          duration: 250,
+          useNativeDriver: false,
+        }).start();
+      }
+    );
+
+    return () => {
+      keyboardWillShow.remove();
+      keyboardWillHide.remove();
+    };
+  }, [imageHeightAnim]);
 
   const handleNext = () => {
     if (!fullName.trim()) {
@@ -62,19 +92,20 @@ const RegisterStep1Screen: React.FC = () => {
     <KeyboardAvoidingView 
       style={[styles.container, { backgroundColor: theme.colors.background }]} 
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
     >
       <ScrollView 
         contentContainerStyle={styles.scrollContainer}
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.content}>
-          <View style={styles.imageContainer}>
+          <Animated.View style={[styles.imageContainer, { height: imageHeightAnim }]}>
             <Image
               source={Images.NAME_ILLUSTRATION}
               style={styles.image}
               resizeMode="contain"
             />
-          </View>
+          </Animated.View>
 
           <Text style={[styles.title, { color: theme.colors.text }]}>
             Almost there
@@ -143,7 +174,6 @@ const styles = StyleSheet.create({
   },
   imageContainer: {
     width: '100%',
-    height: moderateScale(250),
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: getSpacing(3),

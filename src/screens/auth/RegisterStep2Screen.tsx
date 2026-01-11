@@ -11,6 +11,7 @@ import SVGIcon from '../../components/SVGIcon';
 import { registerStep1, registerStep2, fetchMediums } from '../../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import GradientBackground from '../../components/GradientBackground';
+import messaging from '@react-native-firebase/messaging';
 import type { AuthStackParamList } from '../../navigation/AuthStack';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -183,6 +184,56 @@ const RegisterStep2Screen: React.FC = () => {
       // Submit Step 1 Data
       await registerStep1(tempToken, { fullName });
 
+      // Get FCM token with retry logic
+      let fcmToken: string | undefined;
+      try {
+        // Request permission if not already granted
+        const authStatus = await messaging().requestPermission();
+        const enabled =
+          authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+          authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+
+        if (enabled) {
+          // Try to get token with retry (sometimes token needs a moment)
+          let retries = 3;
+          while (retries > 0 && !fcmToken) {
+            try {
+              fcmToken = await messaging().getToken();
+              if (fcmToken && fcmToken.length > 0) {
+                if (__DEV__) {
+                  console.log('✅ FCM Token for registration:', fcmToken.substring(0, 20) + '...');
+                  console.log('📱 Full FCM Token length:', fcmToken.length);
+                }
+                break;
+              }
+            } catch (tokenError) {
+              if (__DEV__) {
+                console.warn(`⚠️ Token retrieval attempt ${4 - retries} failed:`, tokenError);
+              }
+              retries--;
+              if (retries > 0) {
+                // Wait a bit before retrying
+                await new Promise<void>(resolve => setTimeout(() => resolve(), 500));
+              }
+            }
+          }
+          
+          if (!fcmToken) {
+            if (__DEV__) {
+              console.error('❌ Failed to get FCM token after retries');
+            }
+          }
+        } else {
+          if (__DEV__) {
+            console.warn('⚠️ FCM Permission not granted, token not available');
+          }
+        }
+      } catch (error) {
+        if (__DEV__) {
+          console.error('❌ Failed to get FCM token for registration:', error);
+        }
+      }
+
       // Submit Step 2 Data
       const payload: any = {
         stateBoardId: selectedBoardId,
@@ -194,6 +245,9 @@ const RegisterStep2Screen: React.FC = () => {
       }
       if (city.trim()) {
         payload.city = city.trim();
+      }
+      if (fcmToken) {
+        payload.fcmToken = fcmToken;
       }
 
       const res = await registerStep2(tempToken, payload);

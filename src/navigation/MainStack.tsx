@@ -13,12 +13,16 @@ import PDFViewerScreen from '../screens/PDFViewerScreen';
 import PDFDownloadScreen from '../screens/PDFDownlaodScreen';
 import CategoriesScreen from '../screens/CategoriesScreen';
 import CategoryContentScreen from '../screens/CategoryContentScreen';
+import CategoryLevelFirstScreen from '../screens/CategoryLevelFirstScreen';
+import CategoryLevelSecondScreen from '../screens/CategoryLevelSecondScreen';
+import CategoryLevelThirdScreen from '../screens/CategoryLevelThirdScreen';
 import ClassStreamsScreen from '../screens/ClassStreamsScreen';
 import StreamPlayerScreen from '../screens/StreamPlayerScreen';
 import VideoPlayerScreen from '../screens/VideoPlayerScreen';
 import LiveChatScreen from '../screens/LiveChatScreen';
 import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
 import TermsAndConditionsScreen from '../screens/TermsAndConditionsScreen';
+import NotificationsScreen from '../screens/NotificationsScreen';
 import NetworkBanner from '../components/NetworkBanner';
 import { CategoryNode } from '../services/api';
 import { useNetworkStore } from '../store/networkStore';
@@ -61,6 +65,24 @@ export type MainStackParamList = {
     courseName?: string;
     parentCategory?: CategoryNode;
   };
+  CategoryLevelFirst: {
+    categories: CategoryNode[];
+    courseId: string;
+    courseName?: string;
+    parentCategory?: CategoryNode;
+  };
+  CategoryLevelSecond: {
+    categories: CategoryNode[];
+    courseId: string;
+    courseName?: string;
+    parentCategory?: CategoryNode;
+  };
+  CategoryLevelThird: {
+    categories: CategoryNode[];
+    courseId: string;
+    courseName?: string;
+    parentCategory?: CategoryNode;
+  };
   CategoryContent: {
     category: CategoryNode;
     courseId: string;
@@ -96,6 +118,7 @@ export type MainStackParamList = {
   TermsAndConditions: {
     url?: string;
   };
+  Notifications: undefined;
 };
 
 const Stack = createNativeStackNavigator<MainStackParamList>();
@@ -122,6 +145,9 @@ const MainStack: React.FC = () => {
       <Stack.Screen name="PDFViewer" component={PDFViewerScreen} />
       <Stack.Screen name="PDFDownload" component={PDFDownloadScreen} />
       <Stack.Screen name="Categories" component={CategoriesScreen} />
+      <Stack.Screen name="CategoryLevelFirst" component={CategoryLevelFirstScreen} />
+      <Stack.Screen name="CategoryLevelSecond" component={CategoryLevelSecondScreen} />
+      <Stack.Screen name="CategoryLevelThird" component={CategoryLevelThirdScreen} />
       <Stack.Screen name="CategoryContent" component={CategoryContentScreen} />
       <Stack.Screen name="ClassStreams" component={ClassStreamsScreen} />
       <Stack.Screen name="StreamPlayer" component={StreamPlayerScreen} />
@@ -136,6 +162,7 @@ const MainStack: React.FC = () => {
       <Stack.Screen name="LiveChat" component={LiveChatScreen} />
       <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
       <Stack.Screen name="TermsAndConditions" component={TermsAndConditionsScreen} />
+      <Stack.Screen name="Notifications" component={NotificationsScreen} />
       </Stack.Navigator>
     </View>
   );

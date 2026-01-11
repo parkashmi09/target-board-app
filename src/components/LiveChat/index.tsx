@@ -20,6 +20,7 @@ import { useTheme } from '../../theme/theme';
 import { moderateScale, getSpacing, safeFont, safeLetterSpacing } from '../../utils/responsive';
 import { getFontFamily } from '../../utils/fonts';
 import { socketService, ChatMessage, ChatSettings, ChatTag } from '../../services/socketService';
+import { SOCKET_URL } from '../../services/config';
 import EmojiPicker, { type EmojiType } from 'rn-emoji-keyboard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -325,15 +326,18 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
         if (!selectedMessage || !reportReason || !streamId) return;
 
         try {
-            const CHAT_SERVICE_URL = 'https://shark-app-2-dzcvn.ondigitalocean.app';
+            // Use SOCKET_URL from config, fallback to default if not set
+            const CHAT_SERVICE_URL = SOCKET_URL || 'https://shark-app-2-dzcvn.ondigitalocean.app';
+            // Remove trailing slash if present to avoid double slashes
+            const baseUrl = CHAT_SERVICE_URL.replace(/\/$/, '');
 
             console.log('[LiveChat] Reporting via HTTP:', {
-                url: `${CHAT_SERVICE_URL}/api/v1/chat/report/${streamId}`,
+                url: `${baseUrl}/api/v1/chat/report/${streamId}`,
                 messageId: selectedMessage.id,
                 reason: reportReason
             });
 
-            const response = await fetch(`${CHAT_SERVICE_URL}/api/v1/chat/report/${streamId}`, {
+            const response = await fetch(`${baseUrl}/api/v1/chat/report/${streamId}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

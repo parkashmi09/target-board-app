@@ -75,7 +75,29 @@ const DownloadsScreen: React.FC = () => {
         const contentId = content._id || (typeof download.content === 'string' ? download.content : null);
 
         if (download.assetType === 'video') {
-            toast.show({ text: 'Video playback coming soon', type: 'info' });
+            // Navigate to VideoPlayer screen
+            const tpAssetId = content.video?.assetId;
+            const hlsUrl = download.assetUrl;
+            
+            if (!tpAssetId && !hlsUrl) {
+                toast.show({ text: 'Video information not available', type: 'error' });
+                return;
+            }
+
+            try {
+                navigation.navigate('VideoPlayer', {
+                    tpAssetId: tpAssetId || undefined,
+                    hlsUrl: hlsUrl || undefined,
+                    title: content.title || 'Video',
+                    contentId: contentId || undefined,
+                    enableDownload: true,
+                });
+            } catch (error) {
+                if (__DEV__) {
+                    console.error('[DownloadsScreen] Navigation error:', error);
+                }
+                toast.show({ text: 'Failed to open video', type: 'error' });
+            }
         } else if (download.assetType === 'pdf' && content.pdf?.url) {
             navigation.navigate('PDFViewer', {
                 url: content.pdf.url,
@@ -97,11 +119,20 @@ const DownloadsScreen: React.FC = () => {
                 onPress={() => handleDownloadPress(item)}
                 activeOpacity={0.7}
             >
-                <View style={styles.downloadItemIcon}>
+                <View style={[
+                    styles.downloadItemIcon,
+                    { 
+                        backgroundColor: item.assetType === 'video' 
+                            ? '#E3F2FD' 
+                            : '#FFF3E0' 
+                    }
+                ]}>
                     {item.assetType === 'video' ? (
-                        <Video size={24} color={colors.primary} />
+                        <View style={styles.playButtonContainer}>
+                            <Play size={24} color="#FFFFFF" />
+                        </View>
                     ) : (
-                        <FileText size={24} color={colors.primary} />
+                        <FileText size={28} color="#FF9800" />
                     )}
                 </View>
                 <View style={styles.downloadItemContent}>
@@ -456,10 +487,9 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
     },
     downloadItemIcon: {
-        width: moderateScale(48),
-        height: moderateScale(48),
-        borderRadius: moderateScale(24),
-        backgroundColor: 'rgba(0, 31, 63, 0.1)',
+        width: moderateScale(56),
+        height: moderateScale(56),
+        borderRadius: moderateScale(28),
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: getSpacing(2),
@@ -479,6 +509,16 @@ const styles = StyleSheet.create({
     },
     downloadItemAction: {
         padding: getSpacing(1),
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    playButtonContainer: {
+        width: moderateScale(40),
+        height: moderateScale(40),
+        borderRadius: moderateScale(20),
+        backgroundColor: '#FF0000',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     emptyCardContainer: {
         padding: getSpacing(2),

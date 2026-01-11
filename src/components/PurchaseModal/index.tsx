@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
         borderRadius: moderateScale(16),
         overflow: 'hidden',
         maxWidth: '100%',
-        width: '100%',
+        width: moderateScale(380),
         elevation: 8,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
     },
     bannerContainer: {
         width: '100%',
-        height: moderateScale(280),
+        height: moderateScale(240),
         position: 'relative',
     },
     bannerImage: {

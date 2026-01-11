@@ -32,6 +32,23 @@ npm run android
 yarn android
 ```
 
+#### ADB Reverse Port Forwarding
+
+If you're connecting to a physical Android device, you may need to set up port forwarding:
+
+```sh
+# Set up ADB reverse (forwards port 8081 from device to host)
+npm run adb:reverse
+
+# Check connected devices
+npm run adb:devices
+
+# Or run both commands together
+npm run adb:setup
+```
+
+This forwards the Metro bundler port (8081) from your Android device to your development machine, allowing the app to connect to the Metro server.
+
 ### iOS
 
 For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).

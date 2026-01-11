@@ -81,10 +81,23 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
   /* Android hardware back */
   useFocusEffect(
     useCallback(() => {
-      const onBack = () => goHomeOrBack();
+      const onBack = () => {
+        if (isSearchActive) {
+          setIsSearchActive(false);
+          setSearchText('');
+          onSearch?.('');
+          return true;
+        }
+        // Check if we can go back, otherwise use custom logic
+        if (navigation.canGoBack()) {
+          navigation.goBack();
+          return true;
+        }
+        return goHomeOrBack();
+      };
       const sub = BackHandler.addEventListener('hardwareBackPress', onBack);
       return () => sub.remove();
-    }, [goHomeOrBack])
+    }, [goHomeOrBack, navigation, isSearchActive, onSearch])
   );
 
   /* ---------------- SEARCH STATE ---------------- */
@@ -129,7 +142,12 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
       onSearch?.('');
       return;
     }
-    goHomeOrBack();
+    // Check if we can go back, otherwise use custom logic
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      goHomeOrBack();
+    }
   };
 
   const handleSearchChange = (text: string) => {

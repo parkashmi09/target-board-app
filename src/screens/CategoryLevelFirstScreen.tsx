@@ -15,51 +15,21 @@ import { getFontFamily } from '../utils/fonts';
 import GradientBackground from '../components/GradientBackground';
 import ScreenHeader from '../components/ScreenHeader';
 import SVGIcon from '../components/SVGIcon';
-import { fetchCategoryTree, CategoryNode } from '../services/api';
+import { CategoryNode } from '../services/api';
 import type { MainStackParamList } from '../navigation/MainStack';
 
-type CategoriesScreenRouteProp = RouteProp<MainStackParamList, 'Categories'>;
+type CategoryLevelFirstScreenRouteProp = RouteProp<MainStackParamList, 'CategoryLevelFirst'>;
 
-const CategoriesScreen: React.FC = () => {
+const CategoryLevelFirstScreen: React.FC = () => {
   const theme = useTheme();
   const { colors } = theme;
   const navigation = useNavigation();
-  const route = useRoute<CategoriesScreenRouteProp>();
-  const { courseId, courseName, parentCategory } = route.params || {};
+  const route = useRoute<CategoryLevelFirstScreenRouteProp>();
+  const { categories, courseId, courseName, parentCategory } = route.params || {};
 
-  const [categories, setCategories] = useState<CategoryNode[]>([]);
-
-
-  console.log("categories", categories);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-
-  const loadCategories = useCallback(async () => {
-    if (!courseId) return;
-
-    try {
-      setLoading(true);
-      const data = await fetchCategoryTree(courseId);
-      setCategories(data);
-    } catch (error) {
-      if (__DEV__) {
-        console.error('[CategoriesScreen] Error loading categories:', error);
-      }
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [courseId]);
-
-  useEffect(() => {
-    loadCategories();
-  }, [loadCategories]);
-
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    loadCategories();
-  }, [loadCategories]);
 
   const handleSearch = useCallback((searchText: string) => {
     setSearchQuery(searchText);
@@ -71,17 +41,9 @@ const CategoriesScreen: React.FC = () => {
       const categoryLevel = category.level ?? 0;
       
       if (hasChildren) {
-        // Route to appropriate level screen based on category level
-        if (categoryLevel === 0) {
-          // Level 0 -> Navigate to Level 1 screen
-          (navigation as any).navigate('CategoryLevelFirst', {
-            categories: category.children,
-            courseId,
-            courseName: category.name,
-            parentCategory: category,
-          });
-        } else if (categoryLevel === 1) {
-          // Level 1 -> Navigate to Level 2 screen
+        // Route to appropriate level screen based on next level
+        if (categoryLevel === 1) {
+          // Navigate to Level 2 screen
           (navigation as any).navigate('CategoryLevelSecond', {
             categories: category.children,
             courseId,
@@ -89,7 +51,7 @@ const CategoriesScreen: React.FC = () => {
             parentCategory: category,
           });
         } else if (categoryLevel === 2) {
-          // Level 2 -> Navigate to Level 3 screen
+          // Navigate to Level 3 screen
           (navigation as any).navigate('CategoryLevelThird', {
             categories: category.children,
             courseId,
@@ -97,7 +59,7 @@ const CategoriesScreen: React.FC = () => {
             parentCategory: category,
           });
         } else {
-          // Fallback to CategoryContent for deeper levels
+          // Fallback to CategoryContent
           (navigation as any).navigate('CategoryContent', {
             category,
             courseId,
@@ -118,7 +80,7 @@ const CategoriesScreen: React.FC = () => {
 
   // Filter categories based on search
   const filteredCategories = React.useMemo(() => {
-    const displayCategories = parentCategory?.children || categories;
+    const displayCategories = categories || [];
     if (!searchQuery.trim()) return displayCategories;
     
     const query = searchQuery.toLowerCase();
@@ -126,12 +88,11 @@ const CategoriesScreen: React.FC = () => {
       const name = category?.name || '';
       return name.toLowerCase().includes(query);
     });
-  }, [categories, parentCategory, searchQuery]);
+  }, [categories, searchQuery]);
 
   const renderCategoryItem = useCallback(
     ({ item }: { item: CategoryNode }) => {
       const hasChildren = item.children && item.children.length > 0;
-      // Use Hindi name from API if available
       const hindiName = item.hindiName || '';
 
       return (
@@ -199,7 +160,7 @@ const CategoriesScreen: React.FC = () => {
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
-              onRefresh={onRefresh}
+              onRefresh={() => setRefreshing(false)}
               tintColor={colors.accent}
               colors={[colors.accent]}
             />
@@ -213,7 +174,6 @@ const CategoriesScreen: React.FC = () => {
           </Text>
         </View>
       )}
-   
     </GradientBackground>
   );
 };
@@ -262,28 +222,6 @@ const styles = StyleSheet.create({
     fontFamily: getFontFamily('500'),
     lineHeight: moderateScale(20),
   },
-  subcategoryHint: {
-    fontSize: moderateScale(12),
-    marginTop: getSpacing(0.25),
-  },
-  fab: {
-    position: 'absolute',
-    bottom: getSpacing(4),
-    right: getSpacing(3),
-    backgroundColor: '#000000',
-    borderRadius: moderateScale(8),
-    paddingHorizontal: getSpacing(2.5),
-    paddingVertical: getSpacing(1.5),
-    elevation: 8,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-  },
-  fabText: {
-    color: '#FFFFFF',
-    fontSize: moderateScale(14),
-    fontFamily: getFontFamily('600'),
-  },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -307,5 +245,5 @@ const styles = StyleSheet.create({
   },
 });
 
-export default CategoriesScreen;
+export default CategoryLevelFirstScreen;
 

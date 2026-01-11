@@ -22,8 +22,9 @@ import { RAZORPAY_KEY_ID } from '../services/config';
 import RazorpayCheckout from 'react-native-razorpay';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '../components/Toast';
-import { useGlobalLoaderManual } from '../components/GlobalLoader';
+import { useLoaderStore } from '../store/loaderStore';
 import { getSpacing, moderateScale, scale, verticalScale } from '../utils/responsive';
+import { getFontFamily } from '../utils/fonts';
 import PaymentResultModal from '../components/PaymentResultModal';
 import ScreenHeader from '../components/ScreenHeader';
 import GradientBackground from '../components/GradientBackground';
@@ -36,7 +37,7 @@ const PaymentCheckoutScreen: React.FC = () => {
   const route = useRoute<any>();
   const { courseId, packageId, originalPrice, currentPrice } = route.params || {};
   const toast = useToast();
-  const loader = useGlobalLoaderManual();
+  const { show: showLoader, hide: hideLoader } = useLoaderStore();
   const queryClient = useQueryClient();
 
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('');
@@ -257,7 +258,7 @@ const PaymentCheckoutScreen: React.FC = () => {
     if (isProcessingPayment) return;
 
     setIsProcessingPayment(true);
-    loader.show();
+    showLoader('Processing payment...');
 
     try {
       const order = await createPurchaseOrder(courseId, packageId, appliedPromoCode || undefined);
@@ -392,9 +393,9 @@ const PaymentCheckoutScreen: React.FC = () => {
       setShowResultModal(true);
     } finally {
       setIsProcessingPayment(false);
-      loader.hide();
+      hideLoader();
     }
-    }, [course, courseId, packageId, appliedPromoCode, isProcessingPayment, toast, loader, queryClient, navigation, savedMobileNumber]);
+    }, [course, courseId, packageId, appliedPromoCode, isProcessingPayment, toast, showLoader, hideLoader, queryClient, navigation, savedMobileNumber]);
 
   const handleScanPay = useCallback(() => {
     // Navigate to QR code payment screen with pre-fetched data
@@ -826,7 +827,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 17,
-    fontWeight: '600',
+    fontFamily: getFontFamily('600'),
     color: '#000',
     flex: 1,
     textAlign: 'center',
@@ -873,13 +874,13 @@ const styles = StyleSheet.create({
   },
   mainPrice: {
     fontSize: moderateScale(36),
-    fontWeight: '700',
+    fontFamily: getFontFamily('800'),
     letterSpacing: 0.5,
     color: '#000',
   },
   courseName: {
     fontSize: moderateScale(16),
-    fontWeight: '600',
+    fontFamily: getFontFamily('600'),
     marginBottom: getSpacing(2.5),
     textAlign: 'center',
     color: '#000',
@@ -894,17 +895,17 @@ const styles = StyleSheet.create({
   },
   detailLabel: {
     fontSize: moderateScale(14),
-    fontWeight: '500',
+    fontFamily: getFontFamily('500'),
     color: '#666',
   },
   detailValue: {
     fontSize: moderateScale(14),
-    fontWeight: '600',
+    fontFamily: getFontFamily('600'),
     color: '#666',
   },
   detailValueDark: {
     fontSize: moderateScale(14),
-    fontWeight: '600',
+    fontFamily: getFontFamily('600'),
     color: '#000',
   },
   promoCodeButton: {
@@ -934,7 +935,7 @@ const styles = StyleSheet.create({
   promoCodeText: {
     flex: 1,
     fontSize: moderateScale(16),
-    fontWeight: '500',
+    fontFamily: getFontFamily('500'),
     color: '#000',
   },
   promoCodeInputContainer: {
@@ -972,7 +973,7 @@ const styles = StyleSheet.create({
   applyButtonText: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '600',
+    fontFamily: getFontFamily('600'),
   },
   removePromoButton: {
     marginLeft: 8,
@@ -986,7 +987,7 @@ const styles = StyleSheet.create({
   removePromoText: {
     color: '#FFFFFF',
     fontSize: 12,
-    fontWeight: '600',
+    fontFamily: getFontFamily('600'),
   },
   promoAppliedContainer: {
     marginTop: 8,
@@ -997,12 +998,12 @@ const styles = StyleSheet.create({
   },
   promoAppliedText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontFamily: getFontFamily('600'),
     textAlign: 'center',
   },
   sectionTitle: {
     fontSize: moderateScale(16),
-    fontWeight: '700',
+    fontFamily: getFontFamily('700'),
     marginBottom: getSpacing(1.5),
     color: '#000',
   },
@@ -1036,7 +1037,7 @@ const styles = StyleSheet.create({
   },
   paymentTitle: {
     fontSize: moderateScale(16),
-    fontWeight: '600',
+    fontFamily: getFontFamily('600'),
     marginBottom: getSpacing(0.5),
     color: '#000',
     textAlign: 'center',
@@ -1076,7 +1077,7 @@ const styles = StyleSheet.create({
   },
   bottomPrice: {
     fontSize: moderateScale(24),
-    fontWeight: '700',
+    fontFamily: getFontFamily('800'),
     color: '#1e293b',
   },
   discountBadge: {
@@ -1088,7 +1089,7 @@ const styles = StyleSheet.create({
   discountBadgeText: {
     color: '#FFFFFF',
     fontSize: moderateScale(10),
-    fontWeight: '700',
+    fontFamily: getFontFamily('800'),
   },
   payNowButton: {
     width: '100%',
@@ -1111,7 +1112,7 @@ const styles = StyleSheet.create({
   payNowText: {
     color: '#000',
     fontSize: moderateScale(16),
-    fontWeight: '700',
+    fontFamily: getFontFamily('800'),
   },
   fingerIcon: {
     fontSize: moderateScale(20),
@@ -1135,7 +1136,7 @@ const styles = StyleSheet.create({
   backButtonText: {
     color: '#FFFFFF',
     fontSize: moderateScale(16),
-    fontWeight: '600',
+    fontFamily: getFontFamily('600'),
   },
   helpSection: {
     backgroundColor: '#FFFFFF',
@@ -1186,7 +1187,7 @@ const styles = StyleSheet.create({
     left: getSpacing(1),
     right: getSpacing(1),
     fontSize: moderateScale(10),
-    fontWeight: '600',
+    fontFamily: getFontFamily('600'),
     color: '#FFFFFF',
     textAlign: 'center',
   },
@@ -1212,7 +1213,7 @@ const styles = StyleSheet.create({
   callButtonText: {
     color: '#FFFFFF',
     fontSize: moderateScale(14),
-    fontWeight: '600',
+    fontFamily: getFontFamily('600'),
   },
   videoModalContainer: {
     flex: 1,
@@ -1229,7 +1230,7 @@ const styles = StyleSheet.create({
   },
   videoModalTitle: {
     fontSize: moderateScale(18),
-    fontWeight: '700',
+    fontFamily: getFontFamily('800'),
     color: '#FFFFFF',
     flex: 1,
   },

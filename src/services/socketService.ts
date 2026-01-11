@@ -1,6 +1,5 @@
 import io, { Socket } from 'socket.io-client';
-
-const BASE_URL = 'https://shark-app-2-dzcvn.ondigitalocean.app/';
+import { SOCKET_URL } from './config';
 
 export interface ChatMessage {
     id: string;
@@ -57,7 +56,8 @@ class SocketService {
             this.disconnect();
         }
         this.token = token;
-        this.socket = io(BASE_URL, {
+        const socketUrl = SOCKET_URL || 'https://shark-app-2-dzcvn.ondigitalocean.app/';
+        this.socket = io(socketUrl, {
             auth: {
                 token: this.token,
             },

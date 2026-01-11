@@ -26,13 +26,6 @@ const StreamPlayerScreen: React.FC = () => {
     const { colors } = useTheme();
     const { streamId, tpAssetId, hlsUrl } = route.params || {};
 
-    // Handle back button press - works with both header button and Android hardware back button
-    const handleBackPress = useCallback(() => {
-        if (navigation.canGoBack()) {
-            navigation.goBack();
-        }
-    }, [navigation]);
-
     console.log('[StreamPlayerScreen] Props:', {
         streamId,
         tpAssetId,
@@ -51,6 +44,8 @@ const StreamPlayerScreen: React.FC = () => {
     const [isLoadingToken, setIsLoadingToken] = useState(true);
     const [streamData, setStreamData] = useState<any>(null);
     const [countdown, setCountdown] = useState<string>('');
+    const [isLoadingStreamData, setIsLoadingStreamData] = useState(true);
+    const [streamLoadError, setStreamLoadError] = useState<string | null>(null);
 
     useEffect(() => {
         const loadToken = async () => {
@@ -125,6 +120,9 @@ const StreamPlayerScreen: React.FC = () => {
 
         // Fetch immediately when component mounts
         const fetchChatRoomId = async () => {
+            setIsLoadingStreamData(true);
+            setStreamLoadError(null);
+            
             try {
                 const fetchedStreamData = await getStreamById(streamId);
 
@@ -144,6 +142,8 @@ const StreamPlayerScreen: React.FC = () => {
                     setStreamTpStatus(fetchedStreamData.stream.tpStatus);
                     setStreamTitle(fetchedStreamData.stream.title);
                     setStreamDescription(fetchedStreamData.stream.description);
+                } else {
+                    setStreamLoadError('Stream data not found');
                 }
 
                 if (fetchedStreamData.chatRoomId?.roomId) {
@@ -157,10 +157,13 @@ const StreamPlayerScreen: React.FC = () => {
                         console.warn('[StreamPlayerScreen] No chatRoomId found in response');
                     }
                 }
-            } catch (err) {
+            } catch (err: any) {
                 if (__DEV__) {
                     console.error('[StreamPlayerScreen] Error fetching stream data:', err);
                 }
+                setStreamLoadError(err?.message || 'Failed to load stream data');
+            } finally {
+                setIsLoadingStreamData(false);
             }
         };
 
@@ -188,14 +191,47 @@ const StreamPlayerScreen: React.FC = () => {
 
 
 
-    // Check if stream is upcoming or live
-    const isUpcoming = streamData ? getStreamStatus(streamData).label === 'UPCOMING' : false;
-    const isLive = streamData ? getStreamStatus(streamData).label === 'LIVE' : false;
+    // Check if stream is upcoming or live - only check if we have stream data
+    const statusInfo = streamData ? getStreamStatus(streamData) : null;
+    const isUpcoming = statusInfo?.label === 'UPCOMING';
+    const isLive = statusInfo?.label === 'LIVE';
+
+    // Show loading state while fetching stream data
+    if (isLoadingStreamData) {
+        return (
+            <GradientBackground>
+                <ScreenHeader title="Stream Player" showSearch={false} />
+                <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+                    <ActivityIndicator size="large" color={colors.primary} />
+                    <Text style={[styles.loadingText, { color: colors.text }]}>
+                        Loading stream information...
+                    </Text>
+                </View>
+            </GradientBackground>
+        );
+    }
+
+    // Show error if stream data failed to load
+    if (streamLoadError && !streamData) {
+        return (
+            <GradientBackground>
+                <ScreenHeader title="Stream Player" showSearch={false} />
+                <View style={[styles.errorContainer, { backgroundColor: colors.background }]}>
+                    <Text style={[styles.errorText, { color: colors.error || 'red' }]}>
+                        {streamLoadError}
+                    </Text>
+                    <Text style={[styles.errorSubtext, { color: colors.textSecondary }]}>
+                        Please try again later
+                    </Text>
+                </View>
+            </GradientBackground>
+        );
+    }
 
     if (!videoId) {
         return (
             <GradientBackground>
-                <ScreenHeader title="Stream Player" showSearch={false} onBackPress={handleBackPress} />
+                <ScreenHeader title="Stream Player" showSearch={false} />
                 <View style={[styles.errorContainer, { backgroundColor: colors.background }]}>
                     <Text style={[styles.errorText, { color: colors.error || 'red' }]}>
                         Missing stream information
@@ -210,7 +246,7 @@ const StreamPlayerScreen: React.FC = () => {
 
     return (
         <GradientBackground>
-            <ScreenHeader title={isUpcoming ? "Upcoming Stream" : "Live Stream"} showSearch={false} onBackPress={handleBackPress} />
+            <ScreenHeader title={isUpcoming ? "Upcoming Stream" : "Live Stream"} showSearch={false} />
             <View style={[styles.container, { backgroundColor: colors.background }]}>
                 {/* Video Player Container */}
                 <View style={[styles.videoContainer, { height: videoHeight, backgroundColor: 'black' }]}>
@@ -241,8 +277,8 @@ const StreamPlayerScreen: React.FC = () => {
                                 )}
                             </View>
                         </View>
-                    ) : isPlayerReady && isLive ? (
-                        // Live Stream - Show Player only for LIVE streams
+                    ) : isPlayerReady && isLive && videoId ? (
+                        // Live Stream - Show Player only for LIVE streams with valid videoId
                         <TPStreamsPlayerView
                             videoId={videoId}
                             accessToken={TPSTREAMS_ACCESS_TOKEN}
@@ -252,12 +288,21 @@ const StreamPlayerScreen: React.FC = () => {
                             style={styles.video}
                         />
                     ) : (
-                        // Loading state
+                        // Loading state - show while player is preparing or if not live
                         <View style={styles.loadingContainer}>
                             <ActivityIndicator size="large" color={colors.primary} />
                             <Text style={[styles.loadingText, { color: colors.text }]}>
-                                {isLive ? 'Loading stream...' : 'Preparing stream...'}
+                                {!isPlayerReady 
+                                    ? 'Preparing player...' 
+                                    : isLive 
+                                        ? 'Loading stream...' 
+                                        : 'Preparing stream...'}
                             </Text>
+                            {!videoId && (
+                                <Text style={[styles.errorSubtext, { color: colors.textSecondary, marginTop: getSpacing(1) }]}>
+                                    Waiting for stream data...
+                                </Text>
+                            )}
                         </View>
                     )}
                 </View>

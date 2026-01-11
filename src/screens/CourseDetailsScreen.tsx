@@ -10,7 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRoute, useNavigation } from '@react-navigation/native';
+import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '../theme/theme';
 import { getFontFamily } from '../utils/fonts';
@@ -39,7 +39,6 @@ const CourseDetailsScreen: React.FC = () => {
 
   const [purchaseModalVisible, setPurchaseModalVisible] = useState(false);
   const [liveStreams, setLiveStreams] = useState<Stream[]>([]);
-  const [isCheckingStreams, setIsCheckingStreams] = useState(false);
   const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
@@ -57,38 +56,41 @@ const CourseDetailsScreen: React.FC = () => {
     );
   }
 
-  const { data: course, isLoading, error } = useQuery({
+  const { data: course, isLoading, error, refetch } = useQuery({
     queryKey: ['courseDetails', courseId],
     queryFn: () => fetchCourseDetails(courseId),
     enabled: !!courseId,
+    staleTime: 0, // Always consider data stale
+    gcTime: 0, // Don't cache data (gcTime replaces cacheTime in v5)
+    refetchOnMount: true, // Refetch on every mount
+    refetchOnWindowFocus: true, // Refetch when screen is focused
   });
 
-  // Check for live streams when course is loaded
+  // Fetch live streams using React Query - refetch every time
+  const { data: streamsData, refetch: refetchStreams } = useQuery({
+    queryKey: ['courseStreams', courseId, 'live'],
+    queryFn: () => getCourseStreams(courseId, 'live'),
+    enabled: !!courseId && !!course,
+    staleTime: 0, // Always consider data stale
+    gcTime: 0, // Don't cache data (gcTime replaces cacheTime in v5)
+    refetchOnMount: true, // Refetch on every mount
+    refetchOnWindowFocus: true, // Refetch when screen is focused
+  });
+
+  // Update live streams from API response
   useEffect(() => {
-    const checkLiveStreams = async () => {
-      if (!courseId) return;
-      setIsCheckingStreams(true);
-      try {
-        const streams = await getCourseStreams(courseId, 'live');
-        setLiveStreams(Array.isArray(streams) ? streams : []);
-      } catch (error) {
-        if (__DEV__) {
-          console.error('Error fetching live streams:', error);
-        }
-        setLiveStreams([]);
-      } finally {
-        setIsCheckingStreams(false);
-      }
-    };
-
-    if (course && courseId) {
-      checkLiveStreams();
+    if (streamsData) {
+      setLiveStreams(Array.isArray(streamsData) ? streamsData : []);
+    } else {
+      setLiveStreams([]);
     }
-  }, [course, courseId]);
+  }, [streamsData]);
 
-  // Parse courseFeatures if it's a string
+  // Use API response directly - all validation comes from API
   const courseFeatures = useMemo(() => {
-    if (!course?.courseFeatures) return {};
+    if (!course) return {};
+    // API should return parsed courseFeatures, but handle string if needed
+    if (!course.courseFeatures) return {};
     try {
       return typeof course.courseFeatures === 'string'
         ? JSON.parse(course.courseFeatures)
@@ -98,38 +100,47 @@ const CourseDetailsScreen: React.FC = () => {
     }
   }, [course?.courseFeatures]);
 
-  // Get default package price if available, otherwise use coursePrice
+  // Use API response for default package
   const defaultPackage = useMemo(() => {
-    if (!course?.packages || !Array.isArray(course.packages)) return null;
-    return course.packages.find((pkg: any) => pkg?.isDefault === true) || course.packages[0] || null;
-  }, [course?.packages]);
+    if (!course) return null;
+    return (course as any).defaultPackage || 
+      (course.packages && Array.isArray(course.packages) 
+        ? (course.packages.find((pkg: any) => pkg?.isDefault === true) || course.packages[0] || null)
+        : null);
+  }, [course]);
 
-  // Get class name from courseMappings
+  // Use API response for class name
   const className = useMemo(() => {
-    if (course?.courseMappings && Array.isArray(course.courseMappings) && course.courseMappings.length > 0) {
-      return course.courseMappings[0]?.class?.name || null;
-    }
-    // Fallback to course.class?.name if it's an object
-    if (course?.class && typeof course.class === 'object') {
-      return course.class.name || null;
-    }
-    return null;
-  }, [course?.courseMappings, course?.class]);
+    if (!course) return null;
+    return (course as any).className || 
+      (course.courseMappings && Array.isArray(course.courseMappings) && course.courseMappings.length > 0
+        ? course.courseMappings[0]?.class?.name || null
+        : null) ||
+      (course.class && typeof course.class === 'object' ? (course.class as any).name : null);
+  }, [course]);
 
-  // Calculate prices - use default package price if available
-  const originalPrice = course?.strikeoutPrice || 0;
+  // Use API response for prices - API should provide these values
+  const originalPrice = useMemo(() => {
+    if (!course) return 0;
+    return (course as any).originalPrice || course.strikeoutPrice || 0;
+  }, [course]);
+
   const currentPrice = useMemo(() => {
-    // If there's a default package with price, use that
-    if (defaultPackage?.price !== undefined && defaultPackage.price > 0) {
-      return defaultPackage.price;
-    }
-    // Otherwise use coursePrice
-    return course?.coursePrice || 0;
-  }, [defaultPackage, course?.coursePrice]);
+    if (!course) return 0;
+    return (course as any).currentPrice || 
+      (defaultPackage?.price !== undefined && defaultPackage.price > 0 
+        ? defaultPackage.price 
+        : course.coursePrice || 0);
+  }, [course, defaultPackage]);
 
-  const discount = originalPrice > 0 && originalPrice > currentPrice
-    ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100)
-    : 0;
+  // Use API response for discount
+  const discount = useMemo(() => {
+    if (!course) return 0;
+    return (course as any).discount || 
+      (originalPrice > 0 && originalPrice > currentPrice
+        ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100)
+        : 0);
+  }, [course, originalPrice, currentPrice]);
 
   const handleShare = useCallback(async () => {
     if (!course?.name) {
@@ -150,24 +161,51 @@ const CourseDetailsScreen: React.FC = () => {
     }
   }, [course, toast]);
 
-  // Determine if course is paid based on price
-  const isCoursePaid = currentPrice > 0;
-  // Note: purchased status would need to come from a separate API call to /student-courses/:id
-  // For now, we'll keep it as false since we're only using /courses/:id
-  const isPurchased = false;
-  const hasLiveStreams = liveStreams.length > 0;
+  // Use API response for all validation flags - API should provide these
+  const isCoursePaid = useMemo(() => {
+    if (!course) return false;
+    return (course as any).isCoursePaid !== undefined 
+      ? (course as any).isCoursePaid 
+      : (currentPrice > 0);
+  }, [course, currentPrice]);
 
-  // Get default package on mount
+  const isPurchased = useMemo(() => {
+    if (!course) return false;
+    return (course as any).isPurchased || false;
+  }, [course]);
+
+  const hasLiveStreams = useMemo(() => {
+    if (!course) return false;
+    return (course as any).hasLiveStreams !== undefined
+      ? (course as any).hasLiveStreams
+      : (liveStreams.length > 0);
+  }, [course, liveStreams]);
+
+  // Get default package from API response
   useEffect(() => {
-    if (course?.packages && Array.isArray(course.packages) && course.packages.length > 0) {
-      const defaultPackage = course.packages.find((pkg: any) => pkg?.isDefault === true);
-      if (defaultPackage?._id) {
-        setSelectedPackageId(defaultPackage._id);
+    if (course?.defaultPackage?._id) {
+      setSelectedPackageId(course.defaultPackage._id);
+    } else if (course?.packages && Array.isArray(course.packages) && course.packages.length > 0) {
+      const defaultPkg = course.packages.find((pkg: any) => pkg?.isDefault === true);
+      if (defaultPkg?._id) {
+        setSelectedPackageId(defaultPkg._id);
       } else if (course.packages[0]?._id) {
         setSelectedPackageId(course.packages[0]._id);
       }
     }
   }, [course]);
+
+  // Refetch data every time screen is focused to get latest API response
+  useFocusEffect(
+    useCallback(() => {
+      if (courseId) {
+        refetch();
+        if (course) {
+          refetchStreams();
+        }
+      }
+    }, [courseId, course, refetch, refetchStreams])
+  );
 
   // Open purchase modal if requested from navigation
   useEffect(() => {

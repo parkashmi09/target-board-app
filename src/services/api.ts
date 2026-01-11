@@ -85,8 +85,30 @@ export const sendOtp = async (mobile: string) => {
   }
 };
 
-export const verifyOtp = (mobile: string, code: string) => 
-  api.post<{ message: string; token?: string; next?: string; tempToken?: string; user?: any; stickyBanners?: any[]; error?: string }>('/auth/verify-otp', { mobile, code });
+export const verifyOtp = (mobile: string, code: string, fcmToken?: string) => {
+  const payload: any = { mobile, code };
+  // Always include fcmToken field if provided and valid
+  if (fcmToken && fcmToken.trim().length > 0) {
+    payload.fcmToken = fcmToken.trim();
+  } else {
+    if (__DEV__) {
+      console.warn('⚠️ FCM Token not provided or empty for verify-otp');
+    }
+  }
+  
+  if (__DEV__) {
+    console.log('📱 Verify OTP Payload:');
+    console.log('   Mobile:', mobile);
+    console.log('   Code:', code);
+    console.log('   FCM Token:', fcmToken ? fcmToken.substring(0, 20) + '...' : 'NOT PROVIDED');
+    console.log('   FCM Token Length:', fcmToken?.length || 0);
+    console.log('   Has FCM Token in payload:', !!payload.fcmToken);
+    console.log('   Full Payload:', JSON.stringify(payload, null, 2));
+    console.log('   Request URL:', `${BASE_URL}/auth/verify-otp`);
+  }
+  
+  return api.post<{ message: string; token?: string; next?: string; tempToken?: string; user?: any; stickyBanners?: any[]; error?: string }>('/auth/verify-otp', payload);
+};
 
 export const registerStep1 = (tempToken: string, payload: { fullName: string }) => {
   if (__DEV__) {
@@ -114,15 +136,34 @@ export const registerStep1 = (tempToken: string, payload: { fullName: string }) 
   });
 };
 
-export const registerStep2 = (tempToken: string, payload: { city?: string; classId: string; stateBoardId: string; mediumId?: string }) => {
+export const registerStep2 = (tempToken: string, payload: { city?: string; classId: string; stateBoardId: string; mediumId?: string; fcmToken?: string }) => {
+  // Ensure fcmToken is included if provided and valid
+  const finalPayload = { ...payload };
+  if (finalPayload.fcmToken && finalPayload.fcmToken.trim().length > 0) {
+    finalPayload.fcmToken = finalPayload.fcmToken.trim();
+  } else {
+    delete finalPayload.fcmToken;
+    if (__DEV__) {
+      console.warn('⚠️ FCM Token not provided or empty for register-step-2');
+    }
+  }
+  
   if (__DEV__) {
-    console.log('=== API CALL: registerStep2 ===');
-    console.log('Payload:', payload);
+    console.log('📝 Register Step 2 Payload:');
+    console.log('   Class ID:', finalPayload.classId);
+    console.log('   State Board ID:', finalPayload.stateBoardId);
+    console.log('   Medium ID:', finalPayload.mediumId || 'Not provided');
+    console.log('   City:', finalPayload.city || 'Not provided');
+    console.log('   FCM Token:', finalPayload.fcmToken ? finalPayload.fcmToken.substring(0, 20) + '...' : 'NOT PROVIDED');
+    console.log('   FCM Token Length:', finalPayload.fcmToken?.length || 0);
+    console.log('   Has FCM Token in payload:', !!finalPayload.fcmToken);
+    console.log('   Full Payload:', JSON.stringify(finalPayload, null, 2));
+    console.log('   Request URL:', `${BASE_URL}/auth/register-step-2`);
   }
 
   return request<{ message: string; token: string }>('/auth/register-step-2', {
     method: 'POST',
-    body: JSON.stringify(payload),
+    body: JSON.stringify(finalPayload),
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${tempToken}`,
@@ -140,13 +181,68 @@ export const registerStep2 = (tempToken: string, payload: { city?: string; class
   }) as Promise<{ message: string; token: string; user?: any; stickyBanners?: any[] }>;
 };
 
-export const loginWithPassword = (mobile: string, password: string) => 
-  api.post<{ message: string; token: string; user?: any }>('/auth/login', { mobile, password });
+export const loginWithPassword = (mobile: string, password: string) => {
+  const payload = { mobile, password };
+  if (__DEV__) {
+    console.log('🔐 Login Payload:');
+    console.log('   Mobile:', mobile);
+    console.log('   Password:', password ? '***' : '');
+    console.log('   Full Payload:', payload);
+    console.log('   Request URL:', `${BASE_URL}/auth/login`);
+  }
+  return api.post<{ message: string; token: string; user?: any }>('/auth/login', payload);
+};
 
 export const fetchUserDetails = () => api.get<any>('/auth/user/details');
 
+/**
+ * Fetch notifications from backend
+ * GET /notifications
+ */
+export const fetchNotifications = () => 
+  api.get<{ notifications: any[]; unreadCount: number }>('/notifications');
+
+/**
+ * Mark notification as read
+ * PUT /notifications/:id/read
+ */
+export const markNotificationAsRead = (notificationId: string) =>
+  api.put<{ message: string }>(`/notifications/${notificationId}/read`, {});
+
+/**
+ * Mark all notifications as read
+ * PUT /notifications/read-all
+ */
+export const markAllNotificationsAsRead = () =>
+  api.put<{ message: string }>('/notifications/read-all', {});
+
 export const updateUserProfile = (payload: { city?: string; classId: string; stateBoardId: string }) =>
   api.put<{ message?: string; user?: any }>(`/auth/user/update`, payload);
+
+/**
+ * Update FCM token for push notifications
+ * POST /auth/user/fcm-token
+ */
+export const updateFCMToken = async (fcmToken: string) => {
+  try {
+    if (__DEV__) {
+      console.log('[API] updateFCMToken called with token:', fcmToken.substring(0, 20) + '...');
+    }
+    const response = await api.post<{ message: string; success: boolean }>('/auth/user/fcm-token', {
+      fcmToken,
+    });
+    if (__DEV__) {
+      console.log('[API] updateFCMToken response:', response);
+    }
+    return response;
+  } catch (error: any) {
+    if (__DEV__) {
+      console.error('[API] updateFCMToken error:', error);
+    }
+    // Don't throw error - FCM token update failure shouldn't break the app
+    return null;
+  }
+};
 
 /**
  * Delete user account
@@ -330,7 +426,8 @@ export const uploadProfileImage = async (imageUri: string) => {
       name: fileName,
     } as any);
 
-    const response = await fetch(`${BASE_URL}/profile/image`, {
+    const response = await fetch(`${BASE_URL}/auth/update-profile
+`, {
       method: 'PUT',
       headers: {
         'Authorization': `Bearer ${token}`,

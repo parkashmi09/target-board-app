@@ -560,11 +560,48 @@ const CategoryContentScreen: React.FC = () => {
                   style={[styles.subcategoryCard, { backgroundColor: colors.cardBackground }]}
                   onPress={() => {
                     try {
-                      (navigation as any).navigate('CategoryContent', {
-                        category: child,
-                        courseId,
-                        courseName,
-                      });
+                      const hasChildren = child.children && child.children.length > 0;
+                      const childLevel = child.level ?? 0;
+                      
+                      if (hasChildren) {
+                        // Route to appropriate level screen based on child level
+                        if (childLevel === 1) {
+                          (navigation as any).navigate('CategoryLevelFirst', {
+                            categories: child.children,
+                            courseId,
+                            courseName: child.name,
+                            parentCategory: child,
+                          });
+                        } else if (childLevel === 2) {
+                          (navigation as any).navigate('CategoryLevelSecond', {
+                            categories: child.children,
+                            courseId,
+                            courseName: child.name,
+                            parentCategory: child,
+                          });
+                        } else if (childLevel === 3) {
+                          (navigation as any).navigate('CategoryLevelThird', {
+                            categories: child.children,
+                            courseId,
+                            courseName: child.name,
+                            parentCategory: child,
+                          });
+                        } else {
+                          // Fallback to CategoryContent
+                          (navigation as any).navigate('CategoryContent', {
+                            category: child,
+                            courseId,
+                            courseName,
+                          });
+                        }
+                      } else {
+                        // No children, navigate to content
+                        (navigation as any).navigate('CategoryContent', {
+                          category: child,
+                          courseId,
+                          courseName,
+                        });
+                      }
                     } catch (error) {
                       if (__DEV__) {
                         console.error('[CategoryContentScreen] Navigation error:', error);
@@ -747,28 +784,7 @@ const CategoryContentScreen: React.FC = () => {
                         </View>
                       </TouchableOpacity>
                       
-                      {/* PDF Button for Video Items */}
-                      {/* {item.type === 'video' && relatedPdf && (
-                        <TouchableOpacity
-                          style={[styles.pdfButton, { backgroundColor: '#FFEBEE', borderColor: '#FF0000' }]}
-                          onPress={() => handleContentPress(relatedPdf)}
-                          activeOpacity={0.7}
-                        >
-                          <View style={styles.pdfButtonContent}>
-                            <FileText size={18} color="#FF9800" />
-                            <View style={styles.pdfButtonText}>
-                              <Text style={[styles.pdfButtonTitle, { color: colors.text }]} numberOfLines={1}>
-                                {relatedPdf.title}
-                              </Text>
-                              {relatedPdf.hindiTitle ? (
-                                <Text style={[styles.pdfButtonTitleHindi, { color: colors.text }]} numberOfLines={1}>
-                                  {relatedPdf.hindiTitle}
-                                </Text>
-                              ) : null}
-                            </View>
-                          </View>
-                        </TouchableOpacity>
-                      )} */}
+                
                     </View>
                   );
                 }}

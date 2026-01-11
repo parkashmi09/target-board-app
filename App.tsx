@@ -3,11 +3,12 @@
  * React Native application with i18n, theming, Zustand state management, and navigation
  */
 
-import React, { useEffect, useState } from 'react';
-import { StatusBar, View, LogBox } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import React, { useEffect, useState, useRef } from 'react';
+import { StatusBar, View, LogBox, Alert, Platform } from 'react-native';
+import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClientProvider } from '@tanstack/react-query';
+import messaging from '@react-native-firebase/messaging';
 import { ThemeProvider, useTheme } from './src/theme/theme';
 import { useAuthStore } from './src/store';
 import SplashScreen from './src/screens/SplashScreen';
@@ -18,6 +19,7 @@ import { GlobalLoaderProvider } from './src/components/GlobalLoader';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import { queryClient } from './src/services/queryClient';
 import { useNetworkStore } from './src/store/networkStore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import './src/i18n';
 
 // Initialize TPStreams
@@ -56,6 +58,174 @@ function AppContent() {
   const [showSplash, setShowSplash] = useState(true);
   const { isLoggedIn, checkAuthStatus } = useAuthStore();
   const { initialize: initializeNetwork } = useNetworkStore();
+  const navigationRef = useRef<NavigationContainerRef<any>>(null);
+
+  // Firebase Cloud Messaging Setup
+  useEffect(() => {
+    // Request notification permission
+    const requestPermission = async () => {
+      try {
+        const authStatus = await messaging().requestPermission();
+        const enabled =
+          authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+          authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+
+        if (__DEV__) {
+          console.log('Notification permission:', enabled ? 'Granted' : 'Denied');
+        }
+
+        if (enabled) {
+          // Get FCM token
+          const token = await messaging().getToken();
+          if (__DEV__) {
+            console.log('✅ FCM Token Generated:', token);
+            console.log('📱 Token Length:', token.length);
+            console.log('🔑 Token (first 50 chars):', token.substring(0, 50) + '...');
+          }
+          // TODO: Send token to backend API when ready
+          // await api.updateFCMToken(token);
+        } else {
+          if (__DEV__) {
+            console.warn('⚠️ FCM Permission Denied - Token not generated');
+          }
+        }
+      } catch (error) {
+        if (__DEV__) {
+          console.error('❌ FCM Permission Error:', error);
+        }
+      }
+    };
+
+    // Handle foreground notifications
+    const unsubscribeForeground = messaging().onMessage(async remoteMessage => {
+      if (__DEV__) {
+        console.log('📨 Foreground Notification Received:');
+        console.log('   Title:', remoteMessage.notification?.title);
+        console.log('   Body:', remoteMessage.notification?.body);
+        console.log('   Data:', remoteMessage.data);
+        console.log('   Full Message:', JSON.stringify(remoteMessage, null, 2));
+      }
+      
+      // Save notification to local storage
+      try {
+        const stored = await AsyncStorage.getItem('@notifications');
+        const notifications = stored ? JSON.parse(stored) : [];
+        
+        const newNotification = {
+          id: remoteMessage.messageId || `notif_${Date.now()}_${Math.random()}`,
+          title: remoteMessage.notification?.title || 'Notification',
+          body: remoteMessage.notification?.body || '',
+          data: remoteMessage.data || {},
+          timestamp: remoteMessage.sentTime || Date.now(),
+          read: false,
+          messageId: remoteMessage.messageId,
+        };
+        
+        // Check if already exists
+        const exists = notifications.find((n: any) => n.id === newNotification.id || n.messageId === newNotification.messageId);
+        if (!exists) {
+          notifications.unshift(newNotification);
+          // Keep only last 100 notifications
+          const limited = notifications.slice(0, 100);
+          await AsyncStorage.setItem('@notifications', JSON.stringify(limited));
+          if (__DEV__) {
+            console.log('✅ Notification saved to local storage');
+          }
+        }
+      } catch (error) {
+        if (__DEV__) {
+          console.error('❌ Error saving foreground notification:', error);
+        }
+      }
+      
+      // Show alert for foreground notifications
+      Alert.alert(
+        remoteMessage.notification?.title || 'Notification',
+        remoteMessage.notification?.body || 'New notification received',
+        [{ text: 'OK' }]
+      );
+    });
+
+    // Handle notification opened from background state
+    const unsubscribeBackground = messaging().onNotificationOpenedApp(remoteMessage => {
+      if (__DEV__) {
+        console.log('🔔 Notification Opened from Background:');
+        console.log('   Title:', remoteMessage.notification?.title);
+        console.log('   Body:', remoteMessage.notification?.body);
+        console.log('   Data:', remoteMessage.data);
+        console.log('   Screen to navigate:', remoteMessage.data?.screen);
+      }
+      // Navigate to specific screen based on notification data
+      if (navigationRef.current?.isReady()) {
+        const screen = remoteMessage.data?.screen;
+        if (screen) {
+          try {
+            // @ts-ignore - Dynamic navigation based on notification data
+            navigationRef.current.navigate(screen, remoteMessage.data);
+          } catch (error) {
+            if (__DEV__) {
+              console.error('Navigation error:', error);
+            }
+          }
+        }
+      }
+    });
+
+    // Handle notification opened from quit/killed state
+    messaging()
+      .getInitialNotification()
+      .then(remoteMessage => {
+        if (remoteMessage) {
+          if (__DEV__) {
+            console.log('🔔 Notification Opened from Quit State:');
+            console.log('   Title:', remoteMessage.notification?.title);
+            console.log('   Body:', remoteMessage.notification?.body);
+            console.log('   Data:', remoteMessage.data);
+            console.log('   Screen to navigate:', remoteMessage.data?.screen);
+          }
+          // Navigate to specific screen based on notification data
+          // Use setTimeout to ensure navigation is ready
+          setTimeout(() => {
+            if (navigationRef.current?.isReady()) {
+              const screen = remoteMessage.data?.screen;
+              if (screen) {
+                try {
+                  // @ts-ignore - Dynamic navigation based on notification data
+                  navigationRef.current.navigate(screen, remoteMessage.data);
+                } catch (error) {
+                  if (__DEV__) {
+                    console.error('Navigation error:', error);
+                  }
+                }
+              }
+            }
+          }, 1000);
+        }
+      });
+
+    // Handle token refresh
+    const unsubscribeTokenRefresh = messaging().onTokenRefresh(async token => {
+      if (__DEV__) {
+        console.log('🔄 FCM Token Refreshed:', token);
+        console.log('📱 New Token Length:', token.length);
+        console.log('🔑 New Token (first 50 chars):', token.substring(0, 50) + '...');
+      }
+      // TODO: Send new token to backend API when ready
+      // await api.updateFCMToken(token);
+    });
+
+    // Request permission on mount (Android only)
+    if (Platform.OS === 'android') {
+      requestPermission();
+    }
+
+    // Cleanup
+    return () => {
+      unsubscribeForeground();
+      unsubscribeBackground();
+      unsubscribeTokenRefresh();
+    };
+  }, []);
 
   useEffect(() => {
     // Initialize network monitoring
@@ -102,6 +272,7 @@ function AppContent() {
 
   return (
     <NavigationContainer
+      ref={navigationRef}
       theme={{
         dark: theme.isDark,
         colors: {

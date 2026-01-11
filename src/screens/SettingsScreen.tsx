@@ -1,5 +1,5 @@
 import React, { useCallback, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Clipboard } from 'react-native';
 import { useTheme } from '../theme/theme';
 import { moderateScale, getSpacing } from '../utils/responsive';
 import { getFontFamily } from '../utils/fonts';
@@ -12,6 +12,7 @@ import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AlertBox from '../components/AlertBox';
 import { deleteAccount } from '../services/api';
+import messaging from '@react-native-firebase/messaging';
 
 const LANGUAGE_STORAGE_KEY = '@app_language';
 
@@ -26,6 +27,7 @@ const SettingsScreen: React.FC = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [fcmToken, setFcmToken] = useState<string>('');
 
   useEffect(() => {
     const loadLanguage = async () => {
@@ -44,6 +46,32 @@ const SettingsScreen: React.FC = () => {
     };
     loadLanguage();
   }, [i18n]);
+
+  // Load FCM Token
+  useEffect(() => {
+    const loadFcmToken = async () => {
+      try {
+        const token = await messaging().getToken();
+        setFcmToken(token);
+        if (__DEV__) {
+          console.log('📱 FCM Token loaded in settings:', token);
+        }
+      } catch (error) {
+        if (__DEV__) {
+          console.error('Failed to get FCM token:', error);
+        }
+        setFcmToken('Not available');
+      }
+    };
+    loadFcmToken();
+  }, []);
+
+  const copyFcmToken = useCallback(() => {
+    if (fcmToken && fcmToken !== 'Not available') {
+      Clipboard.setString(fcmToken);
+      Alert.alert('Copied!', 'FCM Token copied to clipboard');
+    }
+  }, [fcmToken]);
 
   const changeLanguage = useCallback(async (lng: 'en' | 'hi') => {
     try {
@@ -234,6 +262,31 @@ const SettingsScreen: React.FC = () => {
             )}
           </View>
 
+          {/* FCM Token Section (Temporary for Testing) */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}>
+              FCM Token (Testing)
+            </Text>
+            <TouchableOpacity
+              style={[styles.fcmTokenContainer, { backgroundColor: theme.colors.cardBackground, borderColor: theme.colors.border }]}
+              onPress={copyFcmToken}
+              activeOpacity={0.7}
+            >
+              <View style={styles.fcmTokenContent}>
+                <Text style={[styles.fcmTokenLabel, { color: theme.colors.textSecondary }]}>
+                  FCM Token:
+                </Text>
+                <Text style={[styles.fcmTokenText, { color: theme.colors.text }]} numberOfLines={2}>
+                  {fcmToken || 'Loading...'}
+                </Text>
+              </View>
+              <SVGIcon name="copy" size={moderateScale(20)} color={theme.colors.accent} />
+            </TouchableOpacity>
+            <Text style={[styles.fcmTokenHint, { color: theme.colors.textSecondary }]}>
+              Tap to copy token for testing
+            </Text>
+          </View>
+
           {/* Account Section */}
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}>
@@ -360,6 +413,36 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     backgroundColor: 'transparent',
     marginBottom: getSpacing(2),
+  },
+  fcmTokenContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: getSpacing(2),
+    borderRadius: moderateScale(8),
+    borderWidth: 1,
+    marginHorizontal: getSpacing(1),
+  },
+  fcmTokenContent: {
+    flex: 1,
+    marginRight: getSpacing(2),
+  },
+  fcmTokenLabel: {
+    fontSize: moderateScale(12),
+    fontFamily: getFontFamily('500'),
+    marginBottom: getSpacing(0.5),
+  },
+  fcmTokenText: {
+    fontSize: moderateScale(12),
+    fontFamily: getFontFamily('400'),
+    lineHeight: moderateScale(16),
+  },
+  fcmTokenHint: {
+    fontSize: moderateScale(11),
+    fontFamily: getFontFamily('400'),
+    marginTop: getSpacing(1),
+    marginLeft: getSpacing(1),
+    fontStyle: 'italic',
   },
 });
 

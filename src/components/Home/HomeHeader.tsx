@@ -1,6 +1,7 @@
-import React, { memo, useRef } from 'react';
+import React, { memo, useRef, useState, useEffect, useCallback } from 'react';
 import { View, TouchableOpacity, StyleSheet, Text, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronRight } from 'lucide-react-native';
 import LottieView from 'lottie-react-native';
@@ -12,6 +13,7 @@ import { getFontFamily } from '../../utils/fonts';
 import { Theme } from '../../theme/theme';
 import { Images } from '../../assets/images';
 import { useToast } from '../Toast';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface HomeHeaderProps {
     theme: Theme;
@@ -37,10 +39,44 @@ const HomeHeader = memo(({
     const toast = useToast();
     const lottieRef = useRef<LottieView>(null);
     const iconColor = theme.isDark ? theme.colors.accent : theme.colors.text;
+    const [unreadCount, setUnreadCount] = useState(0);
+
+    // Load unread count
+    const loadUnreadCount = useCallback(async () => {
+        try {
+            const stored = await AsyncStorage.getItem('@notifications');
+            const readIds = await AsyncStorage.getItem('@read_notifications');
+            const readSet = readIds ? new Set(JSON.parse(readIds)) : new Set();
+
+            if (stored) {
+                const notifications = JSON.parse(stored);
+                const unread = notifications.filter((n: any) => !readSet.has(n.id));
+                setUnreadCount(unread.length);
+            }
+        } catch (error) {
+            if (__DEV__) {
+                console.error('Error loading unread count:', error);
+            }
+        }
+    }, []);
+
+    // Update unread count when screen is focused
+    useFocusEffect(
+        useCallback(() => {
+            loadUnreadCount();
+        }, [loadUnreadCount])
+    );
+
+    useEffect(() => {
+        loadUnreadCount();
+        // Listen for notification updates
+        const interval = setInterval(loadUnreadCount, 5000);
+        return () => clearInterval(interval);
+    }, [loadUnreadCount]);
 
     const handleNotificationPress = () => {
         lottieRef.current?.play();
-        toast.show({ text: 'Notification feature coming soon', type: 'info' });
+        navigation.navigate('Notifications');
     };
 
     const selectedClass = classes.find(c => String(c.value) === String(categoryId));
@@ -142,19 +178,28 @@ const HomeHeader = memo(({
                         activeOpacity={0.7}
                         onPress={handleNotificationPress}
                     >
-                        <LottieView
-                            ref={lottieRef}
-                            source={notificationAnimation}
-                            style={{ width: moderateScale(28), height: moderateScale(28) }}
-                            loop={false}
-                            autoPlay={false}
-                            colorFilters={[
-                                {
-                                    keypath: "**",
-                                    color: theme.colors.text,
-                                },
-                            ]}
-                        />
+                        <View>
+                            <LottieView
+                                ref={lottieRef}
+                                source={notificationAnimation}
+                                style={{ width: moderateScale(28), height: moderateScale(28) }}
+                                loop={false}
+                                autoPlay={false}
+                                colorFilters={[
+                                    {
+                                        keypath: "**",
+                                        color: theme.colors.text,
+                                    },
+                                ]}
+                            />
+                            {unreadCount > 0 && (
+                                <View style={[styles.badge, { backgroundColor: '#FF4444' }]}>
+                                    <Text style={styles.badgeText}>
+                                        {unreadCount > 99 ? '99+' : unreadCount}
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -232,6 +277,25 @@ const styles = StyleSheet.create({
         height: moderateScale(40),
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    badge: {
+        position: 'absolute',
+        top: -moderateScale(4),
+        right: -moderateScale(4),
+        minWidth: moderateScale(18),
+        height: moderateScale(18),
+        borderRadius: moderateScale(9),
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: moderateScale(4),
+        borderWidth: 2,
+        borderColor: '#FFFFFF',
+    },
+    badgeText: {
+        color: '#FFFFFF',
+        fontSize: moderateScale(10),
+        fontFamily: getFontFamily('700'),
+        lineHeight: moderateScale(12),
     },
 });
 

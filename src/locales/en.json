@@ -33,6 +33,9 @@
     "hideDetails": "Hide Details",
     "errorDetails": "Error Details:"
   },
+  "teacher": {
+    "teacherDetails": "Teacher Details"
+  },
   "offline": {
     "title": "No Internet Connection",
     "message": "Please check your internet connection and try again.",

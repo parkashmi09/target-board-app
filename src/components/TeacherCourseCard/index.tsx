@@ -22,15 +22,17 @@ const TeacherCourseCard: React.FC<TeacherCourseCardProps> = ({ title, image, onP
             activeOpacity={0.9}
         >
             <View style={styles.imageContainer}>
-                <Image
-                    source={image || Images.TB_LOGO}
-                    style={styles.image}
-                    resizeMode="cover"
-                />
-                {/* Overlay Icon */}
-                <View style={styles.iconOverlay}>
-                    <SVGIcon name="course" size={40} color="#FFFFFF" />
-                </View>
+                {image ? (
+                    <Image
+                        source={image}
+                        style={styles.image}
+                        resizeMode="contain"
+                    />
+                ) : (
+                    <View style={styles.placeholderContainer}>
+                        <SVGIcon name="course" size={40} color="#FFFFFF" />
+                    </View>
+                )}
             </View>
             <View style={styles.content}>
                 <Text style={[styles.title, { color: theme.colors.text }]} numberOfLines={2}>
@@ -43,39 +45,38 @@ const TeacherCourseCard: React.FC<TeacherCourseCardProps> = ({ title, image, onP
 
 const styles = StyleSheet.create({
     card: {
-        width: moderateScale(160),
+        width: moderateScale(200),
         borderRadius: moderateScale(12),
         marginRight: getSpacing(2),
         overflow: 'hidden',
-        elevation: 2,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
+     
         marginBottom: getSpacing(1),
     },
     imageContainer: {
         height: moderateScale(140),
         width: '100%',
         position: 'relative',
-        backgroundColor: '#212121', // Dark background for placeholder
+        backgroundColor: '#212121',
         justifyContent: 'center',
         alignItems: 'center',
+        overflow: 'hidden',
     },
     image: {
         width: '100%',
         height: '100%',
-        opacity: 0.8,
     },
-    iconOverlay: {
-        position: 'absolute',
-        zIndex: 1,
+    placeholderContainer: {
+        width: '100%',
+        height: '100%',
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#212121',
     },
     content: {
-        padding: getSpacing(1.5),
+        padding: getSpacing(1),
     },
     title: {
-        fontSize: moderateScale(14),
+        fontSize: moderateScale(10),
         fontFamily: getFontFamily('600'),
         textAlign: 'center',
     },
