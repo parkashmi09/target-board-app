@@ -96,11 +96,35 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
     }, [token]);
 
     useEffect(() => {
+        if (!token) {
+            console.warn('[LiveChat] No token provided, cannot initialize socket');
+            setLoading(false);
+            return;
+        }
+
         // Initialize socket
         console.log('[LiveChat] Initializing socket with token');
         socketService.initialize(token);
 
-        // Join room
+        // Set up connection listeners
+        socketService.onConnect(() => {
+            console.log('[LiveChat] Socket connected');
+            setIsConnected(true);
+        });
+
+        socketService.onDisconnect((reason) => {
+            console.log('[LiveChat] Socket disconnected:', reason);
+            setIsConnected(false);
+        });
+
+        socketService.onConnectError((error) => {
+            console.error('[LiveChat] Socket connection error:', error);
+            setIsConnected(false);
+            setLoading(false);
+            // Show error to user if needed
+        });
+
+        // Join room (will join immediately if connected, or wait for connection)
         console.log('[LiveChat] Joining stream:', streamId);
         socketService.joinStream(streamId);
 
@@ -152,6 +176,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
         });
 
         return () => {
+            console.log('[LiveChat] Cleaning up socket connection');
             socketService.leaveStream(streamId);
             socketService.disconnect();
         };

@@ -50,13 +50,35 @@ export interface SendMessagePayload {
 class SocketService {
     private socket: Socket | null = null;
     private token: string | null = null;
+    private isConnected: boolean = false;
+    private pendingJoinStream: string | null = null;
 
     initialize(token: string) {
         if (this.socket) {
             this.disconnect();
         }
         this.token = token;
-        const socketUrl = SOCKET_URL || 'https://shark-app-2-dzcvn.ondigitalocean.app/';
+        
+        // Get socket URL from config or use fallback
+        let socketUrl = SOCKET_URL || 'https://shark-app-2-dzcvn.ondigitalocean.app/';
+        
+        // Remove trailing slash for socket.io (it adds its own path)
+        socketUrl = socketUrl.replace(/\/+$/, '');
+        
+        // Validate URL - warn if using wrong URL
+        const correctUrl = 'shark-app-2-dzcvn.ondigitalocean.app';
+        if (__DEV__) {
+            console.log('[SocketService] Initializing socket with URL:', socketUrl);
+            if (!SOCKET_URL) {
+                console.warn('[SocketService] SOCKET_URL not found in config, using fallback URL');
+            } else if (!socketUrl.includes(correctUrl)) {
+                console.error('[SocketService] ⚠️ WARNING: Using incorrect socket URL!');
+                console.error('[SocketService] Current URL:', socketUrl);
+                console.error('[SocketService] Expected URL should contain:', correctUrl);
+                console.error('[SocketService] Please check your .env file and rebuild the app');
+            }
+        }
+        
         this.socket = io(socketUrl, {
             auth: {
                 token: this.token,
@@ -74,25 +96,67 @@ class SocketService {
         if (!this.socket) return;
 
         this.socket.on('connect', () => {
-            // Connected to chat service
+            this.isConnected = true;
+            if (__DEV__) {
+                console.log('[SocketService] Connected to socket server');
+            }
+            
+            // If there's a pending join stream, execute it now
+            if (this.pendingJoinStream && this.socket) {
+                if (__DEV__) {
+                    console.log('[SocketService] Joining pending stream:', this.pendingJoinStream);
+                }
+                this.socket.emit('join-stream', { streamId: this.pendingJoinStream });
+                this.pendingJoinStream = null;
+            }
         });
 
         this.socket.on('connect_error', (error) => {
-            // Connection error handled
+            this.isConnected = false;
+            if (__DEV__) {
+                console.error('[SocketService] Connection error:', error);
+            }
         });
 
         this.socket.on('disconnect', (reason) => {
-            // Disconnected from chat service
+            this.isConnected = false;
+            if (__DEV__) {
+                console.log('[SocketService] Disconnected:', reason);
+            }
         });
 
         this.socket.on('error', (error) => {
-            // Socket error handled
+            if (__DEV__) {
+                console.error('[SocketService] Socket error:', error);
+            }
         });
     }
 
+    isSocketConnected(): boolean {
+        return this.isConnected && this.socket?.connected === true;
+    }
+
     joinStream(streamId: string) {
-        if (!this.socket) return;
-        this.socket.emit('join-stream', { streamId });
+        if (!this.socket) {
+            if (__DEV__) {
+                console.warn('[SocketService] Cannot join stream: socket not initialized');
+            }
+            return;
+        }
+
+        // If socket is already connected, join immediately
+        if (this.isSocketConnected()) {
+            if (__DEV__) {
+                console.log('[SocketService] Joining stream immediately:', streamId);
+            }
+            this.socket.emit('join-stream', { streamId });
+        } else {
+            // Store as pending to join when connected
+            if (__DEV__) {
+                console.log('[SocketService] Socket not connected yet, storing as pending:', streamId);
+            }
+            this.pendingJoinStream = streamId;
+        }
     }
 
     leaveStream(streamId: string) {
@@ -190,6 +254,21 @@ class SocketService {
             this.socket.disconnect();
             this.socket = null;
         }
+        this.isConnected = false;
+        this.pendingJoinStream = null;
+    }
+
+    // Listen for connection status changes
+    onConnect(callback: () => void) {
+        this.socket?.on('connect', callback);
+    }
+
+    onDisconnect(callback: (reason: string) => void) {
+        this.socket?.on('disconnect', callback);
+    }
+
+    onConnectError(callback: (error: Error) => void) {
+        this.socket?.on('connect_error', callback);
     }
 }
 
