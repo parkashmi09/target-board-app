@@ -1,7 +1,9 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, Animated } from 'react-native';
 import { useTheme } from '../../theme/theme';
 import { getFontFamily } from '../../utils/fonts';
+import SVGIcon from '../SVGIcon';
+import { moderateScale } from '../../utils/responsive';
 
 interface CourseBottomBarProps {
     currentPrice: number;
@@ -22,12 +24,56 @@ const CourseBottomBar: React.FC<CourseBottomBarProps> = React.memo(({
     hasLiveStreams,
     onBuyNow,
 }) => {
+    // Animation values
+    const iconBounceAnim = useRef(new Animated.Value(1)).current;
+    const textBounceAnim = useRef(new Animated.Value(1)).current;
+
+    // Continuous bounce animation for icon
+    useEffect(() => {
+        if (isPurchased) {
+            const iconAnimation = Animated.loop(
+                Animated.sequence([
+                    Animated.timing(iconBounceAnim, {
+                        toValue: 1.2,
+                        duration: 800,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(iconBounceAnim, {
+                        toValue: 1,
+                        duration: 800,
+                        useNativeDriver: true,
+                    }),
+                ])
+            );
+            iconAnimation.start();
+
+            // Text bounce animation
+            const textAnimation = Animated.loop(
+                Animated.sequence([
+                    Animated.timing(textBounceAnim, {
+                        toValue: 1.1,
+                        duration: 1000,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(textBounceAnim, {
+                        toValue: 1,
+                        duration: 1000,
+                        useNativeDriver: true,
+                    }),
+                ])
+            );
+            textAnimation.start();
+
+            return () => {
+                iconAnimation.stop();
+                textAnimation.stop();
+            };
+        }
+    }, [isPurchased, iconBounceAnim, textBounceAnim]);
+
     const getButtonText = () => {
         if (isPurchased) {
-            if (hasLiveStreams) {
-                return 'Watch Live';
-            }
-            return 'View Content';
+            return 'Watch Live';
         }
         if (isCoursePaid && hasLiveStreams) {
             return 'Watch Live';
@@ -35,28 +81,56 @@ const CourseBottomBar: React.FC<CourseBottomBarProps> = React.memo(({
         return 'Buy Now';
     };
 
-    const buttonStyle = isPurchased 
-        ? [styles.buyButton, styles.purchasedButton]
-        : styles.buyButton;
+    // If purchased, show only Watch Live with animation
+    if (isPurchased) {
+        return (
+            <View style={styles.container}>
+                <TouchableOpacity 
+                    style={styles.watchLiveButton} 
+                    activeOpacity={0.9} 
+                    onPress={onBuyNow}
+                >
+                    <Animated.View
+                        style={{
+                            transform: [{ scale: iconBounceAnim }],
+                            marginRight: moderateScale(12),
+                        }}
+                    >
+                        <SVGIcon 
+                            name="play" 
+                            size={24} 
+                            color="#FFFFFF" 
+                        />
+                    </Animated.View>
+                    <Animated.Text 
+                        style={[
+                            styles.watchLiveText,
+                            {
+                                transform: [{ scale: textBounceAnim }],
+                            }
+                        ]}
+                    >
+                        Watch Live
+                    </Animated.Text>
+                </TouchableOpacity>
+            </View>
+        );
+    }
+
+    // Regular buy button for non-purchased courses
+    const buttonStyle = styles.buyButton;
 
     return (
         <View style={styles.container}>
-            {!isPurchased && (
-                <View style={styles.priceContainer}>
-                    <Text style={styles.priceMain}>₹{currentPrice}</Text>
-                    <Text style={styles.priceOriginal}>₹{originalPrice}</Text>
-                    {discount > 0 && (
-                        <View style={styles.discountBadge}>
-                            <Text style={styles.discountText}>{discount}% OFF</Text>
-                        </View>
-                    )}
-                </View>
-            )}
-            {isPurchased && (
-                <View style={styles.purchasedContainer}>
-                    <Text style={styles.purchasedText}>Course Purchased</Text>
-                </View>
-            )}
+            <View style={styles.priceContainer}>
+                <Text style={styles.priceMain}>₹{currentPrice}</Text>
+                <Text style={styles.priceOriginal}>₹{originalPrice}</Text>
+                {discount > 0 && (
+                    <View style={styles.discountBadge}>
+                        <Text style={styles.discountText}>{discount}% OFF</Text>
+                    </View>
+                )}
+            </View>
             <TouchableOpacity 
                 style={buttonStyle} 
                 activeOpacity={0.9} 
@@ -128,17 +202,19 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontFamily: getFontFamily('700'),
     },
-    purchasedButton: {
-        backgroundColor: '#4CAF50',
-    },
-    purchasedContainer: {
-        flex: 1,
+    watchLiveButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
         justifyContent: 'center',
+        flex: 1,
+        paddingHorizontal: moderateScale(20),
+        paddingVertical: moderateScale(12),
     },
-    purchasedText: {
+    watchLiveText: {
         color: '#FFFFFF',
-        fontSize: 16,
-        fontFamily: getFontFamily('600'),
+        fontSize: moderateScale(20),
+        fontFamily: getFontFamily('700'),
+        letterSpacing: 0.5,
     },
 });
 

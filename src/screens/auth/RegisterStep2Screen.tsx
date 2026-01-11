@@ -8,7 +8,7 @@ import { useToast } from '../../components/Toast';
 import { useGlobalLoaderManual } from '../../components/GlobalLoader';
 import { useRegistrationDataStore, useAuthStore } from '../../store';
 import SVGIcon from '../../components/SVGIcon';
-import { registerStep1, registerStep2, fetchMediums } from '../../services/api';
+import { registerStep1, registerStep2, fetchMediums, fetchStateBoards } from '../../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import GradientBackground from '../../components/GradientBackground';
 import messaging from '@react-native-firebase/messaging';
@@ -24,7 +24,7 @@ const RegisterStep2Screen: React.FC = () => {
   const toast = useToast();
   const loader = useGlobalLoaderManual();
   const { login } = useAuthStore();
-  const { stateBoards, classes, loadAllData } = useRegistrationDataStore();
+  const { classes, loadAllData } = useRegistrationDataStore();
 
   const { tempToken, fullName } = route.params as { tempToken: string; fullName: string };
   const [city, setCity] = useState<string>('');
@@ -32,6 +32,10 @@ const RegisterStep2Screen: React.FC = () => {
   const [selectedBoardId, setSelectedBoardId] = useState<string>('');
   const [selectedMediumId, setSelectedMediumId] = useState<string>('');
   const [loading, setLoading] = useState(false);
+
+  // Boards state - fetched dynamically based on selected class
+  const [stateBoards, setStateBoards] = useState<any[]>([]);
+  const [loadingBoards, setLoadingBoards] = useState(false);
 
   // Mediums state
   const [mediums, setMediums] = useState<any[]>([]);
@@ -48,39 +52,6 @@ const RegisterStep2Screen: React.FC = () => {
   useEffect(() => {
     loadAllData();
   }, [loadAllData]);
-
-  // Animate board section when class is selected
-  useEffect(() => {
-    if (selectedClassId) {
-      Animated.parallel([
-        Animated.spring(boardSectionOpacity, {
-          toValue: 1,
-          useNativeDriver: true,
-          tension: 100,
-          friction: 15,
-        }),
-        Animated.spring(boardSectionTranslateY, {
-          toValue: 0,
-          useNativeDriver: true,
-          tension: 100,
-          friction: 15,
-        }),
-      ]).start();
-    } else {
-      Animated.parallel([
-        Animated.timing(boardSectionOpacity, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(boardSectionTranslateY, {
-          toValue: 50,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    }
-  }, [selectedClassId]);
 
   // Animate modal
   useEffect(() => {
@@ -131,12 +102,45 @@ const RegisterStep2Screen: React.FC = () => {
     }
   }, [loading]);
 
-  const handleClassSelect = useCallback((classId: string) => {
+  const handleClassSelect = useCallback(async (classId: string) => {
     setSelectedClassId(classId);
     // Reset downstream selections
     setSelectedBoardId('');
     setSelectedMediumId('');
-  }, []);
+    setStateBoards([]); // Clear previous boards
+    
+    // Reset animation
+    boardSectionOpacity.setValue(0);
+    boardSectionTranslateY.setValue(50);
+    
+    // Fetch boards for selected class
+    setLoadingBoards(true);
+    try {
+      const data = await fetchStateBoards(classId);
+      setStateBoards(data || []);
+      
+      // Animate boards in
+      Animated.parallel([
+        Animated.spring(boardSectionOpacity, {
+          toValue: 1,
+          useNativeDriver: true,
+          tension: 100,
+          friction: 15,
+        }),
+        Animated.spring(boardSectionTranslateY, {
+          toValue: 0,
+          useNativeDriver: true,
+          tension: 100,
+          friction: 15,
+        }),
+      ]).start();
+    } catch (error) {
+      console.error('Failed to fetch boards', error);
+      toast.show({ text: 'Failed to load boards', type: 'error' });
+    } finally {
+      setLoadingBoards(false);
+    }
+  }, [toast, boardSectionOpacity, boardSectionTranslateY]);
 
   const handleBoardSelect = useCallback(async (boardId: string) => {
     setSelectedBoardId(boardId);
@@ -401,8 +405,16 @@ const RegisterStep2Screen: React.FC = () => {
               ]}
             >
               <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Select your board</Text>
-              <View style={styles.boardList}>
-                {stateBoards.map((item) => {
+              {loadingBoards ? (
+                <ActivityIndicator size="large" color={theme.colors.primary} style={{ marginVertical: 20 }} />
+              ) : (
+                <View style={styles.boardList}>
+                  {stateBoards.length === 0 ? (
+                    <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
+                      No boards available for this class
+                    </Text>
+                  ) : (
+                    stateBoards.map((item) => {
                   const isSelected = selectedBoardId === item._id;
                   return (
                     <TouchableOpacity
@@ -440,8 +452,10 @@ const RegisterStep2Screen: React.FC = () => {
                       </View>
                     </TouchableOpacity>
                   );
-                })}
-              </View>
+                  })
+                  )}
+                </View>
+              )}
             </Animated.View>
           </View>
         </ScrollView>
@@ -697,6 +711,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 100,
+  },
+  emptyText: {
+    fontSize: moderateScale(14),
+    textAlign: 'center',
+    marginVertical: getSpacing(2),
+    fontStyle: 'italic',
   },
 });
 
