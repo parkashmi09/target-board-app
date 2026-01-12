@@ -394,69 +394,71 @@ const RegisterStep2Screen: React.FC = () => {
               </View>
             </View>
 
-            {/* Board Selection */}
-            <Animated.View
-              style={[
-                styles.section,
-                {
-                  opacity: boardSectionOpacity,
-                  transform: [{ translateY: boardSectionTranslateY }],
-                }
-              ]}
-            >
-              <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Select your board</Text>
-              {loadingBoards ? (
-                <ActivityIndicator size="large" color={theme.colors.primary} style={{ marginVertical: 20 }} />
-              ) : (
-                <View style={styles.boardList}>
-                  {stateBoards.length === 0 ? (
-                    <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
-                      No boards available for this class
-                    </Text>
-                  ) : (
-                    stateBoards.map((item) => {
-                  const isSelected = selectedBoardId === item._id;
-                  return (
-                    <TouchableOpacity
-                      key={item._id}
-                      onPress={() => handleBoardSelect(item._id)}
-                      activeOpacity={0.7}
-                    >
-                      <View
-                        style={[
-                          styles.boardCard,
-                          {
-                            backgroundColor: theme.colors.cardBackground,
-                            borderColor: isSelected ? theme.colors.secondary : 'transparent',
-                            borderWidth: isSelected ? 1 : 0,
-                          }
-                        ]}
-                      >
-                        <View style={styles.boardInfo}>
-                          {item.logo ? (
-                            <Image source={{ uri: item.logo }} style={styles.boardLogo} resizeMode="contain" />
-                          ) : (
-                            <View style={[styles.boardLogoPlaceholder, { backgroundColor: theme.colors.border }]} />
-                          )}
-                          <Text style={[
-                            styles.boardName,
-                            {
-                              color: theme.colors.text,
-                              fontFamily: isSelected ? getFontFamily('600') : getFontFamily('500')
-                            }
-                          ]}>
-                            {item.name}
-                          </Text>
-                        </View>
-                        <SVGIcon name="chevron-right" size={20} color={theme.colors.textSecondary} />
-                      </View>
-                    </TouchableOpacity>
-                  );
-                  })
-                  )}
-                </View>
-              )}
-            </Animated.View>
+            {/* Board Selection - Animated */}
+            {selectedClassId && (
+              <Animated.View
+                style={[
+                  styles.section,
+                  {
+                    opacity: boardSectionOpacity,
+                    transform: [{ translateY: boardSectionTranslateY }],
+                  }
+                ]}
+              >
+                <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Select your board</Text>
+                {loadingBoards ? (
+                  <ActivityIndicator size="large" color={theme.colors.primary} style={{ marginVertical: 20 }} />
+                ) : (
+                  <View style={styles.boardList}>
+                    {stateBoards.length === 0 ? (
+                      <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
+                        No boards available for this class
+                      </Text>
+                    ) : (
+                      stateBoards.map((item) => {
+                        const isSelected = selectedBoardId === item._id;
+                        return (
+                          <TouchableOpacity
+                            key={item._id}
+                            onPress={() => handleBoardSelect(item._id)}
+                            activeOpacity={0.7}
+                          >
+                            <View
+                              style={[
+                                styles.boardCard,
+                                {
+                                  backgroundColor: theme.colors.cardBackground,
+                                  borderColor: isSelected ? theme.colors.secondary : 'transparent',
+                                  borderWidth: isSelected ? 1 : 0,
+                                }
+                              ]}
+                            >
+                              <View style={styles.boardInfo}>
+                                {item.logo ? (
+                                  <Image source={{ uri: item.logo }} style={styles.boardLogo} resizeMode="contain" />
+                                ) : (
+                                  <View style={[styles.boardLogoPlaceholder, { backgroundColor: theme.colors.border }]} />
+                                )}
+                                <Text style={[
+                                  styles.boardName,
+                                  {
+                                    color: theme.colors.text,
+                                    fontFamily: isSelected ? getFontFamily('600') : getFontFamily('500')
+                                  }
+                                ]}>
+                                  {item.name}
+                                </Text>
+                              </View>
+                              <SVGIcon name="chevron-right" size={20} color={theme.colors.textSecondary} />
+                            </View>
+                          </TouchableOpacity>
+                        );
+                      })
+                    )}
+                  </View>
+                )}
+              </Animated.View>
+            )}
           </View>
         </ScrollView>
 

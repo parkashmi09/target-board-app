@@ -10,6 +10,7 @@ import {
   Platform,
   PermissionsAndroid,
   Dimensions,
+  Share as RNShare,
 } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { Download, Share2 } from 'lucide-react-native';
@@ -180,8 +181,6 @@ const QRCodePaymentScreen: React.FC = () => {
   };
 
   /* ---------------- SHARE ---------------- */
-  // import Share from 'react-native-share';
-
   const handleShare = async () => {
     if (!qrImageUrl || sharing) return;
   
@@ -189,32 +188,111 @@ const QRCodePaymentScreen: React.FC = () => {
       setSharing(true);
   
       const { dirs } = ReactNativeBlobUtil.fs;
-      const filePath = `${dirs.CacheDir}/QRCode_${Date.now()}.png`;
+      const fileName = `QRCode_${Date.now()}.png`;
+      const filePath = `${dirs.CacheDir}/${fileName}`;
   
+      // Check if qrImageUrl is actually an image URL or a payment link
+      // Prioritize qrImageUrl from API (should be direct image URL)
+      let imageUrl = paymentLinkData?.qrImageUrl || qrImageUrl;
+      const isImageUrl = imageUrl.match(/\.(png|jpg|jpeg|gif|webp)(\?|$)/i);
+      
+      // If we don't have a direct image URL and it's a payment link, 
+      // the API should provide qrImageUrl, but if not, try to construct it
+      if (!isImageUrl && imageUrl.includes('rzp.io')) {
+        // Razorpay payment links - try common QR code image endpoints
+        const possibleImageUrls = [
+          imageUrl.replace(/\/$/, '') + '/qr.png',
+          imageUrl.replace(/\/$/, '') + '/qr.jpg',
+          imageUrl + '/qr.png',
+          imageUrl + '/qr.jpg',
+        ];
+        imageUrl = possibleImageUrls[0];
+      }
+  
+      // Download the QR code image with proper headers
       const response = await ReactNativeBlobUtil.config({
         fileCache: true,
         path: filePath,
-      }).fetch('GET', qrImageUrl);
+        addAndroidDownloads: {
+          useDownloadManager: false,
+        },
+      }).fetch('GET', imageUrl, {
+        'Content-Type': 'image/png',
+        'Accept': 'image/png,image/jpeg,image/*',
+      });
   
-      if (!(await ReactNativeBlobUtil.fs.exists(response.path()))) {
-        throw new Error('File not found');
+      const savedPath = response.path();
+  
+      if (!(await ReactNativeBlobUtil.fs.exists(savedPath))) {
+        throw new Error('File not found after download');
       }
   
+      // Verify it's actually an image by checking file size and content
+      const fileInfo = await ReactNativeBlobUtil.fs.stat(savedPath);
+      if (fileInfo.size === 0) {
+        throw new Error('Downloaded file is empty');
+      }
+  
+      // Prepare file URI - use file:// prefix for both platforms
+      // react-native-share needs this format for proper image sharing
+      const fileUri = savedPath.startsWith('file://') 
+        ? savedPath 
+        : `file://${savedPath}`;
+  
+      // Prepare share message with payment link
+      const paymentLink = qrImageUrl;
+      const message = `Please scan this QR code to complete the payment.\n\nUPI apps supported: GPay, PhonePe, Paytm\n\nPayment Link: ${paymentLink}`;
+  
+      // Use react-native-share with proper configuration for image preview
+      // The key is using url with type: 'image/png' for WhatsApp to show preview
       await Share.open({
-        title: 'QR Code Payment',
-        urls: [response.path()],
+        title: 'Course Payment QR Code',
+        message: message,
+        url: fileUri,
         type: 'image/png',
+        filename: fileName,
         failOnCancel: false,
+        showAppsToView: true,
       });
   
       toast.show({ text: 'QR code shared successfully', type: 'success' });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Share error:', error);
-      toast.show({ text: 'Failed to share QR code', type: 'error' });
+      
+      // User cancelled - don't show error
+      if (
+        error?.message?.includes('User did not share') ||
+        error?.message?.includes('cancel') ||
+        error?.message?.includes('User cancelled') ||
+        error?.code === 'E_SHARE_CANCELLED'
+      ) {
+        return;
+      }
+      
+      // Fallback: Try sharing the image URL directly if it's a web URL
+      if (qrImageUrl.startsWith('http://') || qrImageUrl.startsWith('https://')) {
+        try {
+          // Try using React Native's built-in Share for URL sharing
+          await RNShare.share({
+            title: 'Course Payment QR Code',
+            message: Platform.OS === 'android'
+              ? `Please scan this QR code to complete the payment.\n\nUPI apps supported: GPay, PhonePe, Paytm\n\n${qrImageUrl}`
+              : `Please scan this QR code to complete the payment.\n\nUPI apps supported: GPay, PhonePe, Paytm`,
+            url: Platform.OS === 'ios' ? qrImageUrl : undefined,
+          });
+          toast.show({ text: 'QR code link shared', type: 'success' });
+        } catch (fallbackError) {
+          toast.show({ text: 'Failed to share QR code', type: 'error' });
+        }
+      } else {
+        toast.show({ text: 'Failed to share QR code', type: 'error' });
+      }
     } finally {
       setSharing(false);
     }
   };
+
+  console.log('qrImageUrl', qrImageUrl);
   
   
   
@@ -253,7 +331,10 @@ const QRCodePaymentScreen: React.FC = () => {
         </View>
 
         <Text style={styles.companyName}>
-          TARGET BOARD LEARNING SPACE PVT. LTD.
+        TARGET BOARD GURUKUL 
+        </Text>
+        <Text style={styles.descriptionText}>
+        किसी भी UPI APP से SCAN करके इस बैच के लिए पेमेंट कर सकते हैं
         </Text>
 
         <View style={styles.note}>
@@ -279,7 +360,7 @@ const QRCodePaymentScreen: React.FC = () => {
           <Text style={styles.btnText}>Download</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
+        {/* <TouchableOpacity
           style={[styles.btn, styles.shareBtn]}
           onPress={handleShare}
           disabled={sharing}
@@ -290,7 +371,7 @@ const QRCodePaymentScreen: React.FC = () => {
             <Share2 size={20} color="#fff" />
           )}
           <Text style={styles.btnText}>Share</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
     </GradientBackground>
   );
@@ -315,6 +396,11 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  descriptionText: {
+    fontSize: moderateScale(12),
+    fontFamily: getFontFamily('600'),
+    marginBottom: getSpacing(2),
+  },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
@@ -324,7 +410,7 @@ const styles = StyleSheet.create({
   companyName: {
     fontSize: moderateScale(12),
     fontFamily: getFontFamily('600'),
-    marginBottom: getSpacing(2),
+    // marginBottom: getSpacing(2),
   },
   note: {
     maxWidth: 420,

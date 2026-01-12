@@ -263,7 +263,7 @@ const SettingsScreen: React.FC = () => {
           </View>
 
           {/* FCM Token Section (Temporary for Testing) */}
-          <View style={styles.section}>
+          {/* <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}>
               FCM Token (Testing)
             </Text>
@@ -285,7 +285,7 @@ const SettingsScreen: React.FC = () => {
             <Text style={[styles.fcmTokenHint, { color: theme.colors.textSecondary }]}>
               Tap to copy token for testing
             </Text>
-          </View>
+          </View> */}
 
           {/* Account Section */}
           <View style={styles.section}>

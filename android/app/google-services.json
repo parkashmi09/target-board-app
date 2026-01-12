@@ -1,21 +1,21 @@
 {
   "project_info": {
-    "project_number": "870462289984",
-    "project_id": "target-board-app-42e83",
-    "storage_bucket": "target-board-app-42e83.firebasestorage.app"
+    "project_number": "69662010434",
+    "project_id": "target-board-2",
+    "storage_bucket": "target-board-2.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:870462289984:android:d16d9f2fffe70089a9c7a5",
+        "mobilesdk_app_id": "1:69662010434:android:da2f78e4c33047795251db",
         "android_client_info": {
-          "package_name": "com.targetboard"
+          "package_name": "co.targetboardboardprep"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyAXmM-c14Vd5I3Q9Q9KROjsJivSia6A5aE"
+          "current_key": "AIzaSyDMAzNc6_f-IlSMI-7iXgBylqcrUo3y7FU"
         }
       ],
       "services": {

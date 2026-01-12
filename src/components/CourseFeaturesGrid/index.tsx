@@ -80,22 +80,36 @@ const CourseFeaturesGrid: React.FC<CourseFeaturesGridProps> = React.memo(({ feat
   const theme = useTheme();
   let delayCounter = 0;
   
-  // Consistent background color for all cards
-  const cardBackground = '#F5F7FA';
+  // Get background color for feature cards - using consistent light blue color
+  const getCardBackground = () => {
+    return '#EFF6FF';
+  };
+
+  // Get text color for light blue background - always use dark text for contrast
+  const getTextColor = () => {
+    // Since background is always light blue, use dark text for visibility
+    return theme.isDark ? '#1A1A2E' : '#000000';
+  };
+
+  // Get secondary text color for light blue background
+  const getSecondaryTextColor = () => {
+    // Since background is always light blue, use darker secondary text
+    return theme.isDark ? '#4A4A4A' : '#666666';
+  };
 
   return (
     <View style={styles.grid}>
       {features.live && (
         <FeatureCard
-          backgroundColor={cardBackground}
+          backgroundColor={getCardBackground()}
           delay={delayCounter++ * 100}
         >
           <View style={styles.content}>
             <View style={[styles.iconContainer, { backgroundColor: '#D32F2F' }]}>
-              <MonitorPlay size={20} color="#FFFFFF" />
+              <MonitorPlay size={16} color="#FFFFFF" />
             </View>
             <View style={styles.textContainer}>
-              <Text style={[styles.title, { color: theme.colors.text }]}>LIVE</Text>
+              <Text style={[styles.title, { color: getTextColor() }]}>LIVE</Text>
             </View>
           </View>
         </FeatureCard>
@@ -103,7 +117,7 @@ const CourseFeaturesGrid: React.FC<CourseFeaturesGridProps> = React.memo(({ feat
 
       {features.video && (
         <FeatureCard
-          backgroundColor={cardBackground}
+          backgroundColor={getCardBackground()}
           delay={delayCounter++ * 100}
         >
           <View style={styles.content}>
@@ -111,8 +125,8 @@ const CourseFeaturesGrid: React.FC<CourseFeaturesGridProps> = React.memo(({ feat
               <Play size={14} color="#FFFFFF" fill="#FFFFFF" style={{ marginLeft: 2 }} />
             </View>
             <View style={styles.textContainer}>
-              <Text style={[styles.title, { color: theme.colors.text }]}>VIDEO</Text>
-              <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>Recorded class</Text>
+              <Text style={[styles.title, { color: getTextColor() }]}>VIDEO</Text>
+              <Text style={[styles.subtitle, { color: getSecondaryTextColor() }]}>Recorded class</Text>
             </View>
           </View>
         </FeatureCard>
@@ -120,15 +134,15 @@ const CourseFeaturesGrid: React.FC<CourseFeaturesGridProps> = React.memo(({ feat
 
       {features.notes && (
         <FeatureCard
-          backgroundColor={cardBackground}
+          backgroundColor={getCardBackground()}
           delay={delayCounter++ * 100}
         >
           <View style={styles.content}>
             <View style={[styles.iconContainer, { backgroundColor: '#03A9F4' }]}>
-              <FileText size={20} color="#FFFFFF" />
+              <FileText size={16} color="#FFFFFF" />
             </View>
             <View style={styles.textContainer}>
-              <Text style={[styles.title, { color: theme.colors.text }]}>NOTES</Text>
+              <Text style={[styles.title, { color: getTextColor() }]}>NOTES</Text>
             </View>
           </View>
         </FeatureCard>
@@ -136,16 +150,15 @@ const CourseFeaturesGrid: React.FC<CourseFeaturesGridProps> = React.memo(({ feat
 
       {features.panelPdf && (
         <FeatureCard
-          backgroundColor={cardBackground}
+          backgroundColor={getCardBackground()}
           delay={delayCounter++ * 100}
         >
           <View style={styles.content}>
             <View style={[styles.iconContainer, { backgroundColor: '#3F51B5' }]}>
-              <FileDown size={20} color="#FFFFFF" />
+              <FileDown size={16} color="#FFFFFF" />
             </View>
             <View style={styles.textContainer}>
-              <Text style={[styles.title, { color: theme.colors.text }]}>PANEL</Text>
-              <Text style={[styles.title, { color: theme.colors.text }]}>PDF</Text>
+              <Text style={[styles.title, { color: getTextColor() }]}>PANEL PDF</Text>
             </View>
           </View>
         </FeatureCard>
@@ -153,16 +166,16 @@ const CourseFeaturesGrid: React.FC<CourseFeaturesGridProps> = React.memo(({ feat
 
       {features.topper && (
         <FeatureCard
-          backgroundColor={cardBackground}
+          backgroundColor={getCardBackground()}
           delay={delayCounter++ * 100}
         >
           <View style={styles.content}>
             <View style={[styles.iconContainer, { backgroundColor: '#FFA000' }]}>
-              <Award size={20} color="#FFFFFF" />
+              <Award size={16} color="#FFFFFF" />
             </View>
             <View style={styles.textContainer}>
-              <Text style={[styles.title, { color: theme.colors.text }]}>TOPPER</Text>
-              <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>Talks</Text>
+              <Text style={[styles.title, { color: getTextColor() }]}>TOPPER</Text>
+              <Text style={[styles.subtitle, { color: getSecondaryTextColor() }]}>Talks</Text>
             </View>
           </View>
         </FeatureCard>
@@ -170,16 +183,16 @@ const CourseFeaturesGrid: React.FC<CourseFeaturesGridProps> = React.memo(({ feat
 
       {features.test && (
         <FeatureCard
-          backgroundColor={cardBackground}
+          backgroundColor={getCardBackground()}
           delay={delayCounter++ * 100}
         >
           <View style={styles.content}>
             <View style={[styles.iconContainer, { backgroundColor: '#FBC02D' }]}>
-              <ClipboardList size={20} color="#FFFFFF" />
+              <ClipboardList size={16} color="#FFFFFF" />
             </View>
             <View style={styles.textContainer}>
-              <Text style={[styles.title, { color: theme.colors.text }]}>TEST</Text>
-              <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>Chapter Wise</Text>
+              <Text style={[styles.title, { color: getTextColor() }]}>TEST</Text>
+              <Text style={[styles.subtitle, { color: getSecondaryTextColor() }]}>Chapter Wise</Text>
             </View>
           </View>
         </FeatureCard>
@@ -200,15 +213,15 @@ const styles = StyleSheet.create({
   },
   card: {
     width: '48%',
-    borderRadius: 12,
-    padding: moderateScale(14),
+    borderRadius: 8,
+    padding: moderateScale(12),
     minHeight: moderateScale(80),
     justifyContent: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
+    // elevation: 4,
+    // shadowColor: '#000',
+    // shadowOffset: { width: 0, height: 2 },
+    // shadowOpacity: 0.15,
+    // shadowRadius: 4,
     marginBottom: moderateScale(12),
   },
   content: {
@@ -216,23 +229,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   iconContainer: {
-    width: moderateScale(40),
-    height: moderateScale(40),
+    width: moderateScale(36),
+    height: moderateScale(36),
     borderRadius: moderateScale(20),
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: moderateScale(12),
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
+    // elevation: 2,
+    // shadowColor: '#000',
+    // shadowOffset: { width: 0, height: 1 },
+    // shadowOpacity: 0.2,
+    // shadowRadius: 2,
   },
   textContainer: {
     flex: 1,
+    flexWrap: 'wrap',
   },
   title: {
-    fontSize: moderateScale(14),
+    fontSize: moderateScale(12),
     fontFamily: getFontFamily('700'),
     letterSpacing: 0.5,
   },

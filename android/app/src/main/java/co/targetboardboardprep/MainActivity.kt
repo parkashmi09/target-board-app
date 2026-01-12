@@ -1,4 +1,4 @@
-package com.targetboard
+package co.targetboardboardprep
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
