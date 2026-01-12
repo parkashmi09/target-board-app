@@ -127,5 +127,8 @@ web-build/
 out/
 dist/
 
+# APK files (build artifacts - should not be committed)
+*.apk
+
 # Documentation (optional - consider keeping audit checklist tracked)
 # docs/APP_PLAYSTORE_AUDIT_CHECKLIST.md
