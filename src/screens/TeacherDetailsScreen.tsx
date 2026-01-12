@@ -448,7 +448,7 @@ const TeacherDetailsScreen = () => {
 
                 {/* Enhanced Video Section */}
                 {teacher.video && (
-                    <View style={[styles.section, { marginBottom: getSpacing(10) }]}>
+                    <View style={styles.section}>
                         <View style={styles.sectionHeader}>
                            
                             <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
@@ -703,6 +703,7 @@ const styles = StyleSheet.create({
     },
     coursesScroll: {
         paddingRight: getSpacing(2),
+        paddingBottom: getSpacing(10),
     },
     videoCard: {
         borderRadius: moderateScale(18),

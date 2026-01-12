@@ -184,7 +184,7 @@ const CourseCard: React.FC<CourseCardProps> = React.memo(
 
           <View style={styles.details}>
             <Text style={[styles.title, { color: theme.colors.text }]}>
-              {title} ({medium}) {board} {targetAudience}
+              {title}
             </Text>
 
          <View style={styles.priceContainer}>

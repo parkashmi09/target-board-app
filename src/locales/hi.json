@@ -57,7 +57,8 @@
     "classes": "कक्षाएं",
     "books": "पुस्तकें",
     "tests": "टेस्ट",
-    "profile": "सेटिंग्स"
+    "profile": "सेटिंग्स",
+    "viewContent": "विषय देखें"
   },
   "profile": {
     "editProfile": "प्रोफ़ाइल संपादित करें",

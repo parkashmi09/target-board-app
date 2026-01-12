@@ -57,7 +57,8 @@
     "classes": "Classes",
     "books": "Books",
     "tests": "Tests",
-    "profile": "Settings"
+    "profile": "Settings",
+    "viewContent": "View Content"
   },
   "profile": {
     "editProfile": "Edit Profile",

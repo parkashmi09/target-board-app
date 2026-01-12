@@ -2,6 +2,8 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { FileText } from 'lucide-react-native';
 import { useTheme } from '../../theme/theme';
+import { moderateScale } from '../../utils/responsive';
+import { getFontFamily } from '../../utils/fonts';
 
 interface BatchInfoCardProps {
   batchInfoUrl?: string;
@@ -12,22 +14,19 @@ const BatchInfoCard: React.FC<BatchInfoCardProps> = React.memo(({ batchInfoUrl, 
   const theme = useTheme();
 
   return (
-    <View style={[styles.card, { backgroundColor: theme.colors.cardBackground, borderColor: theme.colors.border }]}>
-      <View style={styles.iconBox}>
-        <FileText size={20} color="#D32F2F" />
-        <Text style={styles.iconText}>PDF</Text>
+    <TouchableOpacity
+      style={styles.card}
+      onPress={onPress}
+      activeOpacity={0.8}
+    >
+      <View style={styles.iconContainer}>
+        <FileText size={24} color="#FFFFFF" />
       </View>
       <View style={styles.content}>
         <Text style={[styles.title, { color: theme.colors.text }]}>Batch Information</Text>
-        <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>Click button to view batch information</Text>
+        <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>Click Here to View Batch Details</Text>
       </View>
-      <TouchableOpacity
-        style={[styles.button, { backgroundColor: theme.colors.background, borderColor: theme.colors.border }]}
-        onPress={onPress}
-      >
-        <Text style={[styles.buttonText, { color: theme.colors.text }]}>Click Here</Text>
-      </TouchableOpacity>
-    </View>
+    </TouchableOpacity>
   );
 });
 
@@ -37,42 +36,41 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 24,
-    borderWidth: 1,
-    elevation: 1,
+    borderRadius: 12,
+    padding: moderateScale(16),
+    marginBottom: moderateScale(20),
+    backgroundColor: '#F5F7FA',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
   },
-  iconBox: {
+  iconContainer: {
+    width: moderateScale(48),
+    height: moderateScale(48),
+    borderRadius: moderateScale(12),
+    backgroundColor: '#3F51B5',
+    justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
-  },
-  iconText: {
-    fontSize: 10,
-    color: '#D32F2F',
-    fontWeight: '700',
-    marginTop: 2,
+    marginRight: moderateScale(16),
+    elevation: 2,
+    shadowColor: '#3F51B5',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
   },
   content: {
     flex: 1,
   },
   title: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: moderateScale(16),
+    fontFamily: getFontFamily('700'),
+    marginBottom: moderateScale(4),
   },
   subtitle: {
-    fontSize: 12,
-    marginTop: 2,
-  },
-  button: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
-    borderWidth: 1,
-  },
-  buttonText: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: moderateScale(12),
+    fontFamily: getFontFamily('500'),
   },
 });
 

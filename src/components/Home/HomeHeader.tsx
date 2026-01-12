@@ -179,19 +179,27 @@ const HomeHeader = memo(({
                         onPress={handleNotificationPress}
                     >
                         <View>
-                            <LottieView
-                                ref={lottieRef}
-                                source={notificationAnimation}
-                                style={{ width: moderateScale(28), height: moderateScale(28) }}
-                                loop={false}
-                                autoPlay={false}
-                                colorFilters={[
-                                    {
-                                        keypath: "**",
-                                        color: theme.colors.text,
-                                    },
-                                ]}
-                            />
+                            {theme.isDark ? (
+                                <Image
+                                    source={Images.DARK_BELL}
+                                    style={styles.bellIcon}
+                                    resizeMode="contain"
+                                />
+                            ) : (
+                                <LottieView
+                                    ref={lottieRef}
+                                    source={notificationAnimation}
+                                    style={{ width: moderateScale(28), height: moderateScale(28) }}
+                                    loop={false}
+                                    autoPlay={false}
+                                    colorFilters={[
+                                        {
+                                            keypath: "**",
+                                            color: theme.colors.text,
+                                        },
+                                    ]}
+                                />
+                            )}
                             {unreadCount > 0 && (
                                 <View style={[styles.badge, { backgroundColor: '#FF4444' }]}>
                                     <Text style={styles.badgeText}>
@@ -282,8 +290,8 @@ const styles = StyleSheet.create({
         position: 'absolute',
         top: -moderateScale(4),
         right: -moderateScale(4),
-        minWidth: moderateScale(18),
-        height: moderateScale(18),
+        minWidth: moderateScale(16),
+        height: moderateScale(16),
         borderRadius: moderateScale(9),
         justifyContent: 'center',
         alignItems: 'center',
@@ -296,6 +304,10 @@ const styles = StyleSheet.create({
         fontSize: moderateScale(10),
         fontFamily: getFontFamily('700'),
         lineHeight: moderateScale(12),
+    },
+    bellIcon: {
+        width: moderateScale(20),
+        height: moderateScale(28),
     },
 });
 

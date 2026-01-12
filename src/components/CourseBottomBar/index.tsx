@@ -1,9 +1,10 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform, Animated } from 'react-native';
-import { useTheme } from '../../theme/theme';
+import { Svg, Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { getFontFamily } from '../../utils/fonts';
-import SVGIcon from '../SVGIcon';
 import { moderateScale } from '../../utils/responsive';
+import { ArrowRight } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 
 interface CourseBottomBarProps {
     currentPrice: number;
@@ -13,6 +14,7 @@ interface CourseBottomBarProps {
     isPurchased?: boolean;
     hasLiveStreams: boolean;
     onBuyNow: () => void;
+    onContentPress?: () => void;
 }
 
 const CourseBottomBar: React.FC<CourseBottomBarProps> = React.memo(({
@@ -23,96 +25,180 @@ const CourseBottomBar: React.FC<CourseBottomBarProps> = React.memo(({
     isPurchased = false,
     hasLiveStreams,
     onBuyNow,
+    onContentPress,
 }) => {
-    // Animation values
-    const iconBounceAnim = useRef(new Animated.Value(1)).current;
-    const textBounceAnim = useRef(new Animated.Value(1)).current;
+    const { t } = useTranslation();
+    // Animation values for purchased content button
+    const pulseAnim = useRef(new Animated.Value(1)).current;
+    const shimmerAnim = useRef(new Animated.Value(0)).current;
+    const iconSlideAnim = useRef(new Animated.Value(0)).current;
+    const textScaleAnim = useRef(new Animated.Value(1)).current;
 
-    // Continuous bounce animation for icon
+    // Continuous animations for content button
     useEffect(() => {
         if (isPurchased) {
+            // Pulse animation
+            const pulseAnimation = Animated.loop(
+                Animated.sequence([
+                    Animated.timing(pulseAnim, {
+                        toValue: 1.05,
+                        duration: 1500,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(pulseAnim, {
+                        toValue: 1,
+                        duration: 1500,
+                        useNativeDriver: true,
+                    }),
+                ])
+            );
+
+            // Shimmer effect
+            const shimmerAnimation = Animated.loop(
+                Animated.sequence([
+                    Animated.timing(shimmerAnim, {
+                        toValue: 1,
+                        duration: 2000,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(shimmerAnim, {
+                        toValue: 0,
+                        duration: 2000,
+                        useNativeDriver: true,
+                    }),
+                ])
+            );
+
+            // Icon slide animation
             const iconAnimation = Animated.loop(
                 Animated.sequence([
-                    Animated.timing(iconBounceAnim, {
-                        toValue: 1.2,
-                        duration: 800,
+                    Animated.timing(iconSlideAnim, {
+                        toValue: 4,
+                        duration: 1000,
                         useNativeDriver: true,
                     }),
-                    Animated.timing(iconBounceAnim, {
-                        toValue: 1,
-                        duration: 800,
+                    Animated.timing(iconSlideAnim, {
+                        toValue: 0,
+                        duration: 1000,
                         useNativeDriver: true,
                     }),
                 ])
             );
-            iconAnimation.start();
 
-            // Text bounce animation
+            // Text scale animation
             const textAnimation = Animated.loop(
                 Animated.sequence([
-                    Animated.timing(textBounceAnim, {
-                        toValue: 1.1,
-                        duration: 1000,
+                    Animated.timing(textScaleAnim, {
+                        toValue: 1.05,
+                        duration: 1200,
                         useNativeDriver: true,
                     }),
-                    Animated.timing(textBounceAnim, {
+                    Animated.timing(textScaleAnim, {
                         toValue: 1,
-                        duration: 1000,
+                        duration: 1200,
                         useNativeDriver: true,
                     }),
                 ])
             );
+
+            pulseAnimation.start();
+            shimmerAnimation.start();
+            iconAnimation.start();
             textAnimation.start();
 
             return () => {
+                pulseAnimation.stop();
+                shimmerAnimation.stop();
                 iconAnimation.stop();
                 textAnimation.stop();
             };
         }
-    }, [isPurchased, iconBounceAnim, textBounceAnim]);
+    }, [isPurchased, pulseAnim, shimmerAnim, iconSlideAnim, textScaleAnim]);
 
     const getButtonText = () => {
-        if (isPurchased) {
-            return 'Watch Live';
-        }
         if (isCoursePaid && hasLiveStreams) {
             return 'Watch Live';
         }
         return 'Buy Now';
     };
 
-    // If purchased, show only Watch Live with animation
+    // Shimmer gradient interpolation
+    const shimmerOpacity = shimmerAnim.interpolate({
+        inputRange: [0, 0.5, 1],
+        outputRange: [0.3, 0.8, 0.3],
+    });
+
+    // If purchased, show Content button with gradient and animations
     if (isPurchased) {
         return (
-            <View style={styles.container}>
-                <TouchableOpacity 
-                    style={styles.watchLiveButton} 
-                    activeOpacity={0.9} 
-                    onPress={onBuyNow}
+            <View style={[styles.container, styles.contentContainer]}>
+                <Animated.View
+                    style={[
+                        styles.contentButtonWrapper,
+                        {
+                            transform: [{ scale: pulseAnim }],
+                        },
+                    ]}
                 >
-                    <Animated.View
-                        style={{
-                            transform: [{ scale: iconBounceAnim }],
-                            marginRight: moderateScale(12),
-                        }}
+                    <TouchableOpacity 
+                        style={styles.contentButton} 
+                        activeOpacity={0.9} 
+                        onPress={onContentPress || onBuyNow}
                     >
-                        <SVGIcon 
-                            name="play" 
-                            size={24} 
-                            color="#FFFFFF" 
-                        />
-                    </Animated.View>
-                    <Animated.Text 
-                        style={[
-                            styles.watchLiveText,
-                            {
-                                transform: [{ scale: textBounceAnim }],
-                            }
-                        ]}
-                    >
-                        Watch Live
-                    </Animated.Text>
-                </TouchableOpacity>
+                        <View style={StyleSheet.absoluteFill}>
+                            <Svg width="100%" height="100%" style={StyleSheet.absoluteFill}>
+                                <Defs>
+                                    <LinearGradient id="contentButtonGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <Stop offset="0%" stopColor="#A5D6A7" stopOpacity="1" />
+                                        <Stop offset="30%" stopColor="#81C784" stopOpacity="1" />
+                                        <Stop offset="60%" stopColor="#66BB6A" stopOpacity="1" />
+                                        <Stop offset="100%" stopColor="#4CAF50" stopOpacity="1" />
+                                    </LinearGradient>
+                                </Defs>
+                                <Rect width="100%" height="100%" rx={8} fill="url(#contentButtonGradient)" />
+                            </Svg>
+                            {/* Shimmer overlay */}
+                            <Animated.View
+                                style={[
+                                    StyleSheet.absoluteFill,
+                                    {
+                                        opacity: shimmerOpacity,
+                                    },
+                                ]}
+                            >
+                                <Svg width="100%" height="100%" style={StyleSheet.absoluteFill}>
+                                    <Defs>
+                                        <LinearGradient id="shimmerGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                            <Stop offset="0%" stopColor="#FFFFFF" stopOpacity="0" />
+                                            <Stop offset="50%" stopColor="#FFFFFF" stopOpacity="0.5" />
+                                            <Stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
+                                        </LinearGradient>
+                                    </Defs>
+                                    <Rect width="100%" height="100%" rx={8} fill="url(#shimmerGradient)" />
+                                </Svg>
+                            </Animated.View>
+                        </View>
+                        <View style={styles.contentButtonInner}>
+                            <Animated.Text 
+                                style={[
+                                    styles.contentButtonText,
+                                    {
+                                        transform: [{ scale: textScaleAnim }],
+                                    },
+                                ]}
+                            >
+                                {t('navigation.viewContent')}
+                            </Animated.Text>
+                            <Animated.View
+                                style={{
+                                    transform: [{ translateX: iconSlideAnim }],
+                                }}
+                            >
+                                <ArrowRight size={20} color="#FFFFFF" strokeWidth={3} />
+                            </Animated.View>
+                        </View>
+                    </TouchableOpacity>
+                </Animated.View>
             </View>
         );
     }
@@ -202,19 +288,44 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontFamily: getFontFamily('700'),
     },
-    watchLiveButton: {
+    contentButtonWrapper: {
+        flex: 1,
+        borderRadius: 8,
+        elevation: 4,
+        shadowColor: '#2E7D32',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+    },
+    contentButton: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         flex: 1,
         paddingHorizontal: moderateScale(20),
-        paddingVertical: moderateScale(12),
+        paddingVertical: moderateScale(14),
+        borderRadius: 8,
+        overflow: 'hidden',
+        minHeight: 50,
     },
-    watchLiveText: {
+    contentButtonInner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        zIndex: 1,
+    },
+    contentButtonText: {
         color: '#FFFFFF',
-        fontSize: moderateScale(20),
+        fontSize: moderateScale(18),
         fontFamily: getFontFamily('700'),
         letterSpacing: 0.5,
+        textShadowColor: 'rgba(0, 0, 0, 0.2)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
+    },
+    contentContainer: {
+        backgroundColor: 'transparent',
     },
 });
 

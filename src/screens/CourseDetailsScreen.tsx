@@ -216,17 +216,28 @@ const CourseDetailsScreen: React.FC = () => {
     }
   }, [openPurchaseModal, course, isLoading]);
 
-  const handleBuyNow = useCallback(() => {
-    // If course is already purchased, navigate to ClassStreams screen
-    if (isPurchased) {
-      try {
-        navigation.navigate('ClassStreams')
-      } catch (error) {
-        if (__DEV__) {
-          console.error('[CourseDetailsScreen] Navigation error:', error);
-        }
-        toast.show({ text: 'Failed to open course streams', type: 'error' });
+  const handleContentPress = useCallback(() => {
+    if (!course || !courseId) {
+      toast.show({ text: 'Course information not available', type: 'error' });
+      return;
+    }
+    try {
+      navigation.navigate('Categories', {
+        courseId,
+        courseName: course.name,
+      });
+    } catch (error) {
+      if (__DEV__) {
+        console.error('[CourseDetailsScreen] Navigation error:', error);
       }
+      toast.show({ text: 'Failed to open content', type: 'error' });
+    }
+  }, [course, courseId, navigation, toast]);
+
+  const handleBuyNow = useCallback(() => {
+    // If course is already purchased, navigate to Categories screen
+    if (isPurchased) {
+      handleContentPress();
       return;
     }
 
@@ -422,6 +433,7 @@ const CourseDetailsScreen: React.FC = () => {
         isPurchased={isPurchased}
         hasLiveStreams={hasLiveStreams}
         onBuyNow={handleBuyNow}
+        onContentPress={handleContentPress}
       />
 
       <CoursePurchaseModal

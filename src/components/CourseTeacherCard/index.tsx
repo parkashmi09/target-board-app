@@ -154,13 +154,14 @@ const styles = StyleSheet.create({
         zIndex: 2,
     },
     imageWrapper: {
-        width: moderateScale(58),
-        height: moderateScale(70),
+        width: moderateScale(60),
+        height: moderateScale(60),
         overflow: 'hidden',
     },
     teacherImage: {
         width: '100%',
         height: '100%',
+        objectFit: 'contain',
     },
     experienceBadge: {
         position: 'absolute',

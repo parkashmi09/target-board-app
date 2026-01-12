@@ -11,6 +11,7 @@ export const Images = {
   BOTTOM_ROUND_BG: require('./bottom-round.webp'),
   LEFT_FLOWER: require('./left-flower.webp'),
   RIGHT_FLOWER: require('./right-flower.webp'),
+  DARK_BELL: require('./dark-bell.webp'),
 } as const;
 
 export type ImageKey = keyof typeof Images;
