@@ -1,11 +1,12 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { useTheme } from '../../theme/theme';
 import { moderateScale, getSpacing } from '../../utils/responsive';
 import GradientBackground from '../GradientBackground';
 import SVGIcon from '../SVGIcon';
 import { useTranslation } from 'react-i18next';
 import { useNetworkStore } from '../../store/networkStore';
+import { Images } from '../../assets/images';
 
 const OfflineScreen: React.FC = () => {
   const theme = useTheme();
@@ -30,7 +31,11 @@ const OfflineScreen: React.FC = () => {
         <View style={styles.content}>
           {/* Offline Icon */}
           <View style={[styles.iconContainer, { backgroundColor: theme.colors.warning + '20' }]}>
-            <SVGIcon name="wifi-off" size={moderateScale(64)} color={theme.colors.warning} />
+            <Image 
+              source={Images.NO_WIFI} 
+              style={styles.offlineImage}
+              resizeMode="contain"
+            />
           </View>
 
           {/* Title */}
@@ -104,6 +109,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: getSpacing(3),
+  },
+  offlineImage: {
+    width: moderateScale(80),
+    height: moderateScale(80),
   },
   title: {
     fontSize: moderateScale(24),

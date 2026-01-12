@@ -12,6 +12,7 @@ export const Images = {
   LEFT_FLOWER: require('./left-flower.webp'),
   RIGHT_FLOWER: require('./right-flower.webp'),
   DARK_BELL: require('./dark-bell.webp'),
+  NO_WIFI: require('./no-wifi.webp'),
 } as const;
 
 export type ImageKey = keyof typeof Images;

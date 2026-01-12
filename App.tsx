@@ -20,6 +20,7 @@ import ErrorBoundary from './src/components/ErrorBoundary';
 import { queryClient } from './src/services/queryClient';
 import { useNetworkStore } from './src/store/networkStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import OfflineScreen from './src/components/OfflineScreen';
 import './src/i18n';
 
 // Initialize TPStreams
@@ -57,8 +58,11 @@ function AppContent() {
   const theme = useTheme();
   const [showSplash, setShowSplash] = useState(true);
   const { isLoggedIn, checkAuthStatus } = useAuthStore();
-  const { initialize: initializeNetwork } = useNetworkStore();
+  const { initialize: initializeNetwork, isConnected, isInternetReachable } = useNetworkStore();
   const navigationRef = useRef<NavigationContainerRef<any>>(null);
+  
+  // Check if app is offline
+  const isOffline = !isConnected || (isInternetReachable === false && !__DEV__);
 
   // Firebase Cloud Messaging Setup
   useEffect(() => {
@@ -271,32 +275,40 @@ function AppContent() {
   }, [checkAuthStatus, initializeNetwork]);
 
   return (
-    <NavigationContainer
-      ref={navigationRef}
-      theme={{
-        dark: theme.isDark,
-        colors: {
-          primary: theme.colors.accent,
-          background: theme.colors.background,
-          card: theme.colors.cardBackground,
-          text: theme.colors.text,
-          border: theme.colors.border,
-          notification: theme.colors.accent,
-        },
-      }}
-    >
-      <StatusBar 
-        barStyle={theme.isDark ? 'light-content' : 'dark-content'} 
-        backgroundColor={theme.colors.background}
-      />
-      {showSplash ? (
-        <SplashScreen />
-      ) : isLoggedIn ? (
-        <MainStack />
-      ) : (
-        <AuthStack />
+    <>
+      <NavigationContainer
+        ref={navigationRef}
+        theme={{
+          dark: theme.isDark,
+          colors: {
+            primary: theme.colors.accent,
+            background: theme.colors.background,
+            card: theme.colors.cardBackground,
+            text: theme.colors.text,
+            border: theme.colors.border,
+            notification: theme.colors.accent,
+          },
+        }}
+      >
+        <StatusBar 
+          barStyle={theme.isDark ? 'light-content' : 'dark-content'} 
+          backgroundColor={theme.colors.background}
+        />
+        {showSplash ? (
+          <SplashScreen />
+        ) : isLoggedIn ? (
+          <MainStack />
+        ) : (
+          <AuthStack />
+        )}
+      </NavigationContainer>
+      {/* Show offline screen when app is offline */}
+      {!showSplash && isOffline && (
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999 }}>
+          <OfflineScreen />
+        </View>
       )}
-    </NavigationContainer>
+    </>
   );
 }
 

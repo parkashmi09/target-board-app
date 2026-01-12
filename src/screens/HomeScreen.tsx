@@ -62,6 +62,13 @@ const HomeScreen: React.FC = React.memo(() => {
   // Animation values for smooth fade-in
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  
+  // Staggered skeleton animations
+  const bannerSkeletonAnim = useRef(new Animated.Value(0)).current;
+  const sliderSkeletonAnim = useRef(new Animated.Value(0)).current;
+  const coursesSkeletonAnim = useRef(new Animated.Value(0)).current;
+  const teachersSkeletonAnim = useRef(new Animated.Value(0)).current;
+  const toppersSkeletonAnim = useRef(new Animated.Value(0)).current;
 
   // Fetch user details using React Query
   const { data: userData, refetch: refetchUserDetails } = useUserDetails({
@@ -104,13 +111,60 @@ const HomeScreen: React.FC = React.memo(() => {
     );
   }, [stickyBannersData, bannersData, teachersData, coursesData]);
 
+  // Animate skeleton loaders with staggered delay
+  useEffect(() => {
+    if (isInitialLoading && !hasAnyData) {
+      // Staggered skeleton animations - appear gradually with delays
+      Animated.parallel([
+        Animated.timing(bannerSkeletonAnim, {
+          toValue: 1,
+          duration: 400,
+          delay: 100,
+          useNativeDriver: true,
+        }),
+        Animated.timing(sliderSkeletonAnim, {
+          toValue: 1,
+          duration: 400,
+          delay: 250,
+          useNativeDriver: true,
+        }),
+        Animated.timing(coursesSkeletonAnim, {
+          toValue: 1,
+          duration: 400,
+          delay: 400,
+          useNativeDriver: true,
+        }),
+        Animated.timing(teachersSkeletonAnim, {
+          toValue: 1,
+          duration: 400,
+          delay: 550,
+          useNativeDriver: true,
+        }),
+        Animated.timing(toppersSkeletonAnim, {
+          toValue: 1,
+          duration: 400,
+          delay: 700,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      // Reset animations when not loading
+      bannerSkeletonAnim.setValue(0);
+      sliderSkeletonAnim.setValue(0);
+      coursesSkeletonAnim.setValue(0);
+      teachersSkeletonAnim.setValue(0);
+      toppersSkeletonAnim.setValue(0);
+    }
+  }, [isInitialLoading, hasAnyData, bannerSkeletonAnim, sliderSkeletonAnim, coursesSkeletonAnim, teachersSkeletonAnim, toppersSkeletonAnim]);
+
   // Animate content fade-in when data loads
   useEffect(() => {
     if (!isInitialLoading && isInitialLoad) {
       setIsInitialLoad(false);
+      // Slower, more graceful fade-in
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 400,
+        duration: 600,
         useNativeDriver: true,
       }).start();
     }
@@ -324,18 +378,28 @@ const HomeScreen: React.FC = React.memo(() => {
 
     return (
       <View>
-        {/* Banner skeleton - match actual banner height */}
+        {/* Banner skeleton - match actual banner height with fade-in */}
         {isLoadingStickyBanners && (
-          <View style={styles.bannerSkeletonWrapper}>
+          <Animated.View 
+            style={[
+              styles.bannerSkeletonWrapper,
+              { opacity: bannerSkeletonAnim }
+            ]}
+          >
             <BannerSkeleton />
-          </View>
+          </Animated.View>
         )}
         
-        {/* Banner slider skeleton - match actual slider height */}
+        {/* Banner slider skeleton - match actual slider height with fade-in */}
         {isLoadingBanners && (
-          <View style={styles.bannerSkeletonWrapper}>
+          <Animated.View 
+            style={[
+              styles.bannerSkeletonWrapper,
+              { opacity: sliderSkeletonAnim }
+            ]}
+          >
             <BannerSkeleton />
-          </View>
+          </Animated.View>
         )}
 
         {/* Category tabs - always show */}
@@ -343,9 +407,14 @@ const HomeScreen: React.FC = React.memo(() => {
           <CategoryTabs />
         </ResponsiveView>
 
-        {/* Courses skeleton - match CourseSection layout */}
+        {/* Courses skeleton - match CourseSection layout with fade-in */}
         {isLoadingCourses && (
-          <View style={styles.skeletonContainer}>
+          <Animated.View 
+            style={[
+              styles.skeletonContainer,
+              { opacity: coursesSkeletonAnim }
+            ]}
+          >
             <View style={[styles.skeletonTitle, { backgroundColor: theme.colors.border }]} />
             <View style={styles.courseSkeletonWrapper}>
               {[1, 2, 3].map((i) => (
@@ -354,12 +423,17 @@ const HomeScreen: React.FC = React.memo(() => {
                 </View>
               ))}
             </View>
-          </View>
+          </Animated.View>
         )}
 
-        {/* Teachers skeleton - match TeachersSection layout */}
+        {/* Teachers skeleton - match TeachersSection layout with fade-in */}
         {isLoadingTeachers && (
-          <View style={styles.skeletonContainer}>
+          <Animated.View 
+            style={[
+              styles.skeletonContainer,
+              { opacity: teachersSkeletonAnim }
+            ]}
+          >
             <View style={[styles.skeletonTitle, { backgroundColor: theme.colors.border }]} />
             <ScrollView 
               horizontal 
@@ -370,13 +444,23 @@ const HomeScreen: React.FC = React.memo(() => {
                 <TeacherCardSkeleton key={i} />
               ))}
             </ScrollView>
-          </View>
+          </Animated.View>
         )}
 
-        {/* Toppers section skeleton placeholder */}
-        <View style={styles.skeletonContainer}>
+        {/* Toppers section skeleton placeholder with fade-in */}
+        <Animated.View 
+          style={[
+            styles.skeletonContainer,
+            { opacity: toppersSkeletonAnim }
+          ]}
+        >
           <View style={[styles.skeletonTitle, { backgroundColor: theme.colors.border, width: moderateScale(120) }]} />
-        </View>
+          <View style={styles.toppersSkeletonGrid}>
+            {[1, 2, 3, 4].map((i) => (
+              <View key={i} style={[styles.topperSkeletonCard, { backgroundColor: theme.colors.border }]} />
+            ))}
+          </View>
+        </Animated.View>
       </View>
     );
   };
@@ -404,36 +488,52 @@ const HomeScreen: React.FC = React.memo(() => {
             <Animated.View style={{ opacity: fadeAnim }}>
               {/* Show banner even if loading, but with skeleton if no data */}
               {isLoadingStickyBanners && !stickyBanner ? (
-                <View style={styles.bannerSkeletonWrapper}>
+                <Animated.View 
+                  style={[
+                    styles.bannerSkeletonWrapper,
+                    { opacity: bannerSkeletonAnim }
+                  ]}
+                >
                   <BannerSkeleton />
-                </View>
+                </Animated.View>
               ) : stickyBanner ? (
-                <ImageBanner
-                  key={stickyBanner?._id || 'sticky-banner'}
-                  imageUrl={stickyBanner?.image}
-                  onPress={() => {
-                    if (stickyBanner?.link) {
-                      // Handle banner link
-                    }
-                  }}
-                />
+                <Animated.View style={{ opacity: fadeAnim }}>
+                  <ImageBanner
+                    key={stickyBanner?._id || 'sticky-banner'}
+                    imageUrl={stickyBanner?.image}
+                    onPress={() => {
+                      if (stickyBanner?.link) {
+                        // Handle banner link
+                      }
+                    }}
+                  />
+                </Animated.View>
               ) : (
-                <ImageBanner imageSource={Images.TB_LOGO} />
+                <Animated.View style={{ opacity: fadeAnim }}>
+                  <ImageBanner imageSource={Images.TB_LOGO} />
+                </Animated.View>
               )}
 
               {/* Show banner slider skeleton if loading, otherwise show actual slider */}
               {isLoadingBanners && transformedBanners.length === 0 ? (
-                <View style={styles.bannerSkeletonWrapper}>
+                <Animated.View 
+                  style={[
+                    styles.bannerSkeletonWrapper,
+                    { opacity: sliderSkeletonAnim }
+                  ]}
+                >
                   <BannerSkeleton />
-                </View>
+                </Animated.View>
               ) : transformedBanners.length > 0 ? (
-                <BannerSlider
-                  data={transformedBanners}
-                  categoryId={categoryId}
-                  full_data={fullData}
-                  autoPlay={transformedBanners.length > 1}
-                  autoPlayInterval={3000}
-                />
+                <Animated.View style={{ opacity: fadeAnim }}>
+                  <BannerSlider
+                    data={transformedBanners}
+                    categoryId={categoryId}
+                    full_data={fullData}
+                    autoPlay={transformedBanners.length > 1}
+                    autoPlayInterval={3000}
+                  />
+                </Animated.View>
               ) : null}
 
               <ResponsiveView padding={2}>
@@ -442,7 +542,12 @@ const HomeScreen: React.FC = React.memo(() => {
 
               {/* Show course skeleton if loading, otherwise show courses */}
               {isLoadingCourses && transformedCourses.length === 0 ? (
-                <View style={styles.skeletonContainer}>
+                <Animated.View 
+                  style={[
+                    styles.skeletonContainer,
+                    { opacity: coursesSkeletonAnim }
+                  ]}
+                >
                   <View style={[styles.skeletonTitle, { backgroundColor: theme.colors.border }]} />
                   <View style={styles.courseSkeletonWrapper}>
                     {[1, 2, 3].map((i) => (
@@ -451,9 +556,11 @@ const HomeScreen: React.FC = React.memo(() => {
                       </View>
                     ))}
                   </View>
-                </View>
+                </Animated.View>
               ) : transformedCourses.length > 0 ? (
-                <CourseSection courses={transformedCourses} theme={theme} />
+                <Animated.View style={{ opacity: fadeAnim }}>
+                  <CourseSection courses={transformedCourses} theme={theme} />
+                </Animated.View>
               ) : null}
 
               {/* Show teachers skeleton if loading, otherwise show teachers */}
@@ -461,7 +568,12 @@ const HomeScreen: React.FC = React.memo(() => {
                 const hasTeachers = Array.isArray(teachersData) && teachersData.length > 0;
                 if (isLoadingTeachers && !hasTeachers) {
                   return (
-                    <View style={styles.skeletonContainer}>
+                    <Animated.View 
+                      style={[
+                        styles.skeletonContainer,
+                        { opacity: teachersSkeletonAnim }
+                      ]}
+                    >
                       <View style={[styles.skeletonTitle, { backgroundColor: theme.colors.border }]} />
                       <ScrollView 
                         horizontal 
@@ -472,16 +584,22 @@ const HomeScreen: React.FC = React.memo(() => {
                           <TeacherCardSkeleton key={i} />
                         ))}
                       </ScrollView>
-                    </View>
+                    </Animated.View>
                   );
                 }
                 if (hasTeachers) {
-                  return <TeachersSection theme={theme} teachers={teachersData} />;
+                  return (
+                    <Animated.View style={{ opacity: fadeAnim }}>
+                      <TeachersSection theme={theme} teachers={teachersData} />
+                    </Animated.View>
+                  );
                 }
                 return null;
               })()}
 
-              <ToppersSection theme={theme} />
+              <Animated.View style={{ opacity: fadeAnim }}>
+                <ToppersSection theme={theme} />
+              </Animated.View>
             </Animated.View>
           )}
         </ScrollView>
@@ -531,6 +649,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: getSpacing(2),
     gap: getSpacing(2),
+  },
+  toppersSkeletonGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: getSpacing(2),
+    gap: getSpacing(2),
+    marginTop: getSpacing(1),
+  },
+  topperSkeletonCard: {
+    width: moderateScale(80),
+    height: moderateScale(100),
+    borderRadius: moderateScale(8),
   },
 });
 
