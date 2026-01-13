@@ -1,5 +1,5 @@
 import React, { useCallback, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Clipboard } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Clipboard, Linking } from 'react-native';
 import { useTheme } from '../theme/theme';
 import { moderateScale, getSpacing } from '../utils/responsive';
 import { getFontFamily } from '../utils/fonts';
@@ -11,7 +11,6 @@ import { useAuthStore } from '../store';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AlertBox from '../components/AlertBox';
-import { deleteAccount } from '../services/api';
 import messaging from '@react-native-firebase/messaging';
 
 const LANGUAGE_STORAGE_KEY = '@app_language';
@@ -26,7 +25,6 @@ const SettingsScreen: React.FC = () => {
   const [currentLanguage, setCurrentLanguage] = useState<'en' | 'hi'>('en');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [fcmToken, setFcmToken] = useState<string>('');
 
   useEffect(() => {
@@ -107,55 +105,35 @@ const SettingsScreen: React.FC = () => {
   }, [logout, t]);
 
   const handleDeleteAccount = useCallback(async () => {
-    setIsDeleting(true);
     try {
-      // Call the delete account API
-      await deleteAccount();
-      
-      // Clear all local data
-      await AsyncStorage.multiRemove([
-        'token',
-        'userData',
-        'userId',
-        'fcmToken',
-        '@app_language', // Keep language preference, or remove if you want
-      ]);
-      
-      // Logout user
-      await logout();
-      
-      // Close modal
+      // Close modal first
       setShowDeleteModal(false);
       
-      // Show success message
-      Alert.alert(
-        t('common.success') || 'Success',
-        t('profile.accountDeleted') || 'Your account has been deleted successfully.',
-        [
-          {
-            text: t('common.ok') || 'OK',
-            onPress: () => {
-              // Navigate to login screen
-              navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
-            },
-          },
-        ]
-      );
+      // Open account deletion URL in browser
+      const accountDeletionUrl = 'https://teachmania.online/accountdel/';
+      const canOpen = await Linking.canOpenURL(accountDeletionUrl);
+      
+      if (canOpen) {
+        await Linking.openURL(accountDeletionUrl);
+      } else {
+        Alert.alert(
+          t('common.error') || 'Error',
+          'Cannot open account deletion page. Please try again later.',
+          [{ text: t('common.ok') || 'OK' }]
+        );
+      }
     } catch (error: any) {
       if (__DEV__) {
-        console.error('Delete account error:', error);
+        console.error('Open account deletion URL error:', error);
       }
       
-      // Show error message
       Alert.alert(
         t('common.error') || 'Error',
-        error?.message || t('profile.deleteAccountError') || 'Failed to delete account. Please try again later.',
+        error?.message || 'Failed to open account deletion page. Please try again later.',
         [{ text: t('common.ok') || 'OK' }]
       );
-    } finally {
-      setIsDeleting(false);
     }
-  }, [logout, navigation, t]);
+  }, [t]);
 
   const renderSettingItem = (
     icon: string, 
@@ -339,7 +317,6 @@ const SettingsScreen: React.FC = () => {
         cancelText={t('common.cancel') || 'Cancel'}
         onConfirm={handleDeleteAccount}
         type="danger"
-        isLoading={isDeleting}
         icon="trash-2"
       />
     </GradientBackground>

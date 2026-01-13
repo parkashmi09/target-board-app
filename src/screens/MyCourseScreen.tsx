@@ -37,27 +37,34 @@ const MyCourseScreen: React.FC = () => {
       return [];
     }
 
-    return coursesData.map((purchasedCourse: any) => {
-      // Extract course data from nested structure
-      const course = purchasedCourse.course || purchasedCourse;
-      
-      // Merge purchase info with course data
-      return {
-        ...course,
-        _id: course._id || course.id,
-        id: course._id || course.id,
-        // Add purchase-specific fields
-        purchasedAt: purchasedCourse.purchasedAt,
-        expiryDate: purchasedCourse.expiryDate,
-        status: purchasedCourse.status || 'active',
-        packageId: purchasedCourse.packageId,
-        // Use expiryDate for batchInfo.endDate if available
-        batchInfo: {
-          ...course.batchInfo,
-          endDate: purchasedCourse.expiryDate || course.batchInfo?.endDate,
-        },
-      };
-    });
+    return coursesData
+      .filter((purchasedCourse: any) => purchasedCourse.course !== null) // Filter out entries with null course
+      .map((purchasedCourse: any) => {
+        // Extract course data from nested structure
+        const course = purchasedCourse.course || purchasedCourse;
+        
+        // Use purchased course _id as unique identifier (since same course can be purchased multiple times)
+        const purchaseId = purchasedCourse._id;
+        const courseId = course._id || course.id;
+        
+        // Merge purchase info with course data
+        return {
+          ...course,
+          _id: purchaseId, // Use purchase ID as unique key
+          id: purchaseId,
+          courseId: courseId, // Keep course ID for navigation/reference
+          // Add purchase-specific fields
+          purchasedAt: purchasedCourse.purchasedAt,
+          expiryDate: purchasedCourse.expiryDate,
+          status: purchasedCourse.status || 'active',
+          packageId: purchasedCourse.packageId,
+          // Use expiryDate for batchInfo.endDate if available
+          batchInfo: {
+            ...course.batchInfo,
+            endDate: purchasedCourse.expiryDate || course.batchInfo?.endDate,
+          },
+        };
+      });
   }, [coursesData]);
 
   // Filter courses based on search query
@@ -115,8 +122,8 @@ const MyCourseScreen: React.FC = () => {
     <CourseDetailCard
       course={item}
       onWhatsAppPress={handleWhatsAppPress}
-      onDetailsPress={() => handleDetailsPress(item._id || item.id)}
-      onContentPress={() => handleContentPress(item._id || item.id, item.name)}
+      onDetailsPress={() => handleDetailsPress(item.courseId || item._id || item.id)}
+      onContentPress={() => handleContentPress(item.courseId || item._id || item.id, item.name)}
     />
   ), [handleWhatsAppPress, handleDetailsPress, handleContentPress]);
 
@@ -140,7 +147,7 @@ const MyCourseScreen: React.FC = () => {
         <FlatList
           data={filteredCourses}
           renderItem={renderCourseCard}
-          keyExtractor={(item) => item._id || item.id || Math.random().toString()}
+          keyExtractor={(item) => item._id || item.id || `purchase-${Math.random().toString()}`}
           contentContainerStyle={styles.listContent}
           refreshControl={
             <RefreshControl

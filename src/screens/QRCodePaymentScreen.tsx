@@ -307,16 +307,16 @@ const QRCodePaymentScreen: React.FC = () => {
       >
         <View style={styles.qrContainer}>
           {isLoading || !qrImageUrl ? (
-            <ActivityIndicator size="large" />
+            <ActivityIndicator size="large" color={theme.colors.accent} />
           ) : imageError ? (
             <TouchableOpacity onPress={() => refetch()}>
-              <Text>Retry</Text>
+              <Text style={[styles.retryText, { color: theme.colors.text }]}>Retry</Text>
             </TouchableOpacity>
           ) : (
-            <View style={[styles.qrWrapper, { width: qrWidth, height: qrHeight }]}>
+            <View style={[styles.qrWrapper, { width: qrWidth, height: qrHeight, backgroundColor: theme.colors.cardBackground }]}>
               {imageLoading && (
-                <View style={styles.loadingOverlay}>
-                  <ActivityIndicator size="large" />
+                <View style={[styles.loadingOverlay, { backgroundColor: theme.colors.cardBackground }]}>
+                  <ActivityIndicator size="large" color={theme.colors.accent} />
                 </View>
               )}
               <Image
@@ -330,16 +330,16 @@ const QRCodePaymentScreen: React.FC = () => {
           )}
         </View>
 
-        <Text style={styles.companyName}>
+        <Text style={[styles.companyName, { color: theme.colors.text }]}>
         TARGET BOARD GURUKUL 
         </Text>
-        <Text style={styles.descriptionText}>
+        <Text style={[styles.descriptionText, { color: theme.colors.text }]}>
         किसी भी UPI APP से SCAN करके इस बैच के लिए पेमेंट कर सकते हैं
         </Text>
 
         <View style={styles.note}>
-          <Text style={styles.noteLabel}>Note:</Text>
-          <Text style={styles.noteText}>
+          <Text style={[styles.noteLabel, { color: theme.colors.text }]}>Note:</Text>
+          <Text style={[styles.noteText, { color: theme.colors.textSecondary }]}>
             आप किसी भी फ़ोन से QR Code स्कैन करके फीस भर सकते हैं, आपको तुरंत बैच
             का Access मिल जायेगा
           </Text>
@@ -405,7 +405,10 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.8)',
+  },
+  retryText: {
+    fontSize: moderateScale(16),
+    fontFamily: getFontFamily('600'),
   },
   companyName: {
     fontSize: moderateScale(12),

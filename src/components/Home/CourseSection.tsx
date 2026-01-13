@@ -1,4 +1,4 @@
-import React, { memo, useCallback } from 'react';
+import React, { memo, useCallback, useState } from 'react';
 import { View, Text, Dimensions, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSharedValue } from 'react-native-reanimated';
@@ -19,6 +19,7 @@ const CourseSection: React.FC<CourseSectionProps> = memo(({ courses, theme }) =>
   // console.log('courses', courses.length);
   const navigation = useNavigation<any>();
   const progress = useSharedValue(0);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const windowWidth = Dimensions.get('window').width;
 
   // 🔥 TIGHT WIDTH (like 2nd image)
@@ -112,6 +113,7 @@ const CourseSection: React.FC<CourseSectionProps> = memo(({ courses, theme }) =>
           loop={courses.length > 1}
           autoPlay={courses.length > 1}
           autoPlayInterval={4000}
+          autoPlayReverse={false}
           pagingEnabled
           snapEnabled
           mode="parallax"
@@ -121,7 +123,18 @@ const CourseSection: React.FC<CourseSectionProps> = memo(({ courses, theme }) =>
           }}
           style={{ marginLeft: horizontalPadding, overflow: 'visible' }}
           enabled={true}
-          windowSize={2}
+          windowSize={3}
+          onProgressChange={(_, absoluteProgress) => {
+            progress.value = absoluteProgress;
+            // Calculate current index with loop support
+            const index = Math.round(absoluteProgress) % courses.length;
+            setCurrentIndex(index < 0 ? courses.length + index : index);
+          }}
+          onSnapToItem={(index) => {
+            setCurrentIndex(index);
+            // When reaching the last card, the loop prop ensures it transitions to first
+            // This callback helps track the current position
+          }}
         />
       )}
 

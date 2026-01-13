@@ -183,15 +183,15 @@ const CourseCard: React.FC<CourseCardProps> = React.memo(
           </View>
 
           <View style={styles.details}>
-            <Text style={[styles.title, { color: theme.colors.text }]}>
+            <Text style={[styles.title, { color: '#1A1A1A' }]}>
               {title}
             </Text>
 
          <View style={styles.priceContainer}>
          <View style={styles.priceRow}>
-              <Text style={styles.currentPrice}>₹ {currentPrice}</Text>
-              <Text style={styles.originalPrice}>₹ {originalPrice}</Text>
-              {batchType && <Text style={styles.batchType}>({batchType})</Text>}
+              <Text style={[styles.currentPrice, { color: '#1A1A1A' }]}>₹ {currentPrice}</Text>
+              <Text style={[styles.originalPrice, { color: '#666666' }]}>₹ {originalPrice}</Text>
+              {batchType && <Text style={[styles.batchType, { color: '#666666' }]}>({batchType})</Text>}
             </View>
 
             {discount ? (
