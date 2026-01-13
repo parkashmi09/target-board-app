@@ -397,8 +397,13 @@ const Drawer: React.FC = () => {
           {renderDrawerItem('share', t('drawer.share') || 'Share', async () => {
             closeDrawer();
             try {
+              const shareMessage = `मैं अपने परीक्षा के लिए इस App का इस्तेमाल कर रहा हूँ ,आप भी बेहतर रिजल्ट चाहते है , तो आप भी इसे Download करें 👇 
+
+Download Link - https://play.google.com/store/apps/details?id=co.targetboardboardprep&hl=en_IN&pli=1`;
+              
               await Share.share({
-                message: 'Check out this app!',
+                message: shareMessage,
+                url: 'https://play.google.com/store/apps/details?id=co.targetboardboardprep&hl=en_IN&pli=1',
               });
             } catch (error) {
               // Ignore

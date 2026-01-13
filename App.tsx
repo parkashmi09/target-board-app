@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useState, useRef } from 'react';
-import { StatusBar, View, LogBox, Alert, Platform } from 'react-native';
+import { StatusBar, View, LogBox, Alert, Platform, PermissionsAndroid } from 'react-native';
 import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -66,36 +66,112 @@ function AppContent() {
 
   // Firebase Cloud Messaging Setup
   useEffect(() => {
-    // Request notification permission
+    // Request notification permission (only on first launch for Android)
     const requestPermission = async () => {
       try {
-        const authStatus = await messaging().requestPermission();
-        const enabled =
-          authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-          authStatus === messaging.AuthorizationStatus.PROVISIONAL;
-
-        if (__DEV__) {
-          console.log('Notification permission:', enabled ? 'Granted' : 'Denied');
+        // Check if permission has been requested before
+        const permissionRequested = await AsyncStorage.getItem('@notification_permission_requested');
+        
+        if (permissionRequested === 'true') {
+          if (__DEV__) {
+            console.log('📱 Notification permission already requested before');
+          }
+          // Still try to get token if permission was granted previously
+          try {
+            const token = await messaging().getToken();
+            if (__DEV__) {
+              console.log('✅ FCM Token Retrieved:', token.substring(0, 50) + '...');
+            }
+          } catch (error) {
+            if (__DEV__) {
+              console.log('⚠️ No FCM token available (permission may have been denied)');
+            }
+          }
+          return;
         }
 
-        if (enabled) {
-          // Get FCM token
-          const token = await messaging().getToken();
-          if (__DEV__) {
-            console.log('✅ FCM Token Generated:', token);
-            console.log('📱 Token Length:', token.length);
-            console.log('🔑 Token (first 50 chars):', token.substring(0, 50) + '...');
+        // For Android 13+ (API 33+), use PermissionsAndroid
+        if (Platform.OS === 'android' && Platform.Version >= 33) {
+          try {
+            const granted = await PermissionsAndroid.request(
+              PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+              {
+                title: 'Notification Permission',
+                message: 'This app needs notification permission to send you important updates and alerts.',
+                buttonNeutral: 'Ask Me Later',
+                buttonNegative: 'Cancel',
+                buttonPositive: 'OK',
+              }
+            );
+
+            if (__DEV__) {
+              console.log('📱 Android Notification Permission:', granted);
+            }
+
+            // Mark that permission has been requested
+            await AsyncStorage.setItem('@notification_permission_requested', 'true');
+
+            if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+              // Get FCM token
+              const token = await messaging().getToken();
+              if (__DEV__) {
+                console.log('✅ FCM Token Generated:', token);
+                console.log('📱 Token Length:', token.length);
+                console.log('🔑 Token (first 50 chars):', token.substring(0, 50) + '...');
+              }
+              // TODO: Send token to backend API when ready
+              // await api.updateFCMToken(token);
+            } else {
+              if (__DEV__) {
+                console.warn('⚠️ Android Notification Permission Denied');
+              }
+            }
+          } catch (error) {
+            if (__DEV__) {
+              console.error('❌ Android Permission Request Error:', error);
+            }
+            // Mark as requested even if there was an error
+            await AsyncStorage.setItem('@notification_permission_requested', 'true');
           }
-          // TODO: Send token to backend API when ready
-          // await api.updateFCMToken(token);
         } else {
+          // For iOS or Android < 13, use Firebase messaging permission
+          const authStatus = await messaging().requestPermission();
+          const enabled =
+            authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+            authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+
           if (__DEV__) {
-            console.warn('⚠️ FCM Permission Denied - Token not generated');
+            console.log('Notification permission:', enabled ? 'Granted' : 'Denied');
+          }
+
+          // Mark that permission has been requested
+          await AsyncStorage.setItem('@notification_permission_requested', 'true');
+
+          if (enabled) {
+            // Get FCM token
+            const token = await messaging().getToken();
+            if (__DEV__) {
+              console.log('✅ FCM Token Generated:', token);
+              console.log('📱 Token Length:', token.length);
+              console.log('🔑 Token (first 50 chars):', token.substring(0, 50) + '...');
+            }
+            // TODO: Send token to backend API when ready
+            // await api.updateFCMToken(token);
+          } else {
+            if (__DEV__) {
+              console.warn('⚠️ FCM Permission Denied - Token not generated');
+            }
           }
         }
       } catch (error) {
         if (__DEV__) {
           console.error('❌ FCM Permission Error:', error);
+        }
+        // Mark as requested even if there was an error
+        try {
+          await AsyncStorage.setItem('@notification_permission_requested', 'true');
+        } catch (storageError) {
+          // Silent error
         }
       }
     };
@@ -218,9 +294,12 @@ function AppContent() {
       // await api.updateFCMToken(token);
     });
 
-    // Request permission on mount (Android only)
+    // Request permission on first launch only (Android)
     if (Platform.OS === 'android') {
-      requestPermission();
+      // Small delay to ensure app is fully initialized
+      setTimeout(() => {
+        requestPermission();
+      }, 1500);
     }
 
     // Cleanup

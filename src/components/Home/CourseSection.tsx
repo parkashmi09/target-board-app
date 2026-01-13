@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useState } from 'react';
+import React, { memo, useCallback, useState, useEffect, useRef } from 'react';
 import { View, Text, Dimensions, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSharedValue } from 'react-native-reanimated';
@@ -20,6 +20,8 @@ const CourseSection: React.FC<CourseSectionProps> = memo(({ courses, theme }) =>
   const navigation = useNavigation<any>();
   const progress = useSharedValue(0);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [shouldAutoPlay, setShouldAutoPlay] = useState(courses.length > 1);
+  const carouselRef = useRef<any>(null);
   const windowWidth = Dimensions.get('window').width;
 
   // 🔥 TIGHT WIDTH (like 2nd image)
@@ -30,6 +32,12 @@ const CourseSection: React.FC<CourseSectionProps> = memo(({ courses, theme }) =>
     windowWidth - horizontalPadding * 2 - peekAmount;
 
   const cardHeight = cardWidth * (9 / 16) + moderateScale(130);
+
+  // Reset auto-play when courses change
+  useEffect(() => {
+    setShouldAutoPlay(courses.length > 1);
+    setCurrentIndex(0);
+  }, [courses.length]);
 
   const renderItem = useCallback(
     ({ item }: { item: any }) => {
@@ -106,12 +114,13 @@ const CourseSection: React.FC<CourseSectionProps> = memo(({ courses, theme }) =>
 
       {courses?.length > 0 && (
         <Carousel
+          ref={carouselRef}
           width={cardWidth}
           height={cardHeight}
           data={courses}
           renderItem={renderItem}
-          loop={courses.length > 1}
-          autoPlay={courses.length > 1}
+          loop={false}
+          autoPlay={shouldAutoPlay}
           autoPlayInterval={4000}
           autoPlayReverse={false}
           pagingEnabled
@@ -126,14 +135,42 @@ const CourseSection: React.FC<CourseSectionProps> = memo(({ courses, theme }) =>
           windowSize={3}
           onProgressChange={(_, absoluteProgress) => {
             progress.value = absoluteProgress;
-            // Calculate current index with loop support
-            const index = Math.round(absoluteProgress) % courses.length;
-            setCurrentIndex(index < 0 ? courses.length + index : index);
+            // Calculate current index without loop
+            const index = Math.round(absoluteProgress);
+            const clampedIndex = Math.max(0, Math.min(index, courses.length - 1));
+            setCurrentIndex(clampedIndex);
           }}
           onSnapToItem={(index) => {
             setCurrentIndex(index);
-            // When reaching the last card, the loop prop ensures it transitions to first
-            // This callback helps track the current position
+            // When reaching the last item, smoothly scroll back to first
+            if (index === courses.length - 1) {
+              // Pause auto-play temporarily
+              setShouldAutoPlay(false);
+              // Wait a moment, then smoothly scroll to first item
+              setTimeout(() => {
+                if (carouselRef.current) {
+                  // Use scrollTo method - react-native-reanimated-carousel uses index as number
+                  try {
+                    // Try different method signatures that might work
+                    if (typeof carouselRef.current.scrollTo === 'function') {
+                      carouselRef.current.scrollTo(0);
+                    } else if (typeof carouselRef.current.scrollToIndex === 'function') {
+                      carouselRef.current.scrollToIndex(0);
+                    } else if (typeof carouselRef.current.scrollTo === 'function' && carouselRef.current.scrollTo.length === 2) {
+                      carouselRef.current.scrollTo(0, true);
+                    }
+                  } catch (error) {
+                    // If scroll methods don't work, reset progress value
+                    progress.value = 0;
+                    setCurrentIndex(0);
+                  }
+                }
+                // Resume auto-play after animation completes
+                setTimeout(() => {
+                  setShouldAutoPlay(true);
+                }, 800);
+              }, 1000);
+            }
           }}
         />
       )}

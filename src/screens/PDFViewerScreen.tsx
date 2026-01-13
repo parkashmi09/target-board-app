@@ -117,9 +117,8 @@ const PDFViewerScreen: React.FC = () => {
       <View style={styles.container}>
         <View style={styles.header}>
           <ScreenHeader 
-            title={title || 'PDF Viewer'} 
+            title={'PDF Viewer'} 
             showSearch={false}
-            onBackPress={() => navigation.goBack()}
           />
         
         </View>
