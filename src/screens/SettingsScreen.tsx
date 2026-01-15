@@ -86,6 +86,24 @@ const SettingsScreen: React.FC = () => {
     }
   }, [i18n]);
 
+  // Safe navigation handler to prevent crashes during fragment initialization
+  const handleNavigation = useCallback((screenName: string, params?: any) => {
+    // Add small delay to ensure navigation is ready and fragment is attached
+    setTimeout(() => {
+      try {
+        if (navigation.isReady()) {
+          navigation.navigate(screenName as never, params as never);
+        } else if (__DEV__) {
+          console.warn(`[SettingsScreen] Navigation not ready for ${screenName}`);
+        }
+      } catch (error) {
+        if (__DEV__) {
+          console.error(`[SettingsScreen] Navigation error for ${screenName}:`, error);
+        }
+      }
+    }, 0);
+  }, [navigation]);
+
   const handleLogout = useCallback(async () => {
     try {
       await logout();
@@ -214,7 +232,7 @@ const SettingsScreen: React.FC = () => {
               'user', 
               t('profile.editProfile') || 'Edit Profile', 
               () => {
-                navigation.navigate('EditProfile');
+                handleNavigation('EditProfile');
               }
             )}
           </View>
@@ -228,14 +246,14 @@ const SettingsScreen: React.FC = () => {
               'shield', 
               t('profile.privacyPolicy') || 'Privacy Policy', 
               () => {
-                navigation.navigate('PrivacyPolicy');
+                handleNavigation('PrivacyPolicy');
               }
             )}
             {renderSettingItem(
               'file', 
               t('profile.termsAndConditions') || 'Terms & Conditions', 
               () => {
-                navigation.navigate('TermsAndConditions');
+                handleNavigation('TermsAndConditions');
               }
             )}
           </View>

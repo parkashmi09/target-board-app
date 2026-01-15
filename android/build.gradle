@@ -4,6 +4,10 @@ buildscript {
         minSdkVersion = 24
         compileSdkVersion = 36
         targetSdkVersion = 36
+        // NDK Version: 27.1.12297006
+        // For RN 0.83.1, NDK 27 should be compatible
+        // If experiencing native crashes (SIGABRT), consider downgrading to NDK 26.x
+        // Recommended: "26.1.10909125" for maximum stability
         ndkVersion = "27.1.12297006"
         kotlinVersion = "2.1.20"
     }

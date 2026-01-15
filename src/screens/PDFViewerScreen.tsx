@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, ActivityIndicator, Alert, Linking, Dimensions } from 'react-native';
 import Pdf from 'react-native-pdf';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -25,6 +25,33 @@ const PDFViewerScreen: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(0);
   const pdfRef = useRef<any>(null);
   const toast = useToast();
+  
+  // CRITICAL FIX: Prevent double-close crashes and state updates after unmount
+  const mounted = useRef(true);
+  const isClosed = useRef(false);
+
+  useEffect(() => {
+    mounted.current = true;
+    isClosed.current = false;
+    
+    return () => {
+      // Cleanup: Mark as unmounted and closed
+      mounted.current = false;
+      isClosed.current = true;
+      
+      // Safely close PDF if ref exists and not already closed
+      try {
+        if (pdfRef.current && !isClosed.current) {
+          // The PDF library will handle cleanup, but we prevent double-close
+          isClosed.current = true;
+        }
+      } catch (error) {
+        if (__DEV__) {
+          console.warn('[PDFViewer] Error during cleanup:', error);
+        }
+      }
+    };
+  }, []);
 
 
   // Validate required params
@@ -130,24 +157,33 @@ const PDFViewerScreen: React.FC = () => {
             onLoadComplete={(numberOfPages, filePath, { width, height }) => {
               console.log(`Number of pages: ${numberOfPages}`);
               console.log(`File path: ${filePath}`);
-              setNumberOfPages(numberOfPages);
-              setLoading(false);
+              // Only update state if component is still mounted
+              if (mounted.current) {
+                setNumberOfPages(numberOfPages);
+                setLoading(false);
+              }
             }}
             onPageChanged={(page, numberOfPages) => {
               console.log(`Current page: ${page}`);
-              setCurrentPage(page);
+              // Only update state if component is still mounted
+              if (mounted.current) {
+                setCurrentPage(page);
+              }
             }}
             onError={(error) => {
               console.error('PDF error:', error);
-              setLoading(false);
-              Alert.alert(
-                'Error',
-                'Failed to load PDF. You can download it using the download button.',
-                [
-                  { text: 'OK', onPress: () => {} },
-                  { text: 'Download', onPress: handleDownload }
-                ]
-              );
+              // Only update state if component is still mounted
+              if (mounted.current) {
+                setLoading(false);
+                Alert.alert(
+                  'Error',
+                  'Failed to load PDF. You can download it using the download button.',
+                  [
+                    { text: 'OK', onPress: () => {} },
+                    { text: 'Download', onPress: handleDownload }
+                  ]
+                );
+              }
             }}
             onPressLink={(uri) => {
               console.log(`Link pressed: ${uri}`);

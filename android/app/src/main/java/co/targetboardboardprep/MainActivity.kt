@@ -1,5 +1,6 @@
 package co.targetboardboardprep
 
+import android.os.Bundle
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
@@ -12,6 +13,15 @@ class MainActivity : ReactActivity() {
    * rendering of the component.
    */
   override fun getMainComponentName(): String = "TargetBoard"
+
+  /**
+   * CRITICAL FIX: Prevent fragment restoration crashes
+   * Passing null instead of savedInstanceState prevents fragment restoration conflicts
+   * that cause ScreenFragment.<init> IllegalStateException crashes
+   */
+  override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(null) // Pass null instead of savedInstanceState
+  }
 
   /**
    * Returns the instance of the [ReactActivityDelegate]. We use [DefaultReactActivityDelegate]

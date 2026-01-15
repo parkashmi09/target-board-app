@@ -31,25 +31,55 @@ export const useNetworkStore = create<NetworkState>((set, get) => ({
   checkConnection: async () => {
     try {
       const state = await NetInfo.fetch();
+      
+      // In dev mode (emulator), be more lenient with network detection
+      // Emulators often report isInternetReachable as null even when ADB reverse is set up
+      const isDevMode = __DEV__;
+      const isConnectedValue = state.isConnected ?? false;
+      const isInternetReachableValue = state.isInternetReachable;
+      
+      // In dev mode, if connected but isInternetReachable is null, assume it's reachable
+      // This handles the case where ADB reverse is set up but NetInfo can't detect it
+      const finalIsInternetReachable = isDevMode && isConnectedValue && isInternetReachableValue === null
+        ? true
+        : isInternetReachableValue;
+      
       set({
-        isConnected: state.isConnected ?? false,
-        isInternetReachable: state.isInternetReachable,
+        isConnected: isConnectedValue,
+        isInternetReachable: finalIsInternetReachable,
         type: state.type,
         isWifi: state.type === 'wifi',
         isCellular: state.type === 'cellular',
         isEthernet: state.type === 'ethernet',
         isUnknown: state.type === 'unknown' || state.type === 'none',
       });
+      
+      if (__DEV__) {
+        console.log('[NetworkStore] Network state:', {
+          isConnected: isConnectedValue,
+          isInternetReachable: finalIsInternetReachable,
+          originalIsInternetReachable: isInternetReachableValue,
+          type: state.type,
+          isDevMode,
+        });
+      }
     } catch (error) {
       if (__DEV__) {
         console.error('[NetworkStore] Error checking connection:', error);
+        // In dev mode, don't assume offline on error - might be a NetInfo issue
+        set({
+          isConnected: true, // Optimistic for dev mode
+          isInternetReachable: true,
+          isUnknown: true,
+        });
+      } else {
+        // On error in production, assume offline to be safe
+        set({
+          isConnected: false,
+          isInternetReachable: false,
+          isUnknown: true,
+        });
       }
-      // On error, assume offline to be safe
-      set({
-        isConnected: false,
-        isInternetReachable: false,
-        isUnknown: true,
-      });
     }
   },
 
@@ -59,9 +89,19 @@ export const useNetworkStore = create<NetworkState>((set, get) => ({
 
     // Subscribe to network state changes
     const unsubscribe = NetInfo.addEventListener((state: NetInfoState) => {
+      // In dev mode (emulator), be more lenient with network detection
+      const isDevMode = __DEV__;
+      const isConnectedValue = state.isConnected ?? false;
+      const isInternetReachableValue = state.isInternetReachable;
+      
+      // In dev mode, if connected but isInternetReachable is null, assume it's reachable
+      const finalIsInternetReachable = isDevMode && isConnectedValue && isInternetReachableValue === null
+        ? true
+        : isInternetReachableValue;
+      
       set({
-        isConnected: state.isConnected ?? false,
-        isInternetReachable: state.isInternetReachable,
+        isConnected: isConnectedValue,
+        isInternetReachable: finalIsInternetReachable,
         type: state.type,
         isWifi: state.type === 'wifi',
         isCellular: state.type === 'cellular',
@@ -71,9 +111,11 @@ export const useNetworkStore = create<NetworkState>((set, get) => ({
 
       if (__DEV__) {
         console.log('[NetworkStore] Network state changed:', {
-          isConnected: state.isConnected,
-          isInternetReachable: state.isInternetReachable,
+          isConnected: isConnectedValue,
+          isInternetReachable: finalIsInternetReachable,
+          originalIsInternetReachable: isInternetReachableValue,
           type: state.type,
+          isDevMode,
         });
       }
     });

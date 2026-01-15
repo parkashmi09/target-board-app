@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useState, useRef } from 'react';
-import { StatusBar, View, LogBox, Alert, Platform, PermissionsAndroid } from 'react-native';
+import { StatusBar, View, LogBox, Alert, Platform, PermissionsAndroid, InteractionManager } from 'react-native';
 import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -62,7 +62,11 @@ function AppContent() {
   const navigationRef = useRef<NavigationContainerRef<any>>(null);
   
   // Check if app is offline
-  const isOffline = !isConnected || (isInternetReachable === false && !__DEV__);
+  // In dev mode (emulator), be very lenient - only show offline if explicitly disconnected
+  // Emulators with ADB reverse may report isInternetReachable as null but still work
+  const isOffline = __DEV__ 
+    ? !isConnected  // In dev, only check isConnected
+    : !isConnected || isInternetReachable === false; // In production, check both
 
   // Firebase Cloud Messaging Setup
   useEffect(() => {
@@ -336,10 +340,14 @@ function AppContent() {
           console.warn('App initialization failed:', error);
         }
       } finally {
-        // Hide splash after initialization
-        setTimeout(() => {
-          setShowSplash(false);
-        }, 300); // Small delay for smooth transition
+        // Use InteractionManager to ensure all interactions are complete
+        // This prevents navigation crashes when fragment is not ready
+        InteractionManager.runAfterInteractions(() => {
+          // Additional small delay for smooth transition and fragment attachment
+          setTimeout(() => {
+            setShowSplash(false);
+          }, 300);
+        });
       }
     };
 

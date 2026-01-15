@@ -6,6 +6,11 @@ import { AppRegistry } from 'react-native';
 import { name as appName } from './app.json';
 import messaging from '@react-native-firebase/messaging';
 
+// CRITICAL: Enable native screens BEFORE any navigation setup
+// This prevents ScreenFragment crashes in React Navigation
+import { enableScreens } from 'react-native-screens';
+enableScreens(true);
+
 // Initialize i18n early
 import './src/i18n';
 

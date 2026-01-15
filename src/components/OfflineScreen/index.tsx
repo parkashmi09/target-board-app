@@ -17,9 +17,11 @@ const OfflineScreen: React.FC = () => {
     await checkConnection();
   };
 
-  // For emulators/dev mode, be more lenient - only show if explicitly disconnected
+  // For emulators/dev mode, be very lenient - only show if explicitly disconnected
   // isInternetReachable can be null on emulators even when connected via adb reverse
-  const isOffline = !isConnected || (isInternetReachable === false && !__DEV__);
+  const isOffline = __DEV__ 
+    ? !isConnected  // In dev, only check isConnected
+    : !isConnected || isInternetReachable === false; // In production, check both
   
   if (!isOffline) {
     return null;
