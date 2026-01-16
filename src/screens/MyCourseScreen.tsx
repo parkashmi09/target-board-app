@@ -43,16 +43,18 @@ const MyCourseScreen: React.FC = () => {
         // Extract course data from nested structure
         const course = purchasedCourse.course || purchasedCourse;
         
-        // Use purchased course _id as unique identifier (since same course can be purchased multiple times)
+        // Get the actual course ID (for navigation) and purchase ID (for uniqueness)
         const purchaseId = purchasedCourse._id;
         const courseId = course._id || course.id;
         
-        // Merge purchase info with course data
+        // CRITICAL: Use course ID for _id and id (so CourseDetailCard navigation works correctly)
+        // Store purchaseId separately for uniqueness if needed
         return {
           ...course,
-          _id: purchaseId, // Use purchase ID as unique key
-          id: purchaseId,
+          _id: courseId, // Use course ID (not purchase ID) so navigation works correctly
+          id: courseId, // Use course ID (not purchase ID) so navigation works correctly
           courseId: courseId, // Keep course ID for navigation/reference
+          purchaseId: purchaseId, // Store purchase ID separately for uniqueness
           // Add purchase-specific fields
           purchasedAt: purchasedCourse.purchasedAt,
           expiryDate: purchasedCourse.expiryDate,
@@ -114,8 +116,11 @@ const MyCourseScreen: React.FC = () => {
   }, []);
 
   const handleContentPress = useCallback((courseId: string, courseName?: string) => {
-    // Navigate to CourseDetails for now - can be updated when Categories screen is added
-    navigation.navigate('CourseDetails', { courseId });
+    // Navigate to Categories screen (same as HomeScreen) with course ID and name
+    navigation.navigate('Categories', { 
+      courseId: String(courseId), 
+      courseName: courseName || 'Course'
+    });
   }, [navigation]);
 
   const renderCourseCard = useCallback(({ item }: { item: any }) => (
@@ -147,7 +152,7 @@ const MyCourseScreen: React.FC = () => {
         <FlatList
           data={filteredCourses}
           renderItem={renderCourseCard}
-          keyExtractor={(item) => item._id || item.id || `purchase-${Math.random().toString()}`}
+          keyExtractor={(item) => item.purchaseId || item._id || item.id || `purchase-${Math.random().toString()}`}
           contentContainerStyle={styles.listContent}
           refreshControl={
             <RefreshControl

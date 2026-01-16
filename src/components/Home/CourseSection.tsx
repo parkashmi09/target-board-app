@@ -20,7 +20,6 @@ const CourseSection: React.FC<CourseSectionProps> = memo(({ courses, theme }) =>
   const navigation = useNavigation<any>();
   const progress = useSharedValue(0);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [shouldAutoPlay, setShouldAutoPlay] = useState(courses.length > 1);
   const carouselRef = useRef<any>(null);
   const windowWidth = Dimensions.get('window').width;
 
@@ -33,9 +32,8 @@ const CourseSection: React.FC<CourseSectionProps> = memo(({ courses, theme }) =>
 
   const cardHeight = cardWidth * (9 / 16) + moderateScale(130);
 
-  // Reset auto-play when courses change
+  // Reset current index when courses change
   useEffect(() => {
-    setShouldAutoPlay(courses.length > 1);
     setCurrentIndex(0);
   }, [courses.length]);
 
@@ -120,9 +118,7 @@ const CourseSection: React.FC<CourseSectionProps> = memo(({ courses, theme }) =>
           data={courses}
           renderItem={renderItem}
           loop={false}
-          autoPlay={shouldAutoPlay}
-          autoPlayInterval={4000}
-          autoPlayReverse={false}
+          autoPlay={false}
           pagingEnabled
           snapEnabled
           mode="parallax"
@@ -142,35 +138,6 @@ const CourseSection: React.FC<CourseSectionProps> = memo(({ courses, theme }) =>
           }}
           onSnapToItem={(index) => {
             setCurrentIndex(index);
-            // When reaching the last item, smoothly scroll back to first
-            if (index === courses.length - 1) {
-              // Pause auto-play temporarily
-              setShouldAutoPlay(false);
-              // Wait a moment, then smoothly scroll to first item
-              setTimeout(() => {
-                if (carouselRef.current) {
-                  // Use scrollTo method - react-native-reanimated-carousel uses index as number
-                  try {
-                    // Try different method signatures that might work
-                    if (typeof carouselRef.current.scrollTo === 'function') {
-                      carouselRef.current.scrollTo(0);
-                    } else if (typeof carouselRef.current.scrollToIndex === 'function') {
-                      carouselRef.current.scrollToIndex(0);
-                    } else if (typeof carouselRef.current.scrollTo === 'function' && carouselRef.current.scrollTo.length === 2) {
-                      carouselRef.current.scrollTo(0, true);
-                    }
-                  } catch (error) {
-                    // If scroll methods don't work, reset progress value
-                    progress.value = 0;
-                    setCurrentIndex(0);
-                  }
-                }
-                // Resume auto-play after animation completes
-                setTimeout(() => {
-                  setShouldAutoPlay(true);
-                }, 800);
-              }, 1000);
-            }
           }}
         />
       )}

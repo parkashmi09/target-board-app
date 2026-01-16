@@ -258,7 +258,7 @@ const TabNavigator: React.FC = () => {
   ), [t, theme]);
 
   const batchesTabIcon = useCallback(({ focused }: { focused: boolean }) => (
-    <TabIcon name="classes" label={t('navigation.batches') || 'Batches'} focused={focused} theme={theme} />
+    <TabIcon name="classes" label={t('navigation.allBatches') || 'All Batches'} focused={focused} theme={theme} />
   ), [t, theme]);
 
   const batchesTabButton = useCallback((props: any) => (

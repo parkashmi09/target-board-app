@@ -516,6 +516,7 @@ export const fetchCourses = async (
   categoryId?: string | number | null,
   options?: {
     search?: string;
+    stateBoardId?: string | number | null;
   }
 ) => {
   try {
@@ -525,6 +526,10 @@ export const fetchCourses = async (
 
     if (categoryId && categoryId !== null && categoryId !== 'null' && categoryId !== '') {
       params.push(`class=${categoryId}`);
+    }
+
+    if (options?.stateBoardId && options.stateBoardId !== null && options.stateBoardId !== 'null' && options.stateBoardId !== '') {
+      params.push(`stateBoard=${options.stateBoardId}`);
     }
 
     if (options?.search) {
@@ -861,15 +866,29 @@ export const getCourseStreams = async (courseId: string, type?: 'live' | 'upcomi
 
 /**
  * Fetch streams for a user's class
- * GET /user/streams?classId=:classId
+ * GET /user/streams?classId=:classId&stateBoard=:stateBoardId&type=:type
  */
-export const getUserStreams = async (classId: string, type?: 'live' | 'upcoming'): Promise<Stream[]> => {
+export const getUserStreams = async (
+  classId: string, 
+  type?: 'live' | 'upcoming',
+  stateBoardId?: string | number | null
+): Promise<Stream[]> => {
   try {
     if (__DEV__) {
-      console.log('[API] getUserStreams called', { classId, type });
+      console.log('[API] getUserStreams called', { classId, type, stateBoardId });
     }
-    const typeParam = type ? `&type=${type}` : '';
-    const response = await api.get<any>(`/user/streams?classId=${classId}${typeParam}`);
+    const params: string[] = [`classId=${classId}`];
+    
+    if (stateBoardId && stateBoardId !== null && stateBoardId !== 'null' && stateBoardId !== '') {
+      params.push(`stateBoardId=${stateBoardId}`);
+    }
+    
+    if (type) {
+      params.push(`type=${type}`);
+    }
+    
+    const queryString = params.length > 0 ? `?${params.join('&')}` : '';
+    const response = await api.get<any>(`/user/streams${queryString}`);
     
     if (__DEV__) {
       console.log('[API] getUserStreams response:', response);
@@ -1284,3 +1303,15 @@ export const fetchContentByCategory = async (categoryId: string): Promise<Conten
   }
 };
 
+/**
+ * Fetch app version information from backend
+ * GET /app/version
+ * Expected response: { version: string, isForceUpdate?: boolean, updateMessage?: string, minVersion?: string }
+ */
+export const fetchAppVersion = () => 
+  api.get<{ 
+    version: string; 
+    isForceUpdate?: boolean; 
+    updateMessage?: string;
+    minVersion?: string;
+  }>('/app/version');

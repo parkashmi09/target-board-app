@@ -93,6 +93,7 @@ const HomeScreen: React.FC = React.memo(() => {
   // Fetch courses data
   const { data: coursesData, isLoading: isLoadingCourses, refetch: refetchCourses } = useCourses({
     categoryId: categoryId || null,
+    stateBoardId: userData?.stateBoard?._id || null,
     enabled: true,
   });
 

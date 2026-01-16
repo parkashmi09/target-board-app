@@ -5,7 +5,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../theme/theme';
 import { getFontFamily } from '../utils/fonts';
-import { getCourseStreams, getUserStreams, getStreamById, Stream } from '../services/api';
+import { getCourseStreams, getUserStreams, getStreamById, fetchCourseDetails, Stream } from '../services/api';
 import { MainStackParamList } from '../navigation/MainStack';
 import { Calendar, PlayCircle, Radio } from 'lucide-react-native';
 import { moderateScale, getSpacing } from '../utils/responsive';
@@ -19,6 +19,7 @@ import PurchaseModal from '../components/PurchaseModal';
 import { getStreamStatus, formatDate, getCountdown } from '../utils/streamUtils';
 import { Svg, Circle, Rect, Path, G, Text as SvgText, TSpan } from 'react-native-svg';
 import { useLoaderStore } from '../store/loaderStore';
+import { useToast } from '../components/Toast';
 
 type ClassStreamsScreenNavigationProp = NativeStackNavigationProp<MainStackParamList, 'ClassStreams'>;
 type ClassStreamsScreenRouteProp = RouteProp<MainStackParamList, 'ClassStreams'>;
@@ -32,6 +33,7 @@ const ClassStreamsScreen: React.FC = () => {
     const route = useRoute<ClassStreamsScreenRouteProp>();
     const { courseId } = route.params || {};
     const { show: showLoader, hide: hideLoader } = useLoaderStore();
+    const toast = useToast();
 
     const [streams, setStreams] = useState<Stream[]>([]);
     const [loading, setLoading] = useState(true);
@@ -42,6 +44,11 @@ const ClassStreamsScreen: React.FC = () => {
     const [purchaseModalVisible, setPurchaseModalVisible] = useState(false);
     const [activeTab, setActiveTab] = useState<StreamTabType>('live');
     const [isCheckingStream, setIsCheckingStream] = useState(false);
+    const [courseDetails, setCourseDetails] = useState<any>(null);
+    const [coursePricing, setCoursePricing] = useState<{ originalPrice: number; currentPrice: number } | null>(null);
+    
+    // CRITICAL: Prevent state updates after component unmount
+    const mounted = useRef(true);
 
     // Handle back button press - works with both header button and Android hardware back button
     const handleBackPress = useCallback(() => {
@@ -76,11 +83,15 @@ const ClassStreamsScreen: React.FC = () => {
         return () => backHandler.remove();
     }, [handleBackPress]);
 
-    // Cleanup: Hide loader when component unmounts
+    // Cleanup: Hide loader and mark as unmounted when component unmounts
     useEffect(() => {
+        mounted.current = true;
         return () => {
+            mounted.current = false;
             const { hide: hideLoader } = useLoaderStore.getState();
             hideLoader();
+            // Reset checking state
+            setIsCheckingStream(false);
         };
     }, []);
 
@@ -115,8 +126,18 @@ const ClassStreamsScreen: React.FC = () => {
                                 : parsedUser.class;
                         }
 
+                        // Extract stateBoardId from userData (similar to HomeScreen)
+                        let stateBoardId: string | undefined;
+                        if (parsedUser.stateBoardId) {
+                            stateBoardId = parsedUser.stateBoardId;
+                        } else if (parsedUser.stateBoard) {
+                            stateBoardId = typeof parsedUser.stateBoard === 'object'
+                                ? parsedUser.stateBoard._id
+                                : parsedUser.stateBoard;
+                        }
+
                         if (classId) {
-                            const data = await getUserStreams(classId, typeParam);
+                            const data = await getUserStreams(classId, typeParam, stateBoardId);
                             setStreams(Array.isArray(data) ? data : []);
                             setError(null); // Clear error if data is fetched successfully
                         } else {
@@ -150,8 +171,11 @@ const ClassStreamsScreen: React.FC = () => {
             }
             setStreams([]);
         } finally {
-            setLoading(false);
-            setRefreshing(false);
+            // Only update state if component is still mounted
+            if (mounted.current) {
+                setLoading(false);
+                setRefreshing(false);
+            }
         }
     }, [courseId, activeTab]);
 
@@ -184,81 +208,453 @@ const ClassStreamsScreen: React.FC = () => {
 
         // Prevent multiple simultaneous checks
         if (isCheckingStream) {
+            if (__DEV__) {
+                console.log('[ClassStreamsScreen] Stream check already in progress, ignoring duplicate press');
+            }
             return;
         }
 
-        // CRITICAL: If we're on the "upcoming" tab, NEVER navigate to player
-        // Always show modal for upcoming streams
-        if (activeTab === 'upcoming') {
+        // Check stream status first (from initial stream data)
+        const initialStatusInfo = getStreamStatus(stream);
+        const initialIsLive = initialStatusInfo.label === 'LIVE';
+        const initialIsUpcoming = initialStatusInfo.label === 'UPCOMING';
+        const hasVideoData = !!(stream.tpAssetId || stream.hlsUrl);
+
+        // CRITICAL: For LIVE streams - ALWAYS check purchase status via API before navigating
+        if (initialIsLive && hasVideoData) {
+            setIsCheckingStream(true);
+            showLoader('Checking stream access...');
+            
             try {
-                showLoader('Loading stream details...');
+                // ALWAYS call API to check purchase status for live streams
                 const response = await getStreamById(streamId);
                 const streamData = response.stream || stream;
+                const isPurchased = response.isUserPurchased === true;
+                
+                // Double-check status with latest data
+                const latestStatusInfo = getStreamStatus(streamData);
+                const latestIsLive = latestStatusInfo.label === 'LIVE';
+                const latestHasVideoData = !!(streamData.tpAssetId || streamData.hlsUrl);
+                
                 hideLoader();
-                setSelectedStream(streamData);
-                setPurchaseModalVisible(true);
+                if (mounted.current) {
+                    setIsCheckingStream(false);
+                }
+                
+                // If user has NOT purchased, fetch course details and show purchase modal
+                if (!isPurchased) {
+                    if (__DEV__) {
+                        console.log('[ClassStreamsScreen] User has not purchased stream, fetching course details');
+                    }
+                    setSelectedStream(streamData);
+                    
+                    // Fetch course details to get pricing
+                    const streamWithSelections = streamData as any;
+                    const courseIdFromStream = streamWithSelections.courseSelections?.[0]?.course?._id ||
+                        (typeof streamData.courseId === 'string' ? streamData.courseId : (streamData.courseId as any)?._id) ||
+                        courseId;
+                    
+                    if (courseIdFromStream) {
+                        try {
+                            const courseData = await fetchCourseDetails(courseIdFromStream);
+                            if (mounted.current && courseData) {
+                                setCourseDetails(courseData);
+                                
+                                // Extract pricing from course details (same logic as PaymentCheckoutScreen)
+                                const selectedPackage = courseData?.packages?.find((pkg: any) => pkg.isDefault === true) ||
+                                    courseData?.packages?.[0] || null;
+                                const packagePrice = selectedPackage?.price || 0;
+                                const originalPrice = courseData?.strikeoutPrice || courseData?.coursePrice || 0;
+                                const currentPrice = packagePrice > 0 ? packagePrice : (courseData?.coursePrice || 0);
+                                
+                                setCoursePricing({ originalPrice, currentPrice });
+                            }
+                        } catch (courseError) {
+                            if (__DEV__) {
+                                console.error('[ClassStreamsScreen] Error fetching course details:', courseError);
+                            }
+                            // Set default pricing if fetch fails
+                            setCoursePricing({ originalPrice: 0, currentPrice: 0 });
+                        }
+                    } else {
+                        setCoursePricing({ originalPrice: 0, currentPrice: 0 });
+                    }
+                    
+                    setTimeout(() => {
+                        setPurchaseModalVisible(true);
+                    }, 100);
+                    return;
+                }
+                
+                // If purchased and still live with video data, navigate directly
+                if (isPurchased && latestIsLive && latestHasVideoData) {
+                    setTimeout(() => {
+                        if (mounted.current) {
+                            try {
+                                navigation.navigate('StreamPlayer', {
+                                    streamId: streamData._id || streamData.id || streamId,
+                                    tpAssetId: streamData.tpAssetId || stream.tpAssetId,
+                                    hlsUrl: streamData.hlsUrl || stream.hlsUrl,
+                                });
+                            } catch (navError) {
+                                if (__DEV__) {
+                                    console.error('[ClassStreamsScreen] Navigation error:', navError);
+                                }
+                                // Fallback: show modal
+                                setSelectedStream(streamData);
+                                setPurchaseModalVisible(true);
+                            }
+                        }
+                    }, 0);
+                    return;
+                } else {
+                    // Status changed to not live - show modal
+                    setSelectedStream(streamData);
+                    setTimeout(() => {
+                        setPurchaseModalVisible(true);
+                    }, 100);
+                    return;
+                }
             } catch (error: any) {
                 if (__DEV__) {
                     console.error('[ClassStreamsScreen] Error fetching stream details:', error);
                 }
                 hideLoader();
+                if (mounted.current) {
+                    setIsCheckingStream(false);
+                }
+                
+                // Check if error response contains isUserPurchased: false
+                // API might return error with data: { isUserPurchased: false, message: "..." }
+                const errorData = error?.data || error;
+                const isUserPurchasedFromError = errorData?.isUserPurchased;
+                
+                // On API error, check if it's an access denied error or isUserPurchased is false
+                if (error?.status === 403 || 
+                    error?.message?.includes('access_denied') || 
+                    error?.message?.includes('purchase') ||
+                    error?.message?.includes('must purchase') ||
+                    isUserPurchasedFromError === false) {
+                    // Access denied or not purchased - fetch course details and show purchase modal
+                    if (__DEV__) {
+                        console.log('[ClassStreamsScreen] Access denied or not purchased, fetching course details');
+                    }
+                    setSelectedStream(stream);
+                    
+                    // Fetch course details to get pricing
+                    const streamWithSelections = stream as any;
+                    const courseIdFromStream = streamWithSelections.courseSelections?.[0]?.course?._id ||
+                        (typeof stream.courseId === 'string' ? stream.courseId : (stream.courseId as any)?._id) ||
+                        courseId;
+                    
+                    if (courseIdFromStream) {
+                        try {
+                            const courseData = await fetchCourseDetails(courseIdFromStream);
+                            if (mounted.current && courseData) {
+                                setCourseDetails(courseData);
+                                
+                                // Extract pricing from course details
+                                const selectedPackage = courseData?.packages?.find((pkg: any) => pkg.isDefault === true) ||
+                                    courseData?.packages?.[0] || null;
+                                const packagePrice = selectedPackage?.price || 0;
+                                const originalPrice = courseData?.strikeoutPrice || courseData?.coursePrice || 0;
+                                const currentPrice = packagePrice > 0 ? packagePrice : (courseData?.coursePrice || 0);
+                                
+                                setCoursePricing({ originalPrice, currentPrice });
+                            }
+                        } catch (courseError) {
+                            if (__DEV__) {
+                                console.error('[ClassStreamsScreen] Error fetching course details:', courseError);
+                            }
+                            setCoursePricing({ originalPrice: 0, currentPrice: 0 });
+                        }
+                    } else {
+                        setCoursePricing({ originalPrice: 0, currentPrice: 0 });
+                    }
+                    
+                    setTimeout(() => {
+                        setPurchaseModalVisible(true);
+                    }, 100);
+                    return;
+                }
+                
+                // For other errors, fetch course details and show modal
                 setSelectedStream(stream);
-                setPurchaseModalVisible(true);
+                
+                // Fetch course details to get pricing
+                const streamWithSelections = stream as any;
+                const courseIdFromStream = streamWithSelections.courseSelections?.[0]?.course?._id ||
+                    (typeof stream.courseId === 'string' ? stream.courseId : (stream.courseId as any)?._id) ||
+                    courseId;
+                
+                if (courseIdFromStream) {
+                    try {
+                        const courseData = await fetchCourseDetails(courseIdFromStream);
+                        if (mounted.current && courseData) {
+                            setCourseDetails(courseData);
+                            
+                            // Extract pricing from course details
+                            const selectedPackage = courseData?.packages?.find((pkg: any) => pkg.isDefault === true) ||
+                                courseData?.packages?.[0] || null;
+                            const packagePrice = selectedPackage?.price || 0;
+                            const originalPrice = courseData?.strikeoutPrice || courseData?.coursePrice || 0;
+                            const currentPrice = packagePrice > 0 ? packagePrice : (courseData?.coursePrice || 0);
+                            
+                            setCoursePricing({ originalPrice, currentPrice });
+                        }
+                    } catch (courseError) {
+                        if (__DEV__) {
+                            console.error('[ClassStreamsScreen] Error fetching course details:', courseError);
+                        }
+                        setCoursePricing({ originalPrice: 0, currentPrice: 0 });
+                    }
+                } else {
+                    setCoursePricing({ originalPrice: 0, currentPrice: 0 });
+                }
+                
+                setTimeout(() => {
+                    setPurchaseModalVisible(true);
+                }, 100);
+                return;
+            }
+        }
+
+        // For UPCOMING streams - Show toast notification only (no purchase modal)
+        if (activeTab === 'upcoming' || initialIsUpcoming) {
+            // If activeTab is 'upcoming', just show toast and return (no purchase modal)
+            if (activeTab === 'upcoming') {
+                setIsCheckingStream(true);
+                try {
+                    showLoader('Loading stream details...');
+                    const response = await getStreamById(streamId);
+                    const streamData = response.stream || stream;
+                    const isPurchased = response.isUserPurchased === true;
+                    
+                    hideLoader();
+                    setIsCheckingStream(false);
+                    
+                    // Check if stream became live
+                    const latestStatusInfo = getStreamStatus(streamData);
+                    const latestIsLive = latestStatusInfo.label === 'LIVE';
+                    const latestHasVideoData = !!(streamData.tpAssetId || streamData.hlsUrl);
+                    
+                    // If purchased and stream has started (became live), navigate to player
+                    if (isPurchased && latestIsLive && latestHasVideoData) {
+                        // Stream became live and user has purchased - navigate directly
+                        setTimeout(() => {
+                            if (mounted.current) {
+                                try {
+                                    navigation.navigate('StreamPlayer', {
+                                        streamId: streamData._id || streamData.id || streamId,
+                                        tpAssetId: streamData.tpAssetId,
+                                        hlsUrl: streamData.hlsUrl,
+                                    });
+                                } catch (navError) {
+                                    if (__DEV__) {
+                                        console.error('[ClassStreamsScreen] Navigation error:', navError);
+                                    }
+                                    // If navigation fails, show toast
+                                    toast.show({
+                                        text: 'Stream will start soon',
+                                        type: 'info',
+                                        durationMs: 3000,
+                                    });
+                                }
+                            }
+                        }, 0);
+                        return;
+                    }
+                    
+                    // For upcoming streams in 'upcoming' tab - only show toast, no purchase modal
+                    toast.show({
+                        text: 'Stream will start soon',
+                        type: 'info',
+                        durationMs: 3000,
+                    });
+                    return;
+                } catch (error: any) {
+                    if (__DEV__) {
+                        console.error('[ClassStreamsScreen] Error fetching stream details:', error);
+                    }
+                    hideLoader();
+                    setIsCheckingStream(false);
+                    
+                    // Show toast even on error for upcoming streams
+                    toast.show({
+                        text: 'Stream will start soon',
+                        type: 'info',
+                        durationMs: 3000,
+                    });
+                    return;
+                }
+            }
+            
+            // If not in 'upcoming' tab but stream is upcoming, check purchase status
+            setIsCheckingStream(true);
+            try {
+                showLoader('Loading stream details...');
+                const response = await getStreamById(streamId);
+                const streamData = response.stream || stream;
+                const isPurchased = response.isUserPurchased === true;
+                
+                hideLoader();
+                setIsCheckingStream(false);
+                
+                // If purchased and stream has started (became live), navigate to player
+                const latestStatusInfo = getStreamStatus(streamData);
+                const latestIsLive = latestStatusInfo.label === 'LIVE';
+                const latestHasVideoData = !!(streamData.tpAssetId || streamData.hlsUrl);
+                
+                if (isPurchased && latestIsLive && latestHasVideoData) {
+                    // Stream became live and user has purchased - navigate directly
+                    setTimeout(() => {
+                        if (mounted.current) {
+                            try {
+                                navigation.navigate('StreamPlayer', {
+                                    streamId: streamData._id || streamData.id || streamId,
+                                    tpAssetId: streamData.tpAssetId,
+                                    hlsUrl: streamData.hlsUrl,
+                                });
+                            } catch (navError) {
+                                if (__DEV__) {
+                                    console.error('[ClassStreamsScreen] Navigation error:', navError);
+                                }
+                                setSelectedStream(streamData);
+                                setPurchaseModalVisible(true);
+                            }
+                        }
+                    }, 0);
+                    return;
+                }
+                
+                // Show modal for purchase or stream info (only if not in upcoming tab)
+                setSelectedStream(streamData);
+                
+                // Fetch course details to get pricing
+                const streamWithSelections = streamData as any;
+                const courseIdFromStream = streamWithSelections.courseSelections?.[0]?.course?._id ||
+                    (typeof streamData.courseId === 'string' ? streamData.courseId : (streamData.courseId as any)?._id) ||
+                    courseId;
+                
+                if (courseIdFromStream) {
+                    try {
+                        const courseData = await fetchCourseDetails(courseIdFromStream);
+                        if (mounted.current && courseData) {
+                            setCourseDetails(courseData);
+                            
+                            // Extract pricing from course details
+                            const selectedPackage = courseData?.packages?.find((pkg: any) => pkg.isDefault === true) ||
+                                courseData?.packages?.[0] || null;
+                            const packagePrice = selectedPackage?.price || 0;
+                            const originalPrice = courseData?.strikeoutPrice || courseData?.coursePrice || 0;
+                            const currentPrice = packagePrice > 0 ? packagePrice : (courseData?.coursePrice || 0);
+                            
+                            setCoursePricing({ originalPrice, currentPrice });
+                        }
+                    } catch (courseError) {
+                        if (__DEV__) {
+                            console.error('[ClassStreamsScreen] Error fetching course details:', courseError);
+                        }
+                        setCoursePricing({ originalPrice: 0, currentPrice: 0 });
+                    }
+                } else {
+                    setCoursePricing({ originalPrice: 0, currentPrice: 0 });
+                }
+                
+                setTimeout(() => {
+                    setPurchaseModalVisible(true);
+                }, 100);
+            } catch (error: any) {
+                if (__DEV__) {
+                    console.error('[ClassStreamsScreen] Error fetching stream details:', error);
+                }
+                hideLoader();
+                setIsCheckingStream(false);
+                setSelectedStream(stream);
+                
+                // Fetch course details to get pricing
+                const streamWithSelections = stream as any;
+                const courseIdFromStream = streamWithSelections.courseSelections?.[0]?.course?._id ||
+                    (typeof stream.courseId === 'string' ? stream.courseId : (stream.courseId as any)?._id) ||
+                    courseId;
+                
+                if (courseIdFromStream) {
+                    try {
+                        const courseData = await fetchCourseDetails(courseIdFromStream);
+                        if (mounted.current && courseData) {
+                            setCourseDetails(courseData);
+                            
+                            // Extract pricing from course details
+                            const selectedPackage = courseData?.packages?.find((pkg: any) => pkg.isDefault === true) ||
+                                courseData?.packages?.[0] || null;
+                            const packagePrice = selectedPackage?.price || 0;
+                            const originalPrice = courseData?.strikeoutPrice || courseData?.coursePrice || 0;
+                            const currentPrice = packagePrice > 0 ? packagePrice : (courseData?.coursePrice || 0);
+                            
+                            setCoursePricing({ originalPrice, currentPrice });
+                        }
+                    } catch (courseError) {
+                        if (__DEV__) {
+                            console.error('[ClassStreamsScreen] Error fetching course details:', courseError);
+                        }
+                        setCoursePricing({ originalPrice: 0, currentPrice: 0 });
+                    }
+                } else {
+                    setCoursePricing({ originalPrice: 0, currentPrice: 0 });
+                }
+                
+                setTimeout(() => {
+                    setPurchaseModalVisible(true);
+                }, 100);
             }
             return;
         }
 
-        // For "live" tab, check conditions before navigating
+        // For any other status (RECORDED, SCHEDULED, etc.) - show modal
         setIsCheckingStream(true);
-        showLoader('Checking stream status...');
-
+        showLoader('Loading stream details...');
+        
         try {
-            // Check initial stream status
-            const initialStatusInfo = getStreamStatus(stream);
-            const initialIsLive = initialStatusInfo.label === 'LIVE';
-
-            // Call API to get latest stream data with purchase status
             const response = await getStreamById(streamId);
             const streamData = response.stream || stream;
-
-            // Re-check status with latest data (status might have changed)
-            const latestStatusInfo = getStreamStatus(streamData);
-            const latestIsLive = latestStatusInfo.label === 'LIVE';
-            const isUpcoming = latestStatusInfo.label === 'UPCOMING';
-
-            // If stream is UPCOMING, always show modal (even in live tab)
-            if (isUpcoming) {
-                hideLoader();
-                setIsCheckingStream(false);
-                setSelectedStream(streamData);
-                setPurchaseModalVisible(true);
-                return;
-            }
-
-            // Critical check: Only navigate directly if ALL conditions are met:
-            // 1. Stream is LIVE (checked with latest data)
-            // 2. User has purchased (explicitly true)
-            // 3. Stream has required video data (tpAssetId or hlsUrl)
-            const hasVideoData = !!(streamData.tpAssetId || streamData.hlsUrl);
-            const isPurchased = response.isUserPurchased === true;
-
-            if (latestIsLive && isPurchased && hasVideoData) {
-                // All conditions met - navigate directly to player
-                hideLoader();
-                setIsCheckingStream(false);
-                navigation.navigate('StreamPlayer', {
-                    streamId: streamData._id || streamData.id || streamId,
-                    tpAssetId: streamData.tpAssetId || stream.tpAssetId,
-                    hlsUrl: streamData.hlsUrl || stream.hlsUrl,
-                });
-                return;
-            }
-
-            // For any other case (not purchased, missing video data, etc.) - show modal
             hideLoader();
             setIsCheckingStream(false);
             setSelectedStream(streamData);
-            setPurchaseModalVisible(true);
+            
+            // Fetch course details to get pricing
+            const streamWithSelections = streamData as any;
+            const courseIdFromStream = streamWithSelections.courseSelections?.[0]?.course?._id ||
+                (typeof streamData.courseId === 'string' ? streamData.courseId : (streamData.courseId as any)?._id) ||
+                courseId;
+            
+            if (courseIdFromStream) {
+                try {
+                    const courseData = await fetchCourseDetails(courseIdFromStream);
+                    if (mounted.current && courseData) {
+                        setCourseDetails(courseData);
+                        
+                        // Extract pricing from course details
+                        const selectedPackage = courseData?.packages?.find((pkg: any) => pkg.isDefault === true) ||
+                            courseData?.packages?.[0] || null;
+                        const packagePrice = selectedPackage?.price || 0;
+                        const originalPrice = courseData?.strikeoutPrice || courseData?.coursePrice || 0;
+                        const currentPrice = packagePrice > 0 ? packagePrice : (courseData?.coursePrice || 0);
+                        
+                        setCoursePricing({ originalPrice, currentPrice });
+                    }
+                } catch (courseError) {
+                    if (__DEV__) {
+                        console.error('[ClassStreamsScreen] Error fetching course details:', courseError);
+                    }
+                    setCoursePricing({ originalPrice: 0, currentPrice: 0 });
+                }
+            } else {
+                setCoursePricing({ originalPrice: 0, currentPrice: 0 });
+            }
+            
+            setTimeout(() => {
+                setPurchaseModalVisible(true);
+            }, 100);
         } catch (error: any) {
             if (__DEV__) {
                 console.error('[ClassStreamsScreen] Error fetching stream details:', error);
@@ -275,7 +671,10 @@ const ClassStreamsScreen: React.FC = () => {
             // Only show modal - never navigate directly on error
             // This ensures user sees purchase option or stream info
             setSelectedStream(stream);
-            setPurchaseModalVisible(true);
+            // Small delay to ensure loader is hidden before showing modal
+            setTimeout(() => {
+                setPurchaseModalVisible(true);
+            }, 100);
         }
     }, [navigation, isCheckingStream, showLoader, hideLoader, activeTab]);
 
@@ -298,22 +697,90 @@ const ClassStreamsScreen: React.FC = () => {
     }, []);
 
     const handleClosePurchaseModal = useCallback(() => {
+        // Reset checking state when modal closes
+        setIsCheckingStream(false);
         setPurchaseModalVisible(false);
         setSelectedStream(null);
+        setCourseDetails(null);
+        setCoursePricing(null);
     }, []);
 
     const handleBuyNow = useCallback(() => {
-        if (selectedStream) {
-            const streamWithSelections = selectedStream as any;
-            const courseIdFromStream = streamWithSelections.courseSelections?.[0]?.course?._id ||
-                (typeof selectedStream.courseId === 'string' ? selectedStream.courseId : (selectedStream.courseId as any)?._id);
-
-            if (courseIdFromStream) {
-                setPurchaseModalVisible(false);
-                navigation.navigate('CourseDetails', { courseId: courseIdFromStream });
+        if (!selectedStream) {
+            if (__DEV__) {
+                console.warn('[ClassStreamsScreen] No stream selected for purchase');
             }
+            return;
         }
-    }, [selectedStream, navigation]);
+
+        try {
+            // Extract courseId from stream - try multiple possible locations
+            const streamWithSelections = selectedStream as any;
+            let courseIdFromStream: string | undefined;
+            
+            // Try courseSelections first (most common structure)
+            if (streamWithSelections.courseSelections?.[0]?.course?._id) {
+                courseIdFromStream = streamWithSelections.courseSelections[0].course._id;
+            }
+            // Try direct courseId (string)
+            else if (typeof selectedStream.courseId === 'string' && selectedStream.courseId) {
+                courseIdFromStream = selectedStream.courseId;
+            }
+            // Try courseId as object with _id
+            else if (selectedStream.courseId && typeof selectedStream.courseId === 'object' && (selectedStream.courseId as any)?._id) {
+                courseIdFromStream = (selectedStream.courseId as any)._id;
+            }
+            // Fallback to route params courseId
+            else if (courseId) {
+                courseIdFromStream = courseId;
+            }
+
+            if (!courseIdFromStream) {
+                if (__DEV__) {
+                    console.error('[ClassStreamsScreen] Could not extract courseId from stream:', selectedStream);
+                }
+                // Show error or fallback behavior
+                return;
+            }
+
+            // Close modal first for smooth transition
+            setPurchaseModalVisible(false);
+            
+            // Get pricing from course details or use defaults
+            const pricing = coursePricing || { originalPrice: 0, currentPrice: 0 };
+            
+            // Add small delay to ensure modal closes smoothly before navigation
+            setTimeout(() => {
+                try {
+                    // Navigate to PaymentCheckout with pricing from course details
+                    navigation.navigate('PaymentCheckout', {
+                        courseId: courseIdFromStream,
+                        originalPrice: pricing.originalPrice,
+                        currentPrice: pricing.currentPrice,
+                        // packageId is optional, can be added if needed
+                    });
+                } catch (navError) {
+                    if (__DEV__) {
+                        console.error('[ClassStreamsScreen] Navigation error:', navError);
+                    }
+                    // Fallback: try navigating to CourseDetails if PaymentCheckout fails
+                    try {
+                        navigation.navigate('CourseDetails', { courseId: courseIdFromStream });
+                    } catch (fallbackError) {
+                        if (__DEV__) {
+                            console.error('[ClassStreamsScreen] Fallback navigation also failed:', fallbackError);
+                        }
+                    }
+                }
+            }, 100); // Small delay for smooth modal close animation
+        } catch (error) {
+            if (__DEV__) {
+                console.error('[ClassStreamsScreen] Error in handleBuyNow:', error);
+            }
+            // Ensure modal is closed even on error
+            setPurchaseModalVisible(false);
+        }
+    }, [selectedStream, navigation, courseId, coursePricing]);
 
     const renderStreamItem = useCallback(({ item }: { item: Stream }) => {
         if (!item || !item._id) return null;
@@ -735,6 +1202,8 @@ const ClassStreamsScreen: React.FC = () => {
                     stream={selectedStream}
                     onClose={handleClosePurchaseModal}
                     onBuyNow={handleBuyNow}
+                    originalPrice={coursePricing?.originalPrice || 0}
+                    currentPrice={coursePricing?.currentPrice || 0}
                 />
             </View>
         </GradientBackground>

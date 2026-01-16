@@ -21,6 +21,8 @@ import { queryClient } from './src/services/queryClient';
 import { useNetworkStore } from './src/store/networkStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import OfflineScreen from './src/components/OfflineScreen';
+import AlertBox from './src/components/AlertBox';
+import { checkAppVersion, openPlayStore, VersionInfo } from './src/services/versionCheck';
 import './src/i18n';
 
 // Initialize TPStreams
@@ -57,6 +59,8 @@ function App() {
 function AppContent() {
   const theme = useTheme();
   const [showSplash, setShowSplash] = useState(true);
+  const [showUpdateAlert, setShowUpdateAlert] = useState(false);
+  const [versionInfo, setVersionInfo] = useState<VersionInfo | null>(null);
   const { isLoggedIn, checkAuthStatus } = useAuthStore();
   const { initialize: initializeNetwork, isConnected, isInternetReachable } = useNetworkStore();
   const navigationRef = useRef<NavigationContainerRef<any>>(null);
@@ -361,6 +365,39 @@ function AppContent() {
     }
   }, [checkAuthStatus, initializeNetwork]);
 
+  // Version check - runs after splash screen is hidden
+  useEffect(() => {
+    if (!showSplash && isConnected) {
+      const performVersionCheck = async () => {
+        try {
+          const versionCheckResult = await checkAppVersion();
+          
+          if (versionCheckResult && versionCheckResult.needsUpdate) {
+            if (__DEV__) {
+              console.log('[App] Update required:', versionCheckResult);
+            }
+            setVersionInfo(versionCheckResult);
+            setShowUpdateAlert(true);
+          } else if (__DEV__) {
+            console.log('[App] App is up to date or version check skipped');
+          }
+        } catch (error) {
+          if (__DEV__) {
+            console.error('[App] Error during version check:', error);
+          }
+          // Silently fail - don't block app usage if version check fails
+        }
+      };
+
+      // Small delay to ensure app is fully loaded before checking version
+      const timeoutId = setTimeout(() => {
+        performVersionCheck();
+      }, 500);
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [showSplash, isConnected]);
+
   return (
     <>
       <NavigationContainer
@@ -395,6 +432,39 @@ function AppContent() {
           <OfflineScreen />
         </View>
       )}
+      
+      {/* Version Update Alert */}
+      <AlertBox
+        visible={showUpdateAlert}
+        onClose={() => {
+          // If it's a force update, don't allow closing
+          if (versionInfo?.isForceUpdate) {
+            return;
+          }
+          setShowUpdateAlert(false);
+        }}
+        title="Update Available"
+        message={
+          versionInfo?.updateMessage ||
+          `A new version (${versionInfo?.latestVersion}) of the app is available. Please update to continue using the app.`
+        }
+        confirmText="Update Now"
+        cancelText={versionInfo?.isForceUpdate ? undefined : "Later"}
+        onConfirm={async () => {
+          await openPlayStore();
+          // Don't close if it's a force update
+          if (!versionInfo?.isForceUpdate) {
+            setShowUpdateAlert(false);
+          }
+        }}
+        onCancel={() => {
+          if (!versionInfo?.isForceUpdate) {
+            setShowUpdateAlert(false);
+          }
+        }}
+        type="info"
+        icon="download"
+      />
     </>
   );
 }

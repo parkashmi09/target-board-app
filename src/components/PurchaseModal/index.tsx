@@ -12,9 +12,18 @@ interface PurchaseModalProps {
     stream: Stream | null;
     onClose: () => void;
     onBuyNow: () => void;
+    originalPrice?: number;
+    currentPrice?: number;
 }
 
-const PurchaseModal: React.FC<PurchaseModalProps> = React.memo(({ visible, stream, onClose, onBuyNow }) => {
+const PurchaseModal: React.FC<PurchaseModalProps> = React.memo(({ 
+    visible, 
+    stream, 
+    onClose, 
+    onBuyNow,
+    originalPrice = 0,
+    currentPrice = 0,
+}) => {
     const theme = useTheme();
     const { colors } = theme;
 
@@ -23,8 +32,11 @@ const PurchaseModal: React.FC<PurchaseModalProps> = React.memo(({ visible, strea
     const streamWithSelections = stream as any;
     const course = streamWithSelections.courseSelections?.[0]?.course;
     const courseName = course?.name || stream.title || 'Course';
-    const currentPrice = 499;
     const thumbnailUrl = stream.bannerUrl || stream.thumbnail;
+    
+    // Use provided prices or fallback to 0
+    const displayPrice = currentPrice > 0 ? currentPrice : 0;
+    const displayOriginalPrice = originalPrice > 0 ? originalPrice : displayPrice;
 
     return (
         <Modal
@@ -67,19 +79,28 @@ const PurchaseModal: React.FC<PurchaseModalProps> = React.memo(({ visible, strea
                     </View>
 
                     <View style={styles.priceRow}>
-                        <Text style={[styles.price, { color: colors.text }]}>₹{currentPrice}</Text>
+                        <View style={styles.priceContainer}>
+                            {displayOriginalPrice > displayPrice && displayOriginalPrice > 0 && (
+                                <Text style={[styles.originalPrice, { color: colors.textSecondary }]}>
+                                    ₹{displayOriginalPrice}
+                                </Text>
+                            )}
+                            <Text style={[styles.price, { color: colors.text }]}>₹{displayPrice}</Text>
+                        </View>
                         <TouchableOpacity style={styles.buyButton} onPress={onBuyNow} activeOpacity={0.8}>
                             <Text style={styles.buyButtonText}>Buy Now</Text>
                         </TouchableOpacity>
                     </View>
 
-                    <View style={styles.pricingInfo}>
-                        <View style={styles.pricingRow}>
-                            <Text style={[styles.pricingText, { color: colors.textSecondary }]}>
-                                ₹{currentPrice}/12 Month
-                            </Text>
+                    {displayPrice > 0 && (
+                        <View style={styles.pricingInfo}>
+                            <View style={styles.pricingRow}>
+                                <Text style={[styles.pricingText, { color: colors.textSecondary }]}>
+                                    ₹{displayPrice}/12 Month
+                                </Text>
+                            </View>
                         </View>
-                    </View>
+                    )}
                 </View>
             </ScrollView>
         </Modal>
@@ -154,9 +175,19 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         padding: getSpacing(2),
     },
+    priceContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: getSpacing(1),
+    },
     price: {
         fontSize: moderateScale(28),
         fontFamily: getFontFamily('700'),
+    },
+    originalPrice: {
+        fontSize: moderateScale(18),
+        textDecorationLine: 'line-through',
+        fontFamily: getFontFamily('500'),
     },
     buyButton: {
         backgroundColor: '#001F3F',

@@ -58,7 +58,8 @@
     "books": "Books",
     "tests": "Tests",
     "profile": "Settings",
-    "viewContent": "View Content"
+    "viewContent": "View Content",
+    "allBatches": "All Batches"
   },
   "profile": {
     "editProfile": "Edit Profile",

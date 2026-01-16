@@ -22,7 +22,8 @@
     "guest": "अतिथि उपयोगकर्ता",
     "loading": "लोड हो रहा है...",
     "retry": "पुनः प्रयास करें",
-    "goBack": "वापस जाएं"
+    "goBack": "वापस जाएं",
+    "allBatches": "सभी बैच"
   },
   "teacher": {
     "teacherDetails": "शिक्षक विवरण"
@@ -58,7 +59,8 @@
     "books": "पुस्तकें",
     "tests": "टेस्ट",
     "profile": "सेटिंग्स",
-    "viewContent": "विषय देखें"
+    "viewContent": "विषय देखें",
+    "allBatches": "सभी बैच"
   },
   "profile": {
     "editProfile": "प्रोफ़ाइल संपादित करें",

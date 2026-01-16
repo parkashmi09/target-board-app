@@ -27,6 +27,7 @@ const MyCourseScreen: React.FC = () => {
   // Fetch courses using the same API as HomeScreen
   const { data: coursesData, isLoading, refetch } = useCourses({
     categoryId: categoryId || null,
+    stateBoardId: userData?.stateBoard?._id || null,
     enabled: true,
   });
 

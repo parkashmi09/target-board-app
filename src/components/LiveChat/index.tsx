@@ -14,8 +14,10 @@ import {
     Animated,
     ScrollView,
     Keyboard,
+    Easing,
 } from 'react-native';
-import { Send, Smile, MoreVertical, X, Pin } from 'lucide-react-native';
+import { Send, Smile, MoreVertical, X, Pin, ChevronDown } from 'lucide-react-native';
+import { Svg, Circle, Path, G } from 'react-native-svg';
 import { useTheme } from '../../theme/theme';
 import { moderateScale, getSpacing, safeFont, safeLetterSpacing } from '../../utils/responsive';
 import { getFontFamily } from '../../utils/fonts';
@@ -75,6 +77,11 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
     const [chatTags, setChatTags] = useState<ChatTag[]>([]);
     const [keyboardHeight, setKeyboardHeight] = useState(0);
     const [isBlocked, setIsBlocked] = useState(false);
+    const [isLoadingOlderMessages, setIsLoadingOlderMessages] = useState(false);
+    const [hasMoreMessages, setHasMoreMessages] = useState(true);
+    const [isScrolling, setIsScrolling] = useState(false);
+    const [isAtBottom, setIsAtBottom] = useState(true);
+    const [oldestMessageId, setOldestMessageId] = useState<string | null>(null);
 
     // Animation refs
     const emojiButtonScale = useRef(new Animated.Value(1)).current;
@@ -134,16 +141,31 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
             console.log('[LiveChat] Pinned message:', data.pinnedMessage);
             console.log('[LiveChat] Is blocked:', data.isBlocked);
             setIsConnected(true);
-            setMessages(data.recentMessages || []);
+            const recentMessages = data.recentMessages || [];
+            setMessages(recentMessages);
+            // Set oldest message ID for pagination
+            if (recentMessages.length > 0) {
+                setOldestMessageId(recentMessages[0].id);
+            }
             setSettings(data.settings);
             setPinnedMessage(data.pinnedMessage);
             setIsBlocked(data.isBlocked || false);
             setLoading(false);
+            // Scroll to bottom after messages load
+            setTimeout(() => {
+                flatListRef.current?.scrollToEnd({ animated: false });
+                setIsAtBottom(true);
+            }, 100);
         });
 
         socketService.onMessageReceived((message) => {
             console.log('[LiveChat] Message received:', message);
-            setMessages((prev) => [...prev, message]);
+            setMessages((prev) => {
+                const newMessages = [...prev, message];
+                return newMessages;
+            });
+            // Don't auto-scroll - let user control scrolling
+            // User can use scroll-to-bottom button if they want to see new messages
         });
 
         socketService.onMessageDeleted((data) => {
@@ -182,11 +204,79 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
         };
     }, [streamId, token]);
 
-    useEffect(() => {
-        if (messages.length > 0) {
-            flatListRef.current?.scrollToEnd({ animated: true });
+    // Load older messages when scrolling to top
+    const loadOlderMessages = useCallback(async () => {
+        if (isLoadingOlderMessages || !hasMoreMessages || !oldestMessageId || !streamId) {
+            return;
         }
-    }, [messages]);
+
+        setIsLoadingOlderMessages(true);
+        try {
+            // Request older messages via socket
+            const CHAT_SERVICE_URL = SOCKET_URL || 'https://shark-app-2-dzcvn.ondigitalocean.app';
+            const baseUrl = CHAT_SERVICE_URL.replace(/\/$/, '');
+            
+            const response = await fetch(`${baseUrl}/api/v1/chat/messages/${streamId}?before=${oldestMessageId}&limit=20`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                const olderMessages: ChatMessage[] = data.messages || [];
+                
+                if (olderMessages.length > 0) {
+                    setMessages((prev) => {
+                        // Prepend older messages to the beginning
+                        const combined = [...olderMessages, ...prev];
+                        // Update oldest message ID
+                        setOldestMessageId(olderMessages[0].id);
+                        return combined;
+                    });
+                    
+                    // Check if there are more messages
+                    setHasMoreMessages(olderMessages.length >= 20);
+                } else {
+                    setHasMoreMessages(false);
+                }
+            } else {
+                setHasMoreMessages(false);
+            }
+        } catch (error) {
+            console.error('[LiveChat] Error loading older messages:', error);
+            setHasMoreMessages(false);
+        } finally {
+            setIsLoadingOlderMessages(false);
+        }
+    }, [isLoadingOlderMessages, hasMoreMessages, oldestMessageId, streamId, token]);
+
+    // Handle scroll events
+    const handleScroll = useCallback((event: any) => {
+        const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+        const isNearTop = contentOffset.y < 100;
+        const isNearBottom = contentOffset.y + layoutMeasurement.height >= contentSize.height - 100;
+        
+        setIsAtBottom(isNearBottom);
+        
+        // Load older messages when near top
+        if (isNearTop && hasMoreMessages && !isLoadingOlderMessages) {
+            loadOlderMessages();
+        }
+    }, [hasMoreMessages, isLoadingOlderMessages, loadOlderMessages]);
+
+    const handleScrollBeginDrag = useCallback(() => {
+        setIsScrolling(true);
+    }, []);
+
+    const handleScrollEndDrag = useCallback(() => {
+        // Delay to allow scroll momentum to finish
+        setTimeout(() => {
+            setIsScrolling(false);
+        }, 300);
+    }, []);
 
     // Keyboard listeners
     useEffect(() => {
@@ -399,6 +489,13 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
         setInputText(text);
     };
 
+    const scrollToBottom = useCallback(() => {
+        if (messages.length > 0) {
+            flatListRef.current?.scrollToEnd({ animated: true });
+            setIsAtBottom(true);
+        }
+    }, [messages.length]);
+
     // Helper to find reply message
     const getReplyMessage = (originalId: string) => messages.find(m => m.id === originalId);
 
@@ -439,8 +536,14 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
         return (
             <TouchableOpacity
                 activeOpacity={0.9}
-                onLongPress={() => canReport && handleReportMessage(item)}
-                delayLongPress={500}
+                onLongPress={() => {
+                    // Only trigger report if not scrolling
+                    if (!isScrolling && canReport) {
+                        handleReportMessage(item);
+                    }
+                }}
+                delayLongPress={800}
+                disabled={isScrolling}
             >
                 <Animated.View style={[
                     styles.messageRow,
@@ -574,11 +677,181 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
         );
     };
 
+    // Animated Chat Loading Component
+    const ChatLoadingAnimation = () => {
+        const bubble1Scale = useRef(new Animated.Value(1)).current;
+        const bubble2Scale = useRef(new Animated.Value(1)).current;
+        const bubble3Scale = useRef(new Animated.Value(1)).current;
+        const messageOpacity = useRef(new Animated.Value(0.3)).current;
+        const messageTranslateY = useRef(new Animated.Value(0)).current;
+        const textOpacity = useRef(new Animated.Value(0.5)).current;
+
+        useEffect(() => {
+            // Bubble 1 animation
+            Animated.loop(
+                Animated.sequence([
+                    Animated.timing(bubble1Scale, {
+                        toValue: 1.2,
+                        duration: 600,
+                        easing: Easing.inOut(Easing.ease),
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(bubble1Scale, {
+                        toValue: 1,
+                        duration: 600,
+                        easing: Easing.inOut(Easing.ease),
+                        useNativeDriver: true,
+                    }),
+                ])
+            ).start();
+
+            // Bubble 2 animation (delayed)
+            Animated.loop(
+                Animated.sequence([
+                    Animated.delay(200),
+                    Animated.timing(bubble2Scale, {
+                        toValue: 1.2,
+                        duration: 600,
+                        easing: Easing.inOut(Easing.ease),
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(bubble2Scale, {
+                        toValue: 1,
+                        duration: 600,
+                        easing: Easing.inOut(Easing.ease),
+                        useNativeDriver: true,
+                    }),
+                ])
+            ).start();
+
+            // Bubble 3 animation (more delayed)
+            Animated.loop(
+                Animated.sequence([
+                    Animated.delay(400),
+                    Animated.timing(bubble3Scale, {
+                        toValue: 1.2,
+                        duration: 600,
+                        easing: Easing.inOut(Easing.ease),
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(bubble3Scale, {
+                        toValue: 1,
+                        duration: 600,
+                        easing: Easing.inOut(Easing.ease),
+                        useNativeDriver: true,
+                    }),
+                ])
+            ).start();
+
+            // Message animation
+            Animated.loop(
+                Animated.parallel([
+                    Animated.sequence([
+                        Animated.timing(messageOpacity, {
+                            toValue: 1,
+                            duration: 1000,
+                            easing: Easing.inOut(Easing.ease),
+                            useNativeDriver: true,
+                        }),
+                        Animated.timing(messageOpacity, {
+                            toValue: 0.3,
+                            duration: 1000,
+                            easing: Easing.inOut(Easing.ease),
+                            useNativeDriver: true,
+                        }),
+                    ]),
+                    Animated.sequence([
+                        Animated.timing(messageTranslateY, {
+                            toValue: -8,
+                            duration: 1000,
+                            easing: Easing.inOut(Easing.ease),
+                            useNativeDriver: true,
+                        }),
+                        Animated.timing(messageTranslateY, {
+                            toValue: 0,
+                            duration: 1000,
+                            easing: Easing.inOut(Easing.ease),
+                            useNativeDriver: true,
+                        }),
+                    ]),
+                ])
+            ).start();
+
+            // Text pulse animation
+            Animated.loop(
+                Animated.sequence([
+                    Animated.timing(textOpacity, {
+                        toValue: 1,
+                        duration: 1200,
+                        easing: Easing.inOut(Easing.ease),
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(textOpacity, {
+                        toValue: 0.5,
+                        duration: 1200,
+                        easing: Easing.inOut(Easing.ease),
+                        useNativeDriver: true,
+                    }),
+                ])
+            ).start();
+        }, []);
+
+        return (
+            <View style={styles.chatLoadingContainer}>
+                <View style={styles.chatLoadingAnimation}>
+                    {/* Chat bubbles animation */}
+                    <View style={styles.bubblesContainer}>
+                        <Animated.View style={{ transform: [{ scale: bubble1Scale }] }}>
+                            <Svg width={moderateScale(12)} height={moderateScale(12)} viewBox="0 0 12 12">
+                                <Circle cx="6" cy="6" r="5" fill="#f55473" opacity="0.8" />
+                            </Svg>
+                        </Animated.View>
+                        <Animated.View style={{ transform: [{ scale: bubble2Scale }] }}>
+                            <Svg width={moderateScale(12)} height={moderateScale(12)} viewBox="0 0 12 12">
+                                <Circle cx="6" cy="6" r="5" fill="#f55473" opacity="0.6" />
+                            </Svg>
+                        </Animated.View>
+                        <Animated.View style={{ transform: [{ scale: bubble3Scale }] }}>
+                            <Svg width={moderateScale(12)} height={moderateScale(12)} viewBox="0 0 12 12">
+                                <Circle cx="6" cy="6" r="5" fill="#f55473" opacity="0.4" />
+                            </Svg>
+                        </Animated.View>
+                    </View>
+
+                    {/* Message icon animation */}
+                    <Animated.View
+                        style={{
+                            opacity: messageOpacity,
+                            transform: [{ translateY: messageTranslateY }],
+                            marginTop: moderateScale(8),
+                        }}
+                    >
+                        <Svg width={moderateScale(32)} height={moderateScale(32)} viewBox="0 0 24 24">
+                            <Path
+                                d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"
+                                fill="#f55473"
+                                opacity="0.7"
+                            />
+                            <Path
+                                d="M7 9h10M7 13h8"
+                                stroke="#FFFFFF"
+                                strokeWidth="1.5"
+                                strokeLinecap="round"
+                            />
+                        </Svg>
+                    </Animated.View>
+                </View>
+                <Animated.Text style={[styles.chatLoadingText, { color: colors.textSecondary, opacity: textOpacity }]}>
+                    You're about to land on chat! 🚀
+                </Animated.Text>
+            </View>
+        );
+    };
+
     if (loading) {
         return (
             <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
-                <ActivityIndicator size="small" color={colors.primary} />
-                <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Connecting to chat...</Text>
+                <ChatLoadingAnimation />
             </View>
         );
     }
@@ -594,33 +867,63 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
 
 
             {/* Messages List */}
-            <FlatList
-                ref={flatListRef}
-                data={messages}
-                renderItem={renderMessage}
-                keyExtractor={(item) => item.id}
-                contentContainerStyle={[
-                    styles.listContent,
-                    { backgroundColor: '#F5F5F5' }
-                ]}
-                showsVerticalScrollIndicator={false}
-                onScrollToIndexFailed={(info) => {
-                    // Fallback: scroll to end if index not found
-                    setTimeout(() => {
-                        flatListRef.current?.scrollToOffset({
-                            offset: info.averageItemLength * info.index,
-                            animated: true,
-                        });
-                    }, 100);
-                }}
-                ListEmptyComponent={
-                    <View style={styles.emptyContainer}>
-                        <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                            No messages yet. Start the conversation!
-                        </Text>
-                    </View>
-                }
-            />
+            <View style={styles.messagesContainer}>
+                <FlatList
+                    ref={flatListRef}
+                    data={messages}
+                    renderItem={renderMessage}
+                    keyExtractor={(item) => item.id}
+                    contentContainerStyle={[
+                        styles.listContent,
+                        { backgroundColor: '#F5F5F5' }
+                    ]}
+                    showsVerticalScrollIndicator={false}
+                    inverted={false}
+                    onScroll={handleScroll}
+                    onScrollBeginDrag={handleScrollBeginDrag}
+                    onScrollEndDrag={handleScrollEndDrag}
+                    onMomentumScrollEnd={handleScrollEndDrag}
+                    scrollEventThrottle={16}
+                    // Removed onContentSizeChange auto-scroll - user controls scrolling manually
+                    onScrollToIndexFailed={(info) => {
+                        // Fallback: scroll to end if index not found
+                        setTimeout(() => {
+                            flatListRef.current?.scrollToOffset({
+                                offset: info.averageItemLength * info.index,
+                                animated: true,
+                            });
+                        }, 100);
+                    }}
+                    ListHeaderComponent={
+                        isLoadingOlderMessages ? (
+                            <View style={styles.loadingOlderContainer}>
+                                <ActivityIndicator size="small" color={colors.primary} />
+                                <Text style={[styles.loadingOlderText, { color: colors.textSecondary }]}>
+                                    Loading older messages...
+                                </Text>
+                            </View>
+                        ) : null
+                    }
+                    ListEmptyComponent={
+                        <View style={styles.emptyContainer}>
+                            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                                No messages yet. Start the conversation!
+                            </Text>
+                        </View>
+                    }
+                />
+                
+                {/* Scroll to bottom button - show when not at bottom */}
+                {!isAtBottom && messages.length > 0 && (
+                    <TouchableOpacity
+                        style={styles.scrollToBottomButton}
+                        onPress={scrollToBottom}
+                        activeOpacity={0.8}
+                    >
+                        <ChevronDown size={moderateScale(20)} color="#FFFFFF" />
+                    </TouchableOpacity>
+                )}
+            </View>
 
             {/* Suggested Reply Buttons */}
             {!isBlocked && chatTags.length > 0 && !inputText && (
@@ -1304,6 +1607,57 @@ const styles = StyleSheet.create({
     suggestedReplyText: {
         fontSize: safeFont(13),
         color: '#000000',
+    },
+    loadingOlderContainer: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingVertical: getSpacing(2),
+        gap: getSpacing(1),
+    },
+    loadingOlderText: {
+        fontSize: safeFont(12),
+    },
+    messagesContainer: {
+        flex: 1,
+        position: 'relative',
+    },
+    scrollToBottomButton: {
+        position: 'absolute',
+        bottom: getSpacing(2),
+        right: getSpacing(2),
+        width: moderateScale(44),
+        height: moderateScale(44),
+        borderRadius: moderateScale(22),
+        backgroundColor: '#f55473',
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+    },
+    chatLoadingContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: moderateScale(12),
+    },
+    chatLoadingAnimation: {
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    bubblesContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: moderateScale(6),
+        marginBottom: moderateScale(4),
+    },
+    chatLoadingText: {
+        fontSize: moderateScale(13),
+        fontFamily: getFontFamily('500'),
+        textAlign: 'center',
+        marginTop: moderateScale(4),
     },
 });
 
