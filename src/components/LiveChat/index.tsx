@@ -10,12 +10,13 @@ import {
     Platform,
     ActivityIndicator,
     Alert,
-    Modal,
     Animated,
     ScrollView,
     Keyboard,
     Easing,
+    Dimensions,
 } from 'react-native';
+import Modal from 'react-native-modal';
 import { Send, Smile, MoreVertical, X, Pin, ChevronDown } from 'lucide-react-native';
 import { Svg, Circle, Path, G } from 'react-native-svg';
 import { useTheme } from '../../theme/theme';
@@ -77,6 +78,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
     const [chatTags, setChatTags] = useState<ChatTag[]>([]);
     const [keyboardHeight, setKeyboardHeight] = useState(0);
     const [isBlocked, setIsBlocked] = useState(false);
+    const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
     const [isLoadingOlderMessages, setIsLoadingOlderMessages] = useState(false);
     const [hasMoreMessages, setHasMoreMessages] = useState(true);
     const [isScrolling, setIsScrolling] = useState(false);
@@ -85,7 +87,6 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
 
     // Animation refs
     const emojiButtonScale = useRef(new Animated.Value(1)).current;
-    const inputContainerTranslateY = useRef(new Animated.Value(0)).current;
 
     // Simple JWT Decode to get user ID
     useEffect(() => {
@@ -278,25 +279,17 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
         }, 300);
     }, []);
 
-    // Keyboard listeners
+    // Keyboard listeners - react-native-modal handles keyboard automatically with avoidKeyboard prop
     useEffect(() => {
         const keyboardWillShow = (e: any) => {
             const height = e.endCoordinates?.height || 0;
             setKeyboardHeight(height);
-            Animated.timing(inputContainerTranslateY, {
-                toValue: -height * 0.1, // Shift slightly upwards
-                duration: 250,
-                useNativeDriver: true,
-            }).start();
+            setIsKeyboardVisible(true);
         };
 
         const keyboardWillHide = () => {
             setKeyboardHeight(0);
-            Animated.timing(inputContainerTranslateY, {
-                toValue: 0,
-                duration: 250,
-                useNativeDriver: true,
-            }).start();
+            setIsKeyboardVisible(false);
         };
 
         if (Platform.OS === 'ios') {
@@ -314,7 +307,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
                 hideSubscription.remove();
             };
         }
-    }, [inputContainerTranslateY]);
+    }, []);
 
 
     const handleEmojiSelect = useCallback((emojiObject: EmojiType) => {
@@ -591,18 +584,12 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
                                 position: 'relative',
                                 borderWidth: isPinned ? 1 : 0,
                                 borderColor: isPinned ? '#FFD700' : 'transparent',
-                                // elevation: 1,
-                                // shadowColor: '#000',
-                                // shadowOffset: { width: 0, height: 1 },
-                                // shadowOpacity: 0.1,
-                                // shadowRadius: 1,
                             } :
                             {
                                 backgroundColor: '#FFFFFF',
                                 position: 'relative',
                                 borderWidth: isPinned ? 1 : 0,
                                 borderColor: isPinned ? '#FFD700' : 'transparent',
-
                             },
                         isAdmin && !isOwnMessage && {
                             backgroundColor: '#F5F5F5',
@@ -633,14 +620,16 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
 
 
 
-                        <Text style={[
-                            styles.messageText,
-                            {
-                                color: isOwnMessage
-                                    ? '#FFFFFF'
-                                    : '#000000'
-                            }
-                        ]}>
+                        <Text 
+                            style={[
+                                styles.messageText,
+                                {
+                                    color: isOwnMessage
+                                        ? '#FFFFFF'
+                                        : '#000000'
+                                }
+                            ]}
+                        >
                             {item.message}
                         </Text>
 
@@ -857,11 +846,14 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
     }
 
     return (
-        <KeyboardAvoidingView
-            style={[styles.container, { backgroundColor: '#F5F5F5' }]}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
-        >
+        <View style={[styles.container, { backgroundColor: '#F5F5F5' }]}>
+            
+            <KeyboardAvoidingView
+                style={{ flex: 1 }}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+                enabled={true}
+            >
 
 
 
@@ -949,74 +941,141 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
                 </View>
             )}
 
-            {/* Input Area */}
-            {isBlocked ? (
-                <View style={[styles.blockedContainer, {
-                    backgroundColor: '#f55473',
-                    // paddingBottom: Math.max(insets.bottom, getSpacing(2)),
-                }]}>
-                    <Text style={styles.blockedText}>You are blocked by admin</Text>
-                </View>
-            ) : settings?.isChatEnabled !== false ? (
-                <Animated.View
-                    style={[
-                        styles.inputContainer,
-                        {
-                            // borderTopColor: '#E0E0E0', 
-                            backgroundColor: '#FFFFFF',
-                            paddingBottom: Math.max(insets.bottom, getSpacing(2)),
-                            transform: [{ translateY: inputContainerTranslateY }],
-                        }
-                    ]}
-                >
-                    <Animated.View style={{ transform: [{ scale: emojiButtonScale }] }}>
-                        <TouchableOpacity
-                            style={styles.emojiPickerButton}
-                            onPress={toggleEmojiPicker}
+            {/* Input Area - Normal state (when keyboard is closed) */}
+            {!isKeyboardVisible && (
+                <>
+                    {isBlocked ? (
+                        <View style={[styles.blockedContainer, {
+                            backgroundColor: '#f55473',
+                        }]}>
+                            <Text style={styles.blockedText}>You are blocked by admin</Text>
+                        </View>
+                    ) : settings?.isChatEnabled !== false ? (
+                        <View
+                            style={[
+                                styles.inputContainer,
+                                {
+                                    backgroundColor: '#FFFFFF',
+                                    paddingBottom: Math.max(insets.bottom, getSpacing(2)),
+                                }
+                            ]}
                         >
-                            <Smile size={moderateScale(22)} color="#666666" />
-                        </TouchableOpacity>
-                    </Animated.View>
-                    <TextInput
-                        style={[styles.input, {
-                            backgroundColor: '#F5F5F5',
-                            color: '#000000',
-                        }]}
-                        placeholder="Type a message..."
-                        placeholderTextColor="#999999"
-                        value={inputText}
-                        onChangeText={handleTextChange}
-                        maxLength={settings?.maxMessageLength || 500}
-                        onSubmitEditing={handleSendMessage}
-                        multiline
-                        editable={isConnected && settings?.isChatEnabled}
-                        returnKeyType="send"
-                        blurOnSubmit={false}
-                    />
-                    <TouchableOpacity
-                        style={[styles.sendButton, {
-                            backgroundColor: inputText.trim() && isConnected
-                                ? '#f55473'
-                                : '#E0E0E0'
-                        }]}
-                        onPress={handleSendMessage}
-                        disabled={!inputText.trim() || !settings?.isChatEnabled || !isConnected}
-                    >
-                        <Send
-                            size={20}
-                            color={inputText.trim() && isConnected
-                                ? '#FFFFFF'
-                                : '#999999'}
-                        />
-                    </TouchableOpacity>
-                </Animated.View>
-            ) : (
-                <View style={[styles.disabledContainer, { backgroundColor: colors.cardBackground }]}>
-                    <Text style={[styles.disabledText, { color: colors.textSecondary }]}>
-                        Chat is currently disabled
-                    </Text>
-                </View>
+                            <Animated.View style={{ transform: [{ scale: emojiButtonScale }] }}>
+                                <TouchableOpacity
+                                    style={styles.emojiPickerButton}
+                                    onPress={toggleEmojiPicker}
+                                >
+                                    <Smile size={moderateScale(22)} color="#666666" />
+                                </TouchableOpacity>
+                            </Animated.View>
+                            <TextInput
+                                style={[styles.input, {
+                                    backgroundColor: '#F5F5F5',
+                                    color: '#000000',
+                                }]}
+                                placeholder="Type a message..."
+                                placeholderTextColor="#999999"
+                                value={inputText}
+                                onChangeText={handleTextChange}
+                                maxLength={settings?.maxMessageLength || 500}
+                                onSubmitEditing={handleSendMessage}
+                                multiline
+                                editable={isConnected && settings?.isChatEnabled}
+                                returnKeyType="send"
+                                blurOnSubmit={false}
+                            />
+                            <TouchableOpacity
+                                style={[styles.sendButton, {
+                                    backgroundColor: inputText.trim() && isConnected
+                                        ? '#f55473'
+                                        : '#E0E0E0'
+                                }]}
+                                onPress={handleSendMessage}
+                                disabled={!inputText.trim() || !settings?.isChatEnabled || !isConnected}
+                            >
+                                <Send
+                                    size={20}
+                                    color={inputText.trim() && isConnected
+                                        ? '#FFFFFF'
+                                        : '#999999'}
+                                />
+                            </TouchableOpacity>
+                        </View>
+                    ) : (
+                        <View style={[styles.disabledContainer, { backgroundColor: colors.cardBackground }]}>
+                            <Text style={[styles.disabledText, { color: colors.textSecondary }]}>
+                                Chat is currently disabled
+                            </Text>
+                        </View>
+                    )}
+                </>
             )}
+
+            {/* Modal Overlay - Appears when keyboard is open */}
+            <Modal
+                isVisible={isKeyboardVisible}
+                style={styles.modalOverlayContainer}
+                animationIn="slideInUp"
+                animationOut="slideOutDown"
+                backdropOpacity={0.5}
+                backdropColor="#000000"
+                onBackdropPress={() => Keyboard.dismiss()}
+                onBackButtonPress={() => Keyboard.dismiss()}
+                avoidKeyboard={true}
+                propagateSwipe={true}
+                swipeDirection="down"
+                onSwipeComplete={() => Keyboard.dismiss()}
+                useNativeDriverForBackdrop={true}
+                hideModalContentWhileAnimating={true}
+            >
+                <View style={styles.chatInputModal}>
+                    {settings?.isChatEnabled !== false && !isBlocked && (
+                        <View style={styles.modalInputContainer}>
+                            <Animated.View style={{ transform: [{ scale: emojiButtonScale }] }}>
+                                <TouchableOpacity
+                                    style={styles.emojiPickerButton}
+                                    onPress={toggleEmojiPicker}
+                                >
+                                    <Smile size={moderateScale(22)} color="#666666" />
+                                </TouchableOpacity>
+                            </Animated.View>
+                            <TextInput
+                                style={[styles.input, {
+                                    backgroundColor: '#F5F5F5',
+                                    color: '#000000',
+                                }]}
+                                placeholder="Type a message..."
+                                placeholderTextColor="#999999"
+                                value={inputText}
+                                onChangeText={handleTextChange}
+                                maxLength={settings?.maxMessageLength || 500}
+                                onSubmitEditing={handleSendMessage}
+                                multiline
+                                autoFocus={true}
+                                editable={isConnected && settings?.isChatEnabled}
+                                returnKeyType="send"
+                                blurOnSubmit={false}
+                            />
+                            <TouchableOpacity
+                                style={[styles.sendButton, {
+                                    backgroundColor: inputText.trim() && isConnected
+                                        ? '#f55473'
+                                        : '#E0E0E0'
+                                }]}
+                                onPress={handleSendMessage}
+                                disabled={!inputText.trim() || !settings?.isChatEnabled || !isConnected}
+                            >
+                                <Send
+                                    size={20}
+                                    color={inputText.trim() && isConnected
+                                        ? '#FFFFFF'
+                                        : '#999999'}
+                                />
+                            </TouchableOpacity>
+                        </View>
+                    )}
+                </View>
+            </Modal>
 
             {/* Emoji Picker */}
             <EmojiPicker
@@ -1027,10 +1086,16 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
 
             {/* Report Message Modal */}
             <Modal
-                visible={showReportModal}
-                transparent
-                animationType="fade"
-                onRequestClose={() => !isReporting && setShowReportModal(false)}
+                isVisible={showReportModal}
+                style={styles.modalOverlay}
+                animationIn="fadeIn"
+                animationOut="fadeOut"
+                backdropOpacity={0.6}
+                backdropColor="#000000"
+                onBackdropPress={() => !isReporting && setShowReportModal(false)}
+                onBackButtonPress={() => !isReporting && setShowReportModal(false)}
+                avoidKeyboard={true}
+                useNativeDriverForBackdrop={true}
             >
                 <KeyboardAvoidingView
                     style={styles.modalOverlay}
@@ -1155,13 +1220,23 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
                     </View>
                 </KeyboardAvoidingView>
             </Modal>
-        </KeyboardAvoidingView>
+            </KeyboardAvoidingView>
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+        position: 'relative',
+    },
+    keyboardOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 1,
     },
     loadingContainer: {
         flex: 1,
@@ -1278,12 +1353,15 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         marginBottom: getSpacing(2),
         width: '100%',
+        flexShrink: 1,
     },
     ownMessageRow: {
         justifyContent: 'flex-end',
+        alignItems: 'flex-end',
     },
     otherMessageRow: {
         justifyContent: 'flex-start',
+        alignItems: 'flex-start',
     },
     avatar: {
         width: 36,
@@ -1307,12 +1385,9 @@ const styles = StyleSheet.create({
         borderRadius: moderateScale(12),
         paddingHorizontal: getSpacing(2),
         paddingVertical: getSpacing(0.8),
-        maxWidth: '100%',
-        // elevation: 1,
-        // shadowColor: '#000',
-        // shadowOffset: { width: 0, height: 1 },
-        // shadowOpacity: 0.08,
-        // shadowRadius: 1,
+        maxWidth: '85%',
+        minWidth: 0,
+        flexShrink: 1,
     },
     replyContainer: {
         borderLeftWidth: 3,
@@ -1355,6 +1430,7 @@ const styles = StyleSheet.create({
         fontSize: safeFont(14, 12),
         lineHeight: safeFont(20, 16),
         letterSpacing: safeLetterSpacing(0.1),
+        flexShrink: 1,
     },
     timestampContainer: {
         flexDirection: 'row',
@@ -1378,8 +1454,9 @@ const styles = StyleSheet.create({
         paddingBottom: getSpacing(1.5),
         alignItems: 'center',
         gap: getSpacing(1.5),
-        // borderTopWidth: 1,
         minHeight: 60,
+        zIndex: 10,
+        position: 'relative',
     },
     input: {
         flex: 1,
@@ -1658,6 +1735,30 @@ const styles = StyleSheet.create({
         fontFamily: getFontFamily('500'),
         textAlign: 'center',
         marginTop: moderateScale(4),
+    },
+    modalOverlayContainer: {
+        justifyContent: 'flex-end',
+        margin: 0,
+    },
+    chatInputModal: {
+        width: '100%',
+        backgroundColor: '#FFFFFF',
+        borderTopLeftRadius: moderateScale(20),
+        borderTopRightRadius: moderateScale(20),
+        paddingTop: getSpacing(2),
+        paddingBottom: getSpacing(2),
+        elevation: 20,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+    },
+    modalInputContainer: {
+        flexDirection: 'row',
+        paddingHorizontal: getSpacing(2),
+        alignItems: 'center',
+        gap: getSpacing(1.5),
+        minHeight: 60,
     },
 });
 
