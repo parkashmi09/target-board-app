@@ -11,17 +11,16 @@ import { Images } from '../../assets/images';
 const OfflineScreen: React.FC = () => {
   const theme = useTheme();
   const { t } = useTranslation();
-  const { checkConnection, isConnected, isInternetReachable } = useNetworkStore();
+  const { checkConnection, isConnected, type } = useNetworkStore();
 
   const handleRetry = async () => {
     await checkConnection();
   };
 
-  // For emulators/dev mode, be very lenient - only show if explicitly disconnected
-  // isInternetReachable can be null on emulators even when connected via adb reverse
-  const isOffline = __DEV__ 
-    ? !isConnected  // In dev, only check isConnected
-    : !isConnected || isInternetReachable === false; // In production, check both
+  // Only show offline screen when BOTH WiFi and mobile data are off (no active connection)
+  // This prevents false positives when device is connected but isInternetReachable is temporarily false
+  // Offline means: no WiFi, no cellular, no ethernet - truly disconnected
+  const isOffline = !isConnected && type === 'none';
   
   if (!isOffline) {
     return null;

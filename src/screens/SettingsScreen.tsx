@@ -91,10 +91,11 @@ const SettingsScreen: React.FC = () => {
     // Add small delay to ensure navigation is ready and fragment is attached
     setTimeout(() => {
       try {
-        if (navigation.isReady()) {
+        // Check if navigation object and navigate method exist
+        if (navigation && typeof navigation.navigate === 'function') {
           navigation.navigate(screenName as never, params as never);
         } else if (__DEV__) {
-          console.warn(`[SettingsScreen] Navigation not ready for ${screenName}`);
+          console.warn(`[SettingsScreen] Navigation not available for ${screenName}`);
         }
       } catch (error) {
         if (__DEV__) {
@@ -284,7 +285,7 @@ const SettingsScreen: React.FC = () => {
           </View> */}
 
           {/* Account Section */}
-          <View style={styles.section}>
+          {/* <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}>
               {t('profile.account') || 'Account'}
             </Text>
@@ -295,7 +296,7 @@ const SettingsScreen: React.FC = () => {
                 setShowDeleteModal(true);
               }
             )}
-          </View>
+          </View> */}
         </ScrollView>
 
         <View style={[styles.footerContainer, { borderTopColor: theme.colors.border }]}>

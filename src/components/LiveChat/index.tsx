@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
     View,
     Text,
@@ -15,8 +15,10 @@ import {
     Keyboard,
     Easing,
     Dimensions,
+    TouchableWithoutFeedback,
 } from 'react-native';
 import Modal from 'react-native-modal';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { Send, Smile, MoreVertical, X, Pin, ChevronDown } from 'lucide-react-native';
 import { Svg, Circle, Path, G } from 'react-native-svg';
 import { useTheme } from '../../theme/theme';
@@ -66,6 +68,8 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
     const [loading, setLoading] = useState(true);
 
     const flatListRef = useRef<FlatList>(null);
+    const hasScrolledToBottom = useRef(false);
+    const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
 
     const [pinnedMessage, setPinnedMessage] = useState<any | null>(null);
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -76,9 +80,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
     const [reportDescription, setReportDescription] = useState('');
     const [isReporting, setIsReporting] = useState(false);
     const [chatTags, setChatTags] = useState<ChatTag[]>([]);
-    const [keyboardHeight, setKeyboardHeight] = useState(0);
     const [isBlocked, setIsBlocked] = useState(false);
-    const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
     const [isLoadingOlderMessages, setIsLoadingOlderMessages] = useState(false);
     const [hasMoreMessages, setHasMoreMessages] = useState(true);
     const [isScrolling, setIsScrolling] = useState(false);
@@ -87,6 +89,31 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
 
     // Animation refs
     const emojiButtonScale = useRef(new Animated.Value(1)).current;
+
+    // Track screen dimensions for orientation changes
+    useEffect(() => {
+        const subscription = Dimensions.addEventListener('change', ({ window }) => {
+            setScreenDimensions(window);
+        });
+        return () => subscription?.remove();
+    }, []);
+
+    // Reset auto-scroll flag when streamId changes (navigating to different stream)
+    useEffect(() => {
+        hasScrolledToBottom.current = false;
+    }, [streamId]);
+
+    // Calculate dynamic keyboard-aware scroll values based on screen dimensions
+    const keyboardAwareValues = useMemo(() => {
+        const { height } = screenDimensions;
+        // Calculate based on screen height percentage for better device compatibility
+        // extraScrollHeight: approximately 35-40% of screen height for keyboard space
+        // extraHeight: approximately 20-25% of screen height for input area
+        return {
+            extraScrollHeight: Math.round(height * 0.35),
+            extraHeight: Math.round(height * 0.22),
+        };
+    }, [screenDimensions.height]);
 
     // Simple JWT Decode to get user ID
     useEffect(() => {
@@ -152,11 +179,32 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
             setPinnedMessage(data.pinnedMessage);
             setIsBlocked(data.isBlocked || false);
             setLoading(false);
-            // Scroll to bottom after messages load
-            setTimeout(() => {
-                flatListRef.current?.scrollToEnd({ animated: false });
-                setIsAtBottom(true);
-            }, 100);
+            
+            // Auto-scroll to bottom when landing on chat screen
+            // Reset the flag to allow auto-scroll on initial load
+            if (recentMessages.length > 0 && !hasScrolledToBottom.current) {
+                // Use requestAnimationFrame and multiple attempts to ensure scroll happens after layout
+                const scrollToBottom = () => {
+                    if (flatListRef.current) {
+                        try {
+                            flatListRef.current.scrollToEnd({ animated: false });
+                            setIsAtBottom(true);
+                        } catch (error) {
+                            console.warn('[LiveChat] Scroll to bottom error:', error);
+                        }
+                    }
+                };
+                
+                // Use requestAnimationFrame for better timing
+                requestAnimationFrame(() => {
+                    setTimeout(scrollToBottom, 50);
+                    setTimeout(scrollToBottom, 200);
+                    setTimeout(() => {
+                        scrollToBottom();
+                        hasScrolledToBottom.current = true;
+                    }, 400);
+                });
+            }
         });
 
         socketService.onMessageReceived((message) => {
@@ -279,35 +327,6 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
         }, 300);
     }, []);
 
-    // Keyboard listeners - react-native-modal handles keyboard automatically with avoidKeyboard prop
-    useEffect(() => {
-        const keyboardWillShow = (e: any) => {
-            const height = e.endCoordinates?.height || 0;
-            setKeyboardHeight(height);
-            setIsKeyboardVisible(true);
-        };
-
-        const keyboardWillHide = () => {
-            setKeyboardHeight(0);
-            setIsKeyboardVisible(false);
-        };
-
-        if (Platform.OS === 'ios') {
-            const showSubscription = Keyboard.addListener('keyboardWillShow', keyboardWillShow);
-            const hideSubscription = Keyboard.addListener('keyboardWillHide', keyboardWillHide);
-            return () => {
-                showSubscription.remove();
-                hideSubscription.remove();
-            };
-        } else {
-            const showSubscription = Keyboard.addListener('keyboardDidShow', keyboardWillShow);
-            const hideSubscription = Keyboard.addListener('keyboardDidHide', keyboardWillHide);
-            return () => {
-                showSubscription.remove();
-                hideSubscription.remove();
-            };
-        }
-    }, []);
 
 
     const handleEmojiSelect = useCallback((emojiObject: EmojiType) => {
@@ -846,21 +865,21 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
     }
 
     return (
-        <View style={[styles.container, { backgroundColor: '#F5F5F5' }]}>
-            
-            <KeyboardAvoidingView
-                style={{ flex: 1 }}
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
-                enabled={true}
-            >
-
-
-
-
+        <KeyboardAwareScrollView
+            style={[styles.container, { backgroundColor: '#F5F5F5' }]}
+            contentContainerStyle={{ flexGrow: 1 }}
+            enableOnAndroid={true}
+            enableAutomaticScroll={true}
+            extraScrollHeight={keyboardAwareValues.extraScrollHeight}
+            extraHeight={keyboardAwareValues.extraHeight}
+            keyboardOpeningTime={0}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+        >
             {/* Messages List */}
             <View style={styles.messagesContainer}>
                 <FlatList
+                    nestedScrollEnabled={true}
                     ref={flatListRef}
                     data={messages}
                     renderItem={renderMessage}
@@ -876,6 +895,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
                     onScrollEndDrag={handleScrollEndDrag}
                     onMomentumScrollEnd={handleScrollEndDrag}
                     scrollEventThrottle={16}
+                    keyboardShouldPersistTaps="handled"
                     // Removed onContentSizeChange auto-scroll - user controls scrolling manually
                     onScrollToIndexFailed={(info) => {
                         // Fallback: scroll to end if index not found
@@ -903,23 +923,59 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
                             </Text>
                         </View>
                     }
-                />
-                
-                {/* Scroll to bottom button - show when not at bottom */}
-                {!isAtBottom && messages.length > 0 && (
-                    <TouchableOpacity
-                        style={styles.scrollToBottomButton}
-                        onPress={scrollToBottom}
-                        activeOpacity={0.8}
-                    >
-                        <ChevronDown size={moderateScale(20)} color="#FFFFFF" />
-                    </TouchableOpacity>
-                )}
-            </View>
+                    onLayout={() => {
+                        // Scroll to bottom when layout is ready (only first time when landing on screen)
+                        if (!hasScrolledToBottom.current && messages.length > 0) {
+                            requestAnimationFrame(() => {
+                                setTimeout(() => {
+                                    if (flatListRef.current) {
+                                        try {
+                                            flatListRef.current.scrollToEnd({ animated: false });
+                                            setIsAtBottom(true);
+                                            hasScrolledToBottom.current = true;
+                                        } catch (error) {
+                                            console.warn('[LiveChat] onLayout scroll error:', error);
+                                        }
+                                    }
+                                }, 150);
+                            });
+                        }
+                    }}
+                    onContentSizeChange={() => {
+                        // Scroll to bottom when content size changes (only first time when landing on screen)
+                        if (!hasScrolledToBottom.current && messages.length > 0) {
+                            requestAnimationFrame(() => {
+                                setTimeout(() => {
+                                    if (flatListRef.current) {
+                                        try {
+                                            flatListRef.current.scrollToEnd({ animated: false });
+                                            setIsAtBottom(true);
+                                            hasScrolledToBottom.current = true;
+                                        } catch (error) {
+                                            console.warn('[LiveChat] onContentSizeChange scroll error:', error);
+                                        }
+                                    }
+                                }, 100);
+                            });
+                        }
+                    }}
+                            />
+                            
+                            {/* Scroll to bottom button - show when not at bottom */}
+                            {!isAtBottom && messages.length > 0 && (
+                                <TouchableOpacity
+                                    style={styles.scrollToBottomButton}
+                                    onPress={scrollToBottom}
+                                    activeOpacity={0.8}
+                                >
+                                    <ChevronDown size={moderateScale(20)} color="#FFFFFF" />
+                                </TouchableOpacity>
+                            )}
+                        </View>
 
-            {/* Suggested Reply Buttons */}
-            {!isBlocked && chatTags.length > 0 && !inputText && (
-                <View style={styles.suggestedRepliesContainer}>
+                    {/* Suggested Reply Buttons */}
+                    {!isBlocked && chatTags.length > 0 && !inputText && (
+                        <View style={styles.suggestedRepliesContainer}>
                     <ScrollView
                         horizontal
                         showsHorizontalScrollIndicator={false}
@@ -941,10 +997,8 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
                 </View>
             )}
 
-            {/* Input Area - Normal state (when keyboard is closed) */}
-            {!isKeyboardVisible && (
-                <>
-                    {isBlocked ? (
+            {/* Input Area - Always visible */}
+            {isBlocked ? (
                         <View style={[styles.blockedContainer, {
                             backgroundColor: '#f55473',
                         }]}>
@@ -1008,74 +1062,6 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
                             </Text>
                         </View>
                     )}
-                </>
-            )}
-
-            {/* Modal Overlay - Appears when keyboard is open */}
-            <Modal
-                isVisible={isKeyboardVisible}
-                style={styles.modalOverlayContainer}
-                animationIn="slideInUp"
-                animationOut="slideOutDown"
-                backdropOpacity={0.5}
-                backdropColor="#000000"
-                onBackdropPress={() => Keyboard.dismiss()}
-                onBackButtonPress={() => Keyboard.dismiss()}
-                avoidKeyboard={true}
-                propagateSwipe={true}
-                swipeDirection="down"
-                onSwipeComplete={() => Keyboard.dismiss()}
-                useNativeDriverForBackdrop={true}
-                hideModalContentWhileAnimating={true}
-            >
-                <View style={styles.chatInputModal}>
-                    {settings?.isChatEnabled !== false && !isBlocked && (
-                        <View style={styles.modalInputContainer}>
-                            <Animated.View style={{ transform: [{ scale: emojiButtonScale }] }}>
-                                <TouchableOpacity
-                                    style={styles.emojiPickerButton}
-                                    onPress={toggleEmojiPicker}
-                                >
-                                    <Smile size={moderateScale(22)} color="#666666" />
-                                </TouchableOpacity>
-                            </Animated.View>
-                            <TextInput
-                                style={[styles.input, {
-                                    backgroundColor: '#F5F5F5',
-                                    color: '#000000',
-                                }]}
-                                placeholder="Type a message..."
-                                placeholderTextColor="#999999"
-                                value={inputText}
-                                onChangeText={handleTextChange}
-                                maxLength={settings?.maxMessageLength || 500}
-                                onSubmitEditing={handleSendMessage}
-                                multiline
-                                autoFocus={true}
-                                editable={isConnected && settings?.isChatEnabled}
-                                returnKeyType="send"
-                                blurOnSubmit={false}
-                            />
-                            <TouchableOpacity
-                                style={[styles.sendButton, {
-                                    backgroundColor: inputText.trim() && isConnected
-                                        ? '#f55473'
-                                        : '#E0E0E0'
-                                }]}
-                                onPress={handleSendMessage}
-                                disabled={!inputText.trim() || !settings?.isChatEnabled || !isConnected}
-                            >
-                                <Send
-                                    size={20}
-                                    color={inputText.trim() && isConnected
-                                        ? '#FFFFFF'
-                                        : '#999999'}
-                                />
-                            </TouchableOpacity>
-                        </View>
-                    )}
-                </View>
-            </Modal>
 
             {/* Emoji Picker */}
             <EmojiPicker
@@ -1085,7 +1071,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
             />
 
             {/* Report Message Modal */}
-            <Modal
+                    <Modal
                 isVisible={showReportModal}
                 style={styles.modalOverlay}
                 animationIn="fadeIn"
@@ -1220,8 +1206,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
                     </View>
                 </KeyboardAvoidingView>
             </Modal>
-            </KeyboardAvoidingView>
-        </View>
+        </KeyboardAwareScrollView>
     );
 };
 
@@ -1229,14 +1214,6 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         position: 'relative',
-    },
-    keyboardOverlay: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        zIndex: 1,
     },
     loadingContainer: {
         flex: 1,
@@ -1735,30 +1712,6 @@ const styles = StyleSheet.create({
         fontFamily: getFontFamily('500'),
         textAlign: 'center',
         marginTop: moderateScale(4),
-    },
-    modalOverlayContainer: {
-        justifyContent: 'flex-end',
-        margin: 0,
-    },
-    chatInputModal: {
-        width: '100%',
-        backgroundColor: '#FFFFFF',
-        borderTopLeftRadius: moderateScale(20),
-        borderTopRightRadius: moderateScale(20),
-        paddingTop: getSpacing(2),
-        paddingBottom: getSpacing(2),
-        elevation: 20,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: -4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-    },
-    modalInputContainer: {
-        flexDirection: 'row',
-        paddingHorizontal: getSpacing(2),
-        alignItems: 'center',
-        gap: getSpacing(1.5),
-        minHeight: 60,
     },
 });
 

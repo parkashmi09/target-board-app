@@ -62,15 +62,14 @@ function AppContent() {
   const [showUpdateAlert, setShowUpdateAlert] = useState(false);
   const [versionInfo, setVersionInfo] = useState<VersionInfo | null>(null);
   const { isLoggedIn, checkAuthStatus } = useAuthStore();
-  const { initialize: initializeNetwork, isConnected, isInternetReachable } = useNetworkStore();
+  const { initialize: initializeNetwork, isConnected, type, isWifi, isCellular, isEthernet } = useNetworkStore();
   const navigationRef = useRef<NavigationContainerRef<any>>(null);
   
   // Check if app is offline
-  // In dev mode (emulator), be very lenient - only show offline if explicitly disconnected
-  // Emulators with ADB reverse may report isInternetReachable as null but still work
-  const isOffline = __DEV__ 
-    ? !isConnected  // In dev, only check isConnected
-    : !isConnected || isInternetReachable === false; // In production, check both
+  // Only show offline UI when BOTH WiFi and mobile data are off (no active connection)
+  // This prevents false positives when device is connected but isInternetReachable is temporarily false
+  // Offline means: no WiFi, no cellular, no ethernet - truly disconnected
+  const isOffline = !isConnected && type === 'none';
 
   // Firebase Cloud Messaging Setup
   useEffect(() => {

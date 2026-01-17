@@ -9,7 +9,7 @@ import SVGIcon from '../SVGIcon';
 const NetworkBanner: React.FC = () => {
   const theme = useTheme();
   const { t } = useTranslation();
-  const { isConnected, isInternetReachable, checkConnection } = useNetworkStore();
+  const { isConnected, type, checkConnection } = useNetworkStore();
   const slideAnim = React.useRef(new Animated.Value(-100)).current;
 
   // Check connection status periodically
@@ -21,11 +21,10 @@ const NetworkBanner: React.FC = () => {
     return () => clearInterval(interval);
   }, [checkConnection]);
 
-  // For emulators/dev mode, be very lenient - only show banner if explicitly disconnected
-  // isInternetReachable can be null on emulators even when connected via adb reverse
-  const isOffline = __DEV__ 
-    ? !isConnected  // In dev, only check isConnected
-    : !isConnected || isInternetReachable === false; // In production, check both
+  // Only show offline banner when BOTH WiFi and mobile data are off (no active connection)
+  // This prevents false positives when device is connected but isInternetReachable is temporarily false
+  // Offline means: no WiFi, no cellular, no ethernet - truly disconnected
+  const isOffline = !isConnected && type === 'none';
 
   useEffect(() => {
     if (isOffline) {

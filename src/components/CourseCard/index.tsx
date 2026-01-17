@@ -65,7 +65,7 @@ const CourseCard: React.FC<CourseCardProps> = React.memo(
     // Calculate banner height based on actual card width (16:9 aspect ratio)
     const bannerHeight = useMemo(() => {
       if (cardWidth) {
-        return cardWidth * (9 / 16);
+        return cardWidth * (8 / 16);
       }
       // Fallback calculation using window width
       const windowWidth = Dimensions.get('window').width;
@@ -128,14 +128,14 @@ const CourseCard: React.FC<CourseCardProps> = React.memo(
       setIsProcessingPayment(true);
       const selectedPackage = course?.packages?.find((pkg: any) => pkg._id === selectedPackageId);
       const packagePrice = selectedPackage?.price || currentPrice;
-      
+
       navigation.navigate('PaymentCheckout', {
         courseId: String(courseId),
         packageId: selectedPackageId,
         originalPrice,
         currentPrice: packagePrice,
       });
-      
+
       setShowModal(false);
       setIsProcessingPayment(false);
     }, [courseId, selectedPackageId, course, originalPrice, currentPrice, navigation]);
@@ -150,15 +150,15 @@ const CourseCard: React.FC<CourseCardProps> = React.memo(
 
     const handleContentPress = useCallback(() => {
       if (courseId) {
-        navigation.navigate('Categories', { 
-          courseId: String(courseId), 
-          courseName: title 
+        navigation.navigate('Categories', {
+          courseId: String(courseId),
+          courseName: title
         });
       }
     }, [courseId, navigation, title]);
 
     return (
-      <View 
+      <View
         ref={cardRef}
         style={styles.card}
         onLayout={handleCardLayout}
@@ -187,22 +187,22 @@ const CourseCard: React.FC<CourseCardProps> = React.memo(
               {title}
             </Text>
 
-         <View style={styles.priceContainer}>
-         <View style={styles.priceRow}>
-              <Text style={[styles.currentPrice, { color: '#1A1A1A' }]}>₹ {currentPrice}</Text>
-              <Text style={[styles.originalPrice, { color: '#666666' }]}>₹ {originalPrice}</Text>
-              {batchType && <Text style={[styles.batchType, { color: '#666666' }]}>({batchType})</Text>}
-            </View>
-
-            {discount ? (
-              <View style={styles.discount}>
-                <Text style={styles.discountText}>
-                  Discount of {discount}% applied
-                </Text>
+            <View style={styles.priceContainer}>
+              <View style={styles.priceRow}>
+                <Text style={[styles.currentPrice, { color: '#1A1A1A' }]}>₹ {currentPrice}</Text>
+                <Text style={[styles.originalPrice, { color: '#666666' }]}>₹ {originalPrice}</Text>
+                {batchType && <Text style={[styles.batchType, { color: '#666666' }]}>({batchType})</Text>}
               </View>
-            ) : null}
 
-         </View>
+              {discount ? (
+                <View style={styles.discount}>
+                  <Text style={styles.discountText}>
+                    Discount of {discount}% applied
+                  </Text>
+                </View>
+              ) : null}
+
+            </View>
             <View style={styles.actions}>
               {purchased ? (
                 <>
@@ -280,6 +280,7 @@ const styles = StyleSheet.create({
   image: {
     width: '100%',
     height: '100%',
+    resizeMode: 'contain',
   },
   details: {
     padding: getSpacing(1),
