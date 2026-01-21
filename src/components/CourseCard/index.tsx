@@ -65,7 +65,7 @@ const CourseCard: React.FC<CourseCardProps> = React.memo(
     // Calculate banner height based on actual card width (16:9 aspect ratio)
     const bannerHeight = useMemo(() => {
       if (cardWidth) {
-        return cardWidth * (8 / 16);
+        return cardWidth * (9 / 16);
       }
       // Fallback calculation using window width
       const windowWidth = Dimensions.get('window').width;
@@ -263,12 +263,11 @@ const CourseCard: React.FC<CourseCardProps> = React.memo(
 
 const styles = StyleSheet.create({
   card: {
-    width: '95%', // Use full width of container
-    maxWidth: '100%', // Prevent stretching beyond container
+    width: '95%',
+    maxWidth: '100%',
     borderRadius: moderateScale(16),
     overflow: 'hidden',
-    // minHeight: moderateScale(200),
-    alignSelf: 'stretch', // Prevent stretching
+    alignSelf: 'stretch',
   },
   content: {
     position: 'relative',
@@ -276,11 +275,11 @@ const styles = StyleSheet.create({
   },
   banner: {
     width: '100%',
+    overflow: 'hidden',
   },
   image: {
     width: '100%',
     height: '100%',
-    resizeMode: 'contain',
   },
   details: {
     padding: getSpacing(1),
@@ -293,7 +292,6 @@ const styles = StyleSheet.create({
   priceContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    // justifyContent: 'space-between',
     gap: getSpacing(1),
   },
   priceRow: {

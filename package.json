@@ -1,6 +1,6 @@
 {
   "name": "TargetBoard",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": true,
   "scripts": {
     "android": "react-native run-android",
@@ -13,8 +13,10 @@
     "adb:setup-all": "bash scripts/adb-reverse-all.sh",
     "adb:clean": "bash scripts/adb-clean-install.sh",
     "adb:freespace": "bash scripts/adb-free-space.sh",
+    "adb:fix": "bash scripts/adb-fix-package-service.sh",
     "android:clean": "bash scripts/adb-clean-install.sh && react-native run-android",
-    "android:freespace": "bash scripts/adb-free-space.sh && react-native run-android"
+    "android:freespace": "bash scripts/adb-free-space.sh && react-native run-android",
+    "android:fix": "bash scripts/adb-fix-package-service.sh && react-native run-android"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.2.0",
@@ -38,6 +40,7 @@
     "react-native-gesture-handler": "^2.18.1",
     "react-native-image-picker": "^7.2.3",
     "react-native-keyboard-aware-scroll-view": "^0.9.5",
+    "react-native-linear-gradient": "^2.8.3",
     "react-native-localize": "^3.2.1",
     "react-native-modal": "^14.0.0-rc.1",
     "react-native-orientation-locker": "^1.7.0",

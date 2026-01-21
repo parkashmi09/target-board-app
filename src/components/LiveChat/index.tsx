@@ -68,7 +68,9 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
     const [loading, setLoading] = useState(true);
 
     const flatListRef = useRef<FlatList>(null);
+    const inputRef = useRef<TextInput>(null);
     const hasScrolledToBottom = useRef(false);
+    const hasAutoFocused = useRef(false);
     const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
 
     const [pinnedMessage, setPinnedMessage] = useState<any | null>(null);
@@ -101,7 +103,28 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
     // Reset auto-scroll flag when streamId changes (navigating to different stream)
     useEffect(() => {
         hasScrolledToBottom.current = false;
+        hasAutoFocused.current = false;
     }, [streamId]);
+
+    // Auto-focus input when component is ready (backup to onJoinedRoom handler)
+    useEffect(() => {
+        if (!loading && messages.length > 0 && isConnected && !hasAutoFocused.current) {
+            // Check if scroll has completed, then focus
+            const checkAndFocus = () => {
+                if (hasScrolledToBottom.current && inputRef.current && !isBlocked && settings?.isChatEnabled !== false) {
+                    inputRef.current.focus();
+                    hasAutoFocused.current = true;
+                } else if (!hasScrolledToBottom.current) {
+                    // Retry after a delay if scroll hasn't completed yet
+                    setTimeout(checkAndFocus, 200);
+                }
+            };
+            
+            const timer = setTimeout(checkAndFocus, 800);
+            
+            return () => clearTimeout(timer);
+        }
+    }, [loading, messages.length, isConnected, isBlocked, settings?.isChatEnabled]);
 
     // Calculate dynamic keyboard-aware scroll values based on screen dimensions
     const keyboardAwareValues = useMemo(() => {
@@ -189,20 +212,28 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
                         try {
                             flatListRef.current.scrollToEnd({ animated: false });
                             setIsAtBottom(true);
+                            hasScrolledToBottom.current = true;
                         } catch (error) {
                             console.warn('[LiveChat] Scroll to bottom error:', error);
                         }
                     }
                 };
                 
-                // Use requestAnimationFrame for better timing
+                // Use requestAnimationFrame for better timing with multiple attempts for reliability
                 requestAnimationFrame(() => {
-                    setTimeout(scrollToBottom, 50);
-                    setTimeout(scrollToBottom, 200);
+                    setTimeout(scrollToBottom, 100);
+                    setTimeout(scrollToBottom, 300);
+                    setTimeout(scrollToBottom, 500);
                     setTimeout(() => {
                         scrollToBottom();
-                        hasScrolledToBottom.current = true;
-                    }, 400);
+                        // Auto-focus input after scroll completes
+                        setTimeout(() => {
+                            if (inputRef.current && !data.isBlocked && data.settings?.isChatEnabled !== false) {
+                                inputRef.current.focus();
+                                hasAutoFocused.current = true;
+                            }
+                        }, 200);
+                    }, 700);
                 });
             }
         });
@@ -875,6 +906,8 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
             keyboardOpeningTime={0}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
+            enableResetScrollToCoords={false}
+            resetScrollToCoords={{ x: 0, y: 0 }}
         >
             {/* Messages List */}
             <View style={styles.messagesContainer}>
@@ -1023,6 +1056,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ streamId, token, onClose, streamTit
                                 </TouchableOpacity>
                             </Animated.View>
                             <TextInput
+                                ref={inputRef}
                                 style={[styles.input, {
                                     backgroundColor: '#F5F5F5',
                                     color: '#000000',

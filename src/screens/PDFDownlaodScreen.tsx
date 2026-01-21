@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, ActivityIndicator, Alert, Platform, PermissionsAndroid, Dimensions } from 'react-native';
 import Pdf from 'react-native-pdf';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -27,6 +27,33 @@ const PDFDownloadScreen: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(0);
   const pdfRef = useRef<any>(null);
   const toast = useToast();
+  
+  // CRITICAL FIX: Prevent double-close crashes and state updates after unmount
+  const mounted = useRef(true);
+  const isClosed = useRef(false);
+
+  useEffect(() => {
+    mounted.current = true;
+    isClosed.current = false;
+    
+    return () => {
+      // Cleanup: Mark as unmounted and closed
+      mounted.current = false;
+      isClosed.current = true;
+      
+      // Safely close PDF if ref exists and not already closed
+      try {
+        if (pdfRef.current && !isClosed.current) {
+          // The PDF library will handle cleanup, but we prevent double-close
+          isClosed.current = true;
+        }
+      } catch (error) {
+        if (__DEV__) {
+          console.warn('[PDFDownload] Error during cleanup:', error);
+        }
+      }
+    };
+  }, []);
 
   // Validate required params
   if (!url) {
@@ -36,7 +63,7 @@ const PDFDownloadScreen: React.FC = () => {
           <ScreenHeader 
             title="PDF Viewer" 
             showSearch={false}
-            onBackPress={() => navigation.goBack()}
+            // onBackPress={() => navigation.goBack()}
           />
           <View style={styles.errorContainer}>
             <Text style={[styles.errorText, { color: theme.colors.error || 'red' }]}>
@@ -52,40 +79,55 @@ const PDFDownloadScreen: React.FC = () => {
   }
 
   const handleAddToDownloads = async () => {
-    if (!contentId || savingToDownloads || isInDownloads) return;
+    if (!contentId || savingToDownloads || isInDownloads || !mounted.current) return;
 
     try {
-      setSavingToDownloads(true);
+      if (mounted.current) {
+        setSavingToDownloads(true);
+      }
       await addDownload(contentId);
-      setIsInDownloads(true);
-      toast.show({ text: 'Added to downloads', type: 'success' });
-    } catch (error: any) {
-      if (error.status === 409) {
+      if (mounted.current) {
         setIsInDownloads(true);
-        toast.show({ text: 'Already in downloads', type: 'info' });
-      } else {
-        toast.show({ text: error.message || 'Failed to add to downloads', type: 'error' });
+        toast.show({ text: 'Added to downloads', type: 'success' });
+      }
+    } catch (error: any) {
+      if (mounted.current) {
+        if (error.status === 409) {
+          setIsInDownloads(true);
+          toast.show({ text: 'Already in downloads', type: 'info' });
+        } else {
+          toast.show({ text: error.message || 'Failed to add to downloads', type: 'error' });
+        }
       }
     } finally {
-      setSavingToDownloads(false);
+      if (mounted.current) {
+        setSavingToDownloads(false);
+      }
     }
   };
 
   const handleDownload = async () => {
-    if (downloading) return;
+    if (downloading || !mounted.current) return;
 
     try {
-      setDownloading(true);
+      if (mounted.current) {
+        setDownloading(true);
+      }
 
       // Call download API first if contentId is available
-      if (contentId) {
+      if (contentId && mounted.current) {
         try {
           await addDownload(contentId);
-          setIsInDownloads(true);
+          if (mounted.current) {
+            setIsInDownloads(true);
+          }
         } catch (apiError: any) {
           // If already downloaded (409), that's okay - continue with file download
-          if (apiError.status === 409) {
+          if (mounted.current && apiError.status === 409) {
             setIsInDownloads(true);
+          } else if (!mounted.current) {
+            // Component unmounted, stop processing
+            return;
           } else {
             // Log error but continue with file download
             console.warn('Failed to add to downloads API:', apiError);
@@ -132,29 +174,37 @@ const PDFDownloadScreen: React.FC = () => {
       })
         .fetch('GET', url)
         .then((res) => {
-          Alert.alert('Success', `File downloaded to ${res.path()}`);
-          if (Platform.OS === 'ios') {
-            ReactNativeBlobUtil.ios.previewDocument(res.path());
-          }
-          if (contentId) {
-            toast.show({ text: 'PDF downloaded and added to downloads', type: 'success' });
-          } else {
-            toast.show({ text: 'PDF downloaded successfully', type: 'success' });
+          if (mounted.current) {
+            Alert.alert('Success', `File downloaded to ${res.path()}`);
+            if (Platform.OS === 'ios') {
+              ReactNativeBlobUtil.ios.previewDocument(res.path());
+            }
+            if (contentId) {
+              toast.show({ text: 'PDF downloaded and added to downloads', type: 'success' });
+            } else {
+              toast.show({ text: 'PDF downloaded successfully', type: 'success' });
+            }
           }
         })
         .catch((err) => {
           console.error(err);
-          Alert.alert('Error', 'Failed to download file');
-          toast.show({ text: 'Failed to download PDF', type: 'error' });
+          if (mounted.current) {
+            Alert.alert('Error', 'Failed to download file');
+            toast.show({ text: 'Failed to download PDF', type: 'error' });
+          }
         })
         .finally(() => {
-          setDownloading(false);
+          if (mounted.current) {
+            setDownloading(false);
+          }
         });
 
     } catch (error) {
       console.error(error);
-      Alert.alert('Error', 'An unexpected error occurred');
-      setDownloading(false);
+      if (mounted.current) {
+        Alert.alert('Error', 'An unexpected error occurred');
+        setDownloading(false);
+      }
     }
   };
 
@@ -202,7 +252,7 @@ const PDFDownloadScreen: React.FC = () => {
         <ScreenHeader 
           title={title || 'PDF Viewer'} 
           showSearch={false}
-          onBackPress={() => navigation.goBack()}
+          // onBackPress={() => navigation.goBack()}
           rightComponent={rightComponent}
         />
 
@@ -213,24 +263,33 @@ const PDFDownloadScreen: React.FC = () => {
             onLoadComplete={(numberOfPages, filePath, { width, height }) => {
               console.log(`Number of pages: ${numberOfPages}`);
               console.log(`File path: ${filePath}`);
-              setNumberOfPages(numberOfPages);
-              setLoading(false);
+              // Only update state if component is still mounted
+              if (mounted.current) {
+                setNumberOfPages(numberOfPages);
+                setLoading(false);
+              }
             }}
             onPageChanged={(page, numberOfPages) => {
               console.log(`Current page: ${page}`);
-              setCurrentPage(page);
+              // Only update state if component is still mounted
+              if (mounted.current) {
+                setCurrentPage(page);
+              }
             }}
             onError={(error) => {
               console.error('PDF error:', error);
-              setLoading(false);
-              Alert.alert(
-                'Error',
-                'Failed to load PDF. You can download it using the download button.',
-                [
-                  { text: 'OK', onPress: () => {} },
-                  { text: 'Download', onPress: handleDownload }
-                ]
-              );
+              // Only update state if component is still mounted
+              if (mounted.current) {
+                setLoading(false);
+                Alert.alert(
+                  'Error',
+                  'Failed to load PDF. You can download it using the download button.',
+                  [
+                    { text: 'OK', onPress: () => {} },
+                    { text: 'Download', onPress: handleDownload }
+                  ]
+                );
+              }
             }}
             onPressLink={(uri) => {
               console.log(`Link pressed: ${uri}`);

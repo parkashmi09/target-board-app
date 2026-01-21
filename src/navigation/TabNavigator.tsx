@@ -2,6 +2,7 @@ import React, { useMemo, useCallback } from 'react';
 import { View, Image, StyleSheet, Platform, TouchableOpacity, Text } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useTranslation } from 'react-i18next';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/theme';
 import { moderateScale, getSpacing } from '../utils/responsive';
 import { getFontFamily } from '../utils/fonts';
@@ -104,6 +105,7 @@ const TabNavigator: React.FC = () => {
   const theme = useTheme();
   const { t } = useTranslation();
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
 
   // Memoize getTabBarStyle to prevent unnecessary recalculations
   const getTabBarStyle = useCallback((route: any) => {
@@ -122,12 +124,16 @@ const TabNavigator: React.FC = () => {
     
     const isStreamPlayer = focusedRouteName === 'StreamPlayer';
     
+    // Calculate dynamic bottom spacing: safe area inset + base spacing
+    const dynamicBottomSpacing = Math.max(insets.bottom, getSpacing(2));
+    const dynamicHorizontalSpacing = getSpacing(2);
+
     if (isStreamPlayer) {
       return {
         position: 'absolute' as const,
-        bottom: getSpacing(2),
-        left: getSpacing(2),
-        right: getSpacing(2),
+        bottom: dynamicBottomSpacing,
+        left: dynamicHorizontalSpacing,
+        right: dynamicHorizontalSpacing,
         height: 0,
         opacity: 0,
         pointerEvents: 'none' as const,
@@ -136,9 +142,9 @@ const TabNavigator: React.FC = () => {
     
     return {
       position: 'absolute' as const,
-      bottom: getSpacing(2),
-      left: getSpacing(2),
-      right: getSpacing(2),
+      bottom: dynamicBottomSpacing,
+      left: dynamicHorizontalSpacing,
+      right: dynamicHorizontalSpacing,
       backgroundColor: theme.isDark ? theme.colors.cardBackground : '#FFFFFF',
       borderRadius: moderateScale(20),
       height: moderateScale(70),
@@ -153,7 +159,7 @@ const TabNavigator: React.FC = () => {
       paddingBottom: 0,
       ...styles.shadow,
     };
-  }, [theme.isDark, theme.colors.cardBackground]);
+  }, [theme.isDark, theme.colors.cardBackground, insets.bottom]);
 
   // Memoize handleTabPress to prevent recreation on every render
   const handleTabPress = useCallback((tabName: string, initialScreen?: string) => {

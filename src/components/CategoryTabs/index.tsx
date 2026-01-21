@@ -1,11 +1,10 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, Image, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../theme/theme';
 import { moderateScale, getSpacing } from '../../utils/responsive';
 import { getFontFamily } from '../../utils/fonts';
 import SVGIcon from '../SVGIcon';
-import { Images } from '../../assets/images';
 import LottieView from 'lottie-react-native';
 import liveAnimation from '../../assets/lotties/live.json';
 
@@ -24,7 +23,7 @@ interface TabConfig {
 const CategoryTabs: React.FC<CategoryTabsProps> = () => {
   const theme = useTheme();
   const navigation = useNavigation<any>();
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const blinkAnim = useRef(new Animated.Value(1)).current;
 
   // Handle tab press and navigate to corresponding screen
   const handleTabPress = (tabId: CategoryTab) => {
@@ -44,25 +43,25 @@ const CategoryTabs: React.FC<CategoryTabsProps> = () => {
     }
   };
 
-  // Pulse animation for NEW badge
+  // Blinking animation for green live indicator
   useEffect(() => {
-    const pulseAnimation = Animated.loop(
+    const blinkAnimation = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1.15,
-          duration: 800,
+        Animated.timing(blinkAnim, {
+          toValue: 0.3,
+          duration: 1000,
           useNativeDriver: true,
         }),
-        Animated.timing(pulseAnim, {
+        Animated.timing(blinkAnim, {
           toValue: 1,
-          duration: 800,
+          duration: 1000,
           useNativeDriver: true,
         }),
       ])
     );
-    pulseAnimation.start();
-    return () => pulseAnimation.stop();
-  }, [pulseAnim]);
+    blinkAnimation.start();
+    return () => blinkAnimation.stop();
+  }, [blinkAnim]);
 
   const tabs: TabConfig[] = [
     {
@@ -180,17 +179,13 @@ const CategoryTabs: React.FC<CategoryTabsProps> = () => {
             {tab.id === 'live' && (
               <Animated.View
                 style={[
-                  styles.newBadge,
+                  styles.liveIndicator,
                   {
-                    transform: [{ scale: pulseAnim }],
+                    opacity: blinkAnim,
                   },
                 ]}
               >
-                <Image
-                  source={Images.NEW_BADGE}
-                  style={styles.newBadgeImage}
-                  resizeMode="contain"
-                />
+                <View style={styles.liveDot} />
               </Animated.View>
             )}
           </TouchableOpacity>
@@ -237,17 +232,17 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
     zIndex: 1,
   },
-  newBadge: {
+  liveIndicator: {
     position: 'absolute',
-    top: moderateScale(-4),
-    right: moderateScale(-4),
-    alignItems: 'center',
-    justifyContent: 'center',
+    top: moderateScale(8),
+    right: moderateScale(8),
     zIndex: 10,
   },
-  newBadgeImage: {
-    width: moderateScale(36),
-    height: moderateScale(36),
+  liveDot: {
+    width: moderateScale(10),
+    height: moderateScale(10),
+    borderRadius: moderateScale(5),
+    backgroundColor: '#10B981', // Green color
   },
 });
 

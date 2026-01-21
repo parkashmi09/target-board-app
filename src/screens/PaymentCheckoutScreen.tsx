@@ -31,6 +31,16 @@ import GradientBackground from '../components/GradientBackground';
 import CourseVideoPlayer from '../components/CourseVideoPlayer';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+// Helper function to format currency values (fixes floating-point precision issues)
+const formatCurrency = (value: number | null | undefined): string => {
+  if (value === null || value === undefined || isNaN(value)) {
+    return '0.00';
+  }
+  // Round to 2 decimal places to fix floating-point precision issues
+  const rounded = Math.round(value * 100) / 100;
+  return rounded.toFixed(2);
+};
+
 const PaymentCheckoutScreen: React.FC = () => {
   const theme = useTheme();
   const navigation = useNavigation<any>();
@@ -484,11 +494,11 @@ const PaymentCheckoutScreen: React.FC = () => {
 
           {/* Prominent Price Display */}
           <View style={styles.mainPriceContainer}>
-            <Text style={[styles.mainPrice, { color: textColor }]}>₹{finalPrice}</Text>
+            <Text style={[styles.mainPrice, { color: textColor }]}>₹{formatCurrency(finalPrice)}</Text>
             {appliedPromoCode && (
               <View style={styles.promoAppliedContainer}>
                 <Text style={[styles.promoAppliedText, { color: '#10B981' }]}>
-                  Promo {appliedPromoCode} applied! Saved ₹{discountAmount}
+                  Promo {appliedPromoCode} applied! Saved ₹{formatCurrency(discountAmount)}
                 </Text>
               </View>
             )}
@@ -504,12 +514,12 @@ const PaymentCheckoutScreen: React.FC = () => {
             {appliedPromoCode && discountAmount > 0 && (
               <View style={styles.detailRow}>
                 <Text style={[styles.detailLabel, { color: '#10B981' }]}>Promo Discount ({appliedPromoCode})</Text>
-                <Text style={[styles.detailValue, { color: '#10B981' }]}>-₹{discountAmount}</Text>
+                <Text style={[styles.detailValue, { color: '#10B981' }]}>-₹{formatCurrency(discountAmount)}</Text>
               </View>
             )}
             <View style={styles.detailRow}>
               <Text style={[styles.detailLabel, { color: '#10B981' }]}>Total Discount</Text>
-              <Text style={[styles.detailValue, { color: '#10B981' }]}>-₹{totalDiscount}</Text>
+              <Text style={[styles.detailValue, { color: '#10B981' }]}>-₹{formatCurrency(totalDiscount)}</Text>
             </View>
 
             <View style={styles.detailRow}>
@@ -524,7 +534,7 @@ const PaymentCheckoutScreen: React.FC = () => {
 
             <View style={styles.detailRow}>
               <Text style={[styles.detailLabel, { color: secondaryTextColor }]}>Savings</Text>
-              <Text style={[styles.detailValueDark, { color: textColor }]}>₹{totalDiscount}</Text>
+              <Text style={[styles.detailValueDark, { color: textColor }]}>₹{formatCurrency(totalDiscount)}</Text>
             </View>
           </View>
         </View>
@@ -744,7 +754,7 @@ const PaymentCheckoutScreen: React.FC = () => {
           {/* Price Section */}
           <View style={styles.priceSection}>
             <View style={styles.priceRow}>
-              <Text style={[styles.bottomPrice, { color: textColor }]}>₹{finalPrice}</Text>
+              <Text style={[styles.bottomPrice, { color: textColor }]}>₹{formatCurrency(finalPrice)}</Text>
               {discount > 0 && (
                 <View style={styles.discountBadge}>
                   <Text style={styles.discountBadgeText}>{discount}% OFF</Text>

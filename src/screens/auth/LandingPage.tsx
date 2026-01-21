@@ -9,19 +9,18 @@ import {
   ScrollView,
   Platform,
   Dimensions,
-  Animated,
-  Keyboard,
   KeyboardAvoidingView,
+  Animated,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import LinearGradient from 'react-native-linear-gradient'; // or 'expo-linear-gradient'
 import { Images } from '../../assets/images';
 import { sendOtp } from '../../services/api';
 import { useToast } from '../../components/Toast';
 import { useGlobalLoaderManual } from '../../components/GlobalLoader';
 import { moderateScale, getSpacing } from '../../utils/responsive';
 import { getFontFamily } from '../../utils/fonts';
-import SVGIcon from '../../components/SVGIcon';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -32,119 +31,8 @@ const LandingPage = () => {
 
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
-  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
-  const progressAnim = useRef(new Animated.Value(0)).current;
   const inputRef = useRef<TextInput>(null);
-
-  // Animation values
-  const logoOpacity = useRef(new Animated.Value(0)).current;
-  const logoScale = useRef(new Animated.Value(0.5)).current;
-  const titleOpacity = useRef(new Animated.Value(0)).current;
-  const titleTranslateY = useRef(new Animated.Value(20)).current;
-  const inputOpacity = useRef(new Animated.Value(0)).current;
-  const inputTranslateY = useRef(new Animated.Value(30)).current;
-  const buttonOpacity = useRef(new Animated.Value(0)).current;
-  const buttonScale = useRef(new Animated.Value(0.9)).current;
-
-  // Keyboard listeners
-  useEffect(() => {
-    const keyboardWillShow = () => {
-      setIsKeyboardVisible(true);
-    };
-
-    const keyboardWillHide = () => {
-      setIsKeyboardVisible(false);
-    };
-
-    if (Platform.OS === 'ios') {
-      const showSubscription = Keyboard.addListener('keyboardWillShow', keyboardWillShow);
-      const hideSubscription = Keyboard.addListener('keyboardWillHide', keyboardWillHide);
-      return () => {
-        showSubscription.remove();
-        hideSubscription.remove();
-      };
-    } else {
-      const showSubscription = Keyboard.addListener('keyboardDidShow', keyboardWillShow);
-      const hideSubscription = Keyboard.addListener('keyboardDidHide', keyboardWillHide);
-      return () => {
-        showSubscription.remove();
-        hideSubscription.remove();
-      };
-    }
-  }, []);
-
-  // Initial animations on mount
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(logoOpacity, {
-        toValue: 1,
-        duration: 1000,
-        useNativeDriver: true,
-      }),
-      Animated.spring(logoScale, {
-        toValue: 1,
-        tension: 40,
-        friction: 8,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    Animated.parallel([
-      Animated.timing(titleOpacity, {
-        toValue: 1,
-        duration: 800,
-        delay: 300,
-        useNativeDriver: true,
-      }),
-      Animated.timing(titleTranslateY, {
-        toValue: 0,
-        duration: 800,
-        delay: 300,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    Animated.parallel([
-      Animated.timing(inputOpacity, {
-        toValue: 1,
-        duration: 800,
-        delay: 500,
-        useNativeDriver: true,
-      }),
-      Animated.timing(inputTranslateY, {
-        toValue: 0,
-        duration: 800,
-        delay: 500,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    Animated.parallel([
-      Animated.timing(buttonOpacity, {
-        toValue: 1,
-        duration: 800,
-        delay: 700,
-        useNativeDriver: true,
-      }),
-      Animated.spring(buttonScale, {
-        toValue: 1,
-        tension: 40,
-        friction: 8,
-        delay: 700,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, []);
-
-  useEffect(() => {
-    const digitCount = (phone || '').replace(/\D/g, '').length;
-    const progress = digitCount / 10;
-    Animated.timing(progressAnim, {
-      toValue: progress,
-      duration: 200,
-      useNativeDriver: false,
-    }).start();
-  }, [phone, progressAnim]);
+  const progressAnim = useRef(new Animated.Value(0)).current;
 
   const handleContinue = async () => {
     if (!phone || phone.trim().length === 0) {
@@ -182,27 +70,47 @@ const LandingPage = () => {
 
   const isValid = /^\d{10}$/.test(phone.replace(/\D/g, ''));
 
-  // Calculate responsive sizes
-  const TOP_BG_HEIGHT = SCREEN_HEIGHT * 0.15;
-  const BOTTOM_BG_HEIGHT = SCREEN_HEIGHT * 0.28;
-  const FLOWER_SIZE = moderateScale(SCREEN_WIDTH * 0.25);
+  // Update progress animation based on phone number length
+  useEffect(() => {
+    const digitCount = (phone || '').replace(/\D/g, '').length;
+    const progress = digitCount / 10; // 0 to 1 based on 10 digits
+    
+    Animated.timing(progressAnim, {
+      toValue: progress,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+  }, [phone, progressAnim]);
 
   return (
-    <View style={styles.mainContainer}>
-      {/* Top background - always visible */}
+    <KeyboardAvoidingView
+      style={styles.mainContainer}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+    >
+      {/* Background Pattern */}
       <Image
-        source={Images.TOP_RIGHT_BG}
-        resizeMode="contain"
-        style={[
-          styles.topRightBg,
-          {
-            height: TOP_BG_HEIGHT,
-            width: SCREEN_WIDTH * 0.45,
-          },
-        ]}
+        source={Images.LOGIN_BG}
+        resizeMode="cover"
+        style={styles.backgroundImage}
       />
 
-      {/* Main content */}
+      {/* Smooth Gradient Overlay - Creates the blend effect */}
+      <LinearGradient
+        colors={[
+          'rgba(255, 255, 255, 0)',      // Fully transparent at top
+          'rgba(255, 255, 255, 0.1)',    // Slight white
+          'rgba(255, 255, 255, 0.3)',    // More white
+          'rgba(255, 255, 255, 0.6)',    // Increasing
+          'rgba(255, 255, 255, 0.85)',   // Almost solid
+          'rgba(255, 255, 255, 0.95)',   // Very solid
+          'rgba(255, 255, 255, 1)',      // Completely solid white
+        ]}
+        locations={[0, 0.2, 0.35, 0.5, 0.65, 0.8, 0.9]}
+        style={styles.gradientOverlay}
+      />
+
+      {/* Content Container */}
       <ScrollView
         contentContainerStyle={styles.scrollContainer}
         keyboardShouldPersistTaps="handled"
@@ -210,166 +118,81 @@ const LandingPage = () => {
         keyboardDismissMode="on-drag"
       >
         <View style={styles.contentContainer}>
-          {/* Logo */}
-          <Animated.View
-            style={[
-              styles.logoContainer,
-              {
-                opacity: logoOpacity,
-                transform: [{ scale: logoScale }],
-              },
-            ]}
-          >
-            <Image source={Images.TB_LOGO} style={styles.logo} resizeMode="contain" />
-          </Animated.View>
-
-          {/* Welcome Text */}
-          <Animated.View
-            style={[
-              styles.welcomeContainer,
-              {
-                opacity: titleOpacity,
-                transform: [{ translateY: titleTranslateY }],
-              },
-            ]}
-          >
-            <View style={styles.welcomeTextContainer}>
-              <Text style={styles.welcomeText}>Welcome to </Text>
-              <Text style={styles.targetboardText}>Targetboard</Text>
+          {/* Logo with White Background and Shadow */}
+          <View style={styles.logoContainer}>
+            <View style={styles.logoBackground}>
+              <Image source={Images.TB_LOGO} style={styles.logo} resizeMode="contain" />
             </View>
-          </Animated.View>
+          </View>
 
           {/* Title */}
-          <Animated.View
-            style={[
-              styles.titleContainer,
-              {
-                opacity: titleOpacity,
-                transform: [{ translateY: titleTranslateY }],
-              },
-            ]}
-          >
-            <Text style={styles.mainTitle}>Let's Get Started</Text>
-          </Animated.View>
+          <View style={styles.titleContainer}>
+            <Text style={styles.mainTitle}>TARGET BOARD</Text>
+          </View>
 
-          {/* Input Field */}
-          <Animated.View
-            style={[
-              styles.inputContainer,
-              {
-                opacity: inputOpacity,
-                transform: [{ translateY: inputTranslateY }],
-              },
-            ]}
-          >
-            <Text style={styles.label}>Mobile Number</Text>
-            <TextInput
-              ref={inputRef}
-              value={phone}
-              onChangeText={(text) => {
-                const numbersOnly = text.replace(/\D/g, '');
-                if (numbersOnly.length <= 10) {
-                  setPhone(numbersOnly);
-                }
-              }}
-              keyboardType="numeric"
-              maxLength={10}
-              style={styles.input}
-              placeholder="Enter Your 10 digit Mobile no."
-              placeholderTextColor="#999"
-              returnKeyType="done"
-              blurOnSubmit={true}
-            />
-          </Animated.View>
+          {/* Subtitle */}
+          <View style={styles.subtitleContainer}>
+            <Text style={styles.subtitle}>Enter your mobile number to continue</Text>
+          </View>
+
+          {/* Input Field with Country Code */}
+          <View style={styles.inputContainer}>
+            <View style={styles.inputWrapper}>
+              <View style={styles.countryCodeContainer}>
+                <Text style={styles.countryCode}>+91</Text>
+              </View>
+              <View style={styles.inputDivider} />
+              <TextInput
+                ref={inputRef}
+                value={phone}
+                onChangeText={(text) => {
+                  const numbersOnly = text.replace(/\D/g, '');
+                  if (numbersOnly.length <= 10) {
+                    setPhone(numbersOnly);
+                  }
+                }}
+                keyboardType="numeric"
+                maxLength={10}
+                style={styles.input}
+                placeholder="Enter your mob number"
+                placeholderTextColor="#838383"
+                returnKeyType="done"
+                blurOnSubmit={true}
+              />
+            </View>
+          </View>
+
+          {/* Button */}
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity
+              onPress={handleContinue}
+              disabled={!isValid || loading}
+              style={styles.button}
+              activeOpacity={0.8}
+            >
+              {/* Progress Fill */}
+              <Animated.View
+                style={[
+                  styles.buttonProgress,
+                  {
+                    width: progressAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: ['0%', '100%'],
+                    }),
+                  },
+                ]}
+              />
+              {/* Button Text */}
+              <View style={styles.buttonContent}>
+                <Text style={styles.buttonText}>
+                  {loading ? 'Processing...' : 'Sent OTP'}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
-
-      {/* Bottom section - fixed at bottom */}
-      <View style={[styles.bottomSection, { height: BOTTOM_BG_HEIGHT + moderateScale(80) }]} pointerEvents="box-none">
-        {/* Bottom background image */}
-        <Image
-          source={Images.BOTTOM_ROUND_BG}
-          resizeMode="cover"
-          style={[
-            styles.bottomRoundBg,
-            {
-              height: BOTTOM_BG_HEIGHT,
-              width: SCREEN_WIDTH,
-            },
-          ]}
-        />
-
-        {/* Left flower */}
-        {/* <Image
-          source={Images.LEFT_FLOWER}
-          resizeMode="contain"
-          style={[
-            styles.leftFlower,
-            {
-              width: FLOWER_SIZE,
-              height: FLOWER_SIZE,
-            },
-          ]}
-        /> */}
-
-        {/* Right flower */}
-        {/* <Image
-          source={Images.RIGHT_FLOWER}
-          resizeMode="contain"
-          style={[
-            styles.rightFlower,
-            {
-              width: FLOWER_SIZE,
-              height: FLOWER_SIZE,
-            },
-          ]}
-        /> */}
-
-        {/* Button */}
-        <Animated.View
-          style={[
-            styles.bottomButtonContainer,
-            {
-              opacity: buttonOpacity,
-              transform: [{ scale: buttonScale }],
-            },
-          ]}
-        >
-          <TouchableOpacity
-            onPress={handleContinue}
-            disabled={!isValid || loading}
-            style={[
-              styles.button,
-              {
-                backgroundColor: isValid ? '#FFCC3E' : '#E0E0E0',
-              },
-            ]}
-            activeOpacity={0.8}
-          >
-            <Animated.View
-              style={[
-                styles.buttonProgress,
-                {
-                  backgroundColor: '#FFCC3E',
-                  width: progressAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: ['0%', '100%'],
-                  }),
-                },
-              ]}
-            />
-            <View style={styles.buttonContent}>
-              <Text style={styles.buttonText}>
-                {loading ? 'Processing...' : "Let's Get Started"}
-              </Text>
-              <View style={styles.buttonArrowContainer}>
-                <SVGIcon name="chevron-right" size={moderateScale(20)} color="#1A1A1A" />
-              </View>
-            </View>
-          </TouchableOpacity>
-        </Animated.View>
-      </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 };
 
@@ -378,121 +201,140 @@ export default LandingPage;
 const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
-    backgroundColor: '#F8FBFF',
+    backgroundColor: '#FFFFFF',
   },
-  topRightBg: {
+  backgroundImage: {
     position: 'absolute',
-    top: moderateScale(-28),
+    top: 0,
+    left: 0,
     right: 0,
-    zIndex: 0,
+    bottom: 0,
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT,
+    opacity: 0.4, // Adjust opacity for desired pattern visibility
+  },
+  gradientOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT,
   },
   scrollContainer: {
     flexGrow: 1,
-    paddingTop: moderateScale(80),
-    paddingBottom: moderateScale(280),
+    justifyContent: 'center',
+    paddingVertical: moderateScale(40),
+    paddingHorizontal: getSpacing(3),
   },
   contentContainer: {
-    paddingHorizontal: getSpacing(3),
+    alignItems: 'center',
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: moderateScale(20),
+    marginBottom: moderateScale(24),
+  },
+  logoBackground: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: moderateScale(20),
+    padding: moderateScale(16),
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
   },
   logo: {
     width: moderateScale(80),
     height: moderateScale(80),
   },
-  welcomeContainer: {
-    alignItems: 'center',
-    marginBottom: moderateScale(4),
-  },
-  welcomeTextContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexWrap: 'wrap',
-  },
-  welcomeText: {
-    fontSize: moderateScale(20),
-    fontFamily: getFontFamily('400'),
-    color: '#1A1A1A',
-  },
-  targetboardText: {
-    fontSize: moderateScale(24),
-    fontFamily: getFontFamily('700'),
-    color: '#FFCC3E',
-    textShadowColor: '#000000',
-    textShadowOffset: { width: 3, height: 3 },
-    textShadowRadius: 8,
-  },
   titleContainer: {
     alignItems: 'center',
-    marginBottom: moderateScale(30),
+    marginBottom: moderateScale(12),
   },
   mainTitle: {
-    fontSize: moderateScale(24),
+    fontSize: moderateScale(26),
     fontFamily: getFontFamily('700'),
-    color: '#1A1A1A',
-    letterSpacing: 0.5,
+    color: '#000000',
+    letterSpacing: 1.2,
+  },
+  subtitleContainer: {
+    alignItems: 'center',
+    marginBottom: moderateScale(40),
+  },
+  subtitle: {
+    fontSize: moderateScale(14),
+    fontFamily: getFontFamily('400'),
+    color: '#666666',
   },
   inputContainer: {
-    marginBottom: moderateScale(20),
+    width: '100%',
+    marginBottom: moderateScale(30),
   },
-  label: {
-    fontSize: moderateScale(15),
-    marginBottom: getSpacing(1),
-    fontFamily: getFontFamily('500'),
-    color: '#1A1A1A',
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: moderateScale(12),
+    borderWidth: 1,
+    borderColor: '#D0D0D0',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  input: {
-    borderRadius: moderateScale(8),
-    paddingHorizontal: getSpacing(1.5),
-    paddingVertical: getSpacing(1.5),
-    fontSize: moderateScale(15),
-    backgroundColor: '#F5F5F5',
-    color: '#1A1A1A',
-    borderBottomWidth: 2,
-    borderBottomColor: '#1A1A1A',
-    fontFamily: getFontFamily('400'),
-  },
-  bottomSection: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    justifyContent: 'flex-end',
+  countryCodeContainer: {
+    paddingHorizontal: getSpacing(2.5),
+    paddingVertical: getSpacing(2),
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  bottomRoundBg: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
+  countryCode: {
+    fontSize: moderateScale(16),
+    fontFamily: getFontFamily('600'),
+    color: '#000000',
   },
-  leftFlower: {
-    position: 'absolute',
-    bottom: moderateScale(70),
-    left: 0,
+  inputDivider: {
+    width: 1,
+    height: moderateScale(24),
+    backgroundColor: '#D0D0D0',
   },
-  rightFlower: {
-    position: 'absolute',
-    bottom: moderateScale(70),
-    right: 0,
+  input: {
+    flex: 1,
+    paddingHorizontal: getSpacing(2),
+    paddingVertical: getSpacing(2),
+    fontSize: moderateScale(16),
+    color: '#000000',
+    fontFamily: getFontFamily('400'),
   },
-  bottomButtonContainer: {
+  buttonContainer: {
     width: '100%',
-    paddingHorizontal: getSpacing(3),
-    marginBottom: moderateScale(50),
-    zIndex: 3,
   },
   button: {
     width: '100%',
-    paddingVertical: getSpacing(1.5),
-    borderRadius: moderateScale(8),
+    paddingVertical: getSpacing(2.2),
+    borderRadius: moderateScale(12),
     alignItems: 'center',
     justifyContent: 'center',
-    flexDirection: 'row',
-    minHeight: moderateScale(50),
+    minHeight: moderateScale(54),
+    backgroundColor: '#E0E0E0',
+    shadowColor: '#F6B432',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
     position: 'relative',
     overflow: 'hidden',
   },
@@ -501,24 +343,18 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     bottom: 0,
-    borderTopLeftRadius: moderateScale(8),
-    borderBottomLeftRadius: moderateScale(8),
+    backgroundColor: '#F6B432',
+    borderTopLeftRadius: moderateScale(12),
+    borderBottomLeftRadius: moderateScale(12),
   },
   buttonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    position: 'relative',
     zIndex: 1,
   },
   buttonText: {
     fontSize: moderateScale(16),
-    letterSpacing: 1,
+    letterSpacing: 0.5,
     fontFamily: getFontFamily('700'),
-    color: '#1A1A1A',
-  },
-  buttonArrowContainer: {
-    marginLeft: getSpacing(1),
-    justifyContent: 'center',
-    alignItems: 'center',
+    color: '#000000',
   },
 });
