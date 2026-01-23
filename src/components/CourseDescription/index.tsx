@@ -66,7 +66,7 @@ CourseDescription.displayName = 'CourseDescription';
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 24,
+    marginBottom: 8,
   },
   header: {
     flexDirection: 'row',

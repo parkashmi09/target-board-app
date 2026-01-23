@@ -25,7 +25,7 @@ const CourseSection: React.FC<CourseSectionProps> = memo(({ courses, theme }) =>
 
   // 🔥 TIGHT WIDTH (like 2nd image)
   const horizontalPadding = getSpacing(1.5);
-  const peekAmount = moderateScale(28);
+  const peekAmount = moderateScale(30);
 
   const cardWidth =
     windowWidth - horizontalPadding * 2 - peekAmount;

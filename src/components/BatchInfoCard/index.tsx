@@ -51,7 +51,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 12,
     padding: moderateScale(8),
-    marginBottom: moderateScale(20),
+    marginBottom: moderateScale(8),
     elevation: 2,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,

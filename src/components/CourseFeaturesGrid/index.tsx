@@ -208,8 +208,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginBottom: 24,
-    gap: 12,
+    marginBottom: 8,
+    gap: 8,
   },
   card: {
     width: '48%',
@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
     // shadowOffset: { width: 0, height: 2 },
     // shadowOpacity: 0.15,
     // shadowRadius: 4,
-    marginBottom: moderateScale(12),
+    marginBottom: moderateScale(8),
   },
   content: {
     flexDirection: 'row',

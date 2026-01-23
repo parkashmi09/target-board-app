@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,13 +8,14 @@ import {
   ActivityIndicator,
   Linking,
   Platform,
+  Animated,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '../theme/theme';
 import { getFontFamily } from '../utils/fonts';
-import { ArrowLeft, Share2, Check } from 'lucide-react-native';
+import { ArrowLeft, Share2, Check, ChevronDown } from 'lucide-react-native';
 import GradientBackground from '../components/GradientBackground';
 import { fetchCourseDetails, getCourseStreams, Stream } from '../services/api';
 import { useToast } from '../components/Toast';
@@ -27,6 +28,29 @@ import BatchInfoCard from '../components/BatchInfoCard';
 import CourseDescription from '../components/CourseDescription';
 import TimeTableSection from '../components/TimeTableSection';
 import { moderateScale, getSpacing } from '../utils/responsive';
+import LottieView from 'lottie-react-native';
+import { Svg, Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
+import SVGIcon from '../components/SVGIcon';
+import supportAnimation from '../assets/lotties/support.json';
+
+// Static FAQ Data
+const FAQ_DATA = [
+  {
+    id: '1',
+    question: 'How many classes will be taken in a week?',
+    answer: 'The number of classes per week varies depending on the course. Typically, you can expect 3-5 live classes per week, along with recorded content and study materials. Please check the course timetable for specific class schedules.',
+  },
+  {
+    id: '2',
+    question: 'Can I access the course on both mobile and desktop?',
+    answer: 'Yes, absolutely! Our platform is fully responsive and works seamlessly on both mobile devices and desktop computers. You can access all course content, live classes, and study materials from any device with an internet connection.',
+  },
+  {
+    id: '3',
+    question: 'How can I pay for the course?',
+    answer: 'You can pay for the course using various payment methods including credit/debit cards, UPI, net banking, and digital wallets. Simply click on "Buy Now" and follow the secure payment process. All transactions are encrypted and secure.',
+  },
+];
 
 const CourseDetailsScreen: React.FC = () => {
   const theme = useTheme();
@@ -41,6 +65,9 @@ const CourseDetailsScreen: React.FC = () => {
   const [liveStreams, setLiveStreams] = useState<Stream[]>([]);
   const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [expandedFAQ, setExpandedFAQ] = useState<string | null>(null);
+  const callScaleAnim = useRef(new Animated.Value(1)).current;
+  const whatsappScaleAnim = useRef(new Animated.Value(1)).current;
 
   // Early validation - if courseId is missing, show error immediately
   if (!courseId) {
@@ -327,6 +354,61 @@ const CourseDetailsScreen: React.FC = () => {
     }
   }, [course, courseId, navigation, toast]);
 
+  const handleFAQToggle = useCallback((faqId: string) => {
+    setExpandedFAQ(expandedFAQ === faqId ? null : faqId);
+  }, [expandedFAQ]);
+
+  const handleCall = useCallback(() => {
+    const phoneNumber = '8114532021';
+    Linking.openURL(`tel:${phoneNumber}`);
+  }, []);
+
+  const handleWhatsApp = useCallback(() => {
+    const phoneNumber = '8114532021';
+    const message = 'Hello, I need help with the course.';
+    const url = `whatsapp://send?phone=${phoneNumber}&text=${encodeURIComponent(message)}`;
+
+    Linking.canOpenURL(url).then(supported => {
+      if (supported) {
+        return Linking.openURL(url);
+      } else {
+        return Linking.openURL(`https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`);
+      }
+    }).catch(err => {
+      if (__DEV__) {
+        console.error('An error occurred', err);
+      }
+    });
+  }, []);
+
+  const handleCallPressIn = useCallback(() => {
+    Animated.spring(callScaleAnim, {
+      toValue: 0.95,
+      useNativeDriver: true,
+    }).start();
+  }, [callScaleAnim]);
+
+  const handleCallPressOut = useCallback(() => {
+    Animated.spring(callScaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+    }).start();
+  }, [callScaleAnim]);
+
+  const handleWhatsAppPressIn = useCallback(() => {
+    Animated.spring(whatsappScaleAnim, {
+      toValue: 0.95,
+      useNativeDriver: true,
+    }).start();
+  }, [whatsappScaleAnim]);
+
+  const handleWhatsAppPressOut = useCallback(() => {
+    Animated.spring(whatsappScaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+    }).start();
+  }, [whatsappScaleAnim]);
+
   if (isLoading) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: '#FFFFFF' }]}>
@@ -411,6 +493,161 @@ const CourseDetailsScreen: React.FC = () => {
               onTeacherPress={handleTeacherPress}
             />
           )}
+
+          {/* FAQ Section */}
+          <View style={styles.faqSection}>
+            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+              Frequently Asked Questions
+            </Text>
+            {FAQ_DATA.map((faq) => {
+              const isExpanded = expandedFAQ === faq.id;
+              return (
+                <TouchableOpacity
+                  key={faq.id}
+                  style={[styles.faqItem, { backgroundColor: theme.colors.cardBackground }]}
+                  onPress={() => handleFAQToggle(faq.id)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.faqHeader}>
+                    <Text style={[styles.faqQuestion, { color: theme.colors.text }]}>
+                      {faq.question}
+                    </Text>
+                    <ChevronDown
+                      size={20}
+                      color={theme.colors.textSecondary}
+                      style={[
+                        styles.chevronIcon,
+                        isExpanded && styles.chevronIconExpanded,
+                      ]}
+                    />
+                  </View>
+                  {isExpanded && (
+                    <View style={styles.faqAnswerContainer}>
+                      <Text style={[styles.faqAnswer, { color: theme.colors.textSecondary }]}>
+                        {faq.answer}
+                      </Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* Need any help? Section */}
+          <View style={styles.helpSection}>
+            {/* Illustration Card - Horizontal Layout */}
+            <View style={[styles.helpIllustrationCard, { backgroundColor: theme.colors.cardBackground }]}>
+              <View style={styles.helpIllustrationWrapper}>
+                <View style={styles.decorativeCircle1} />
+                <View style={styles.decorativeCircle2} />
+                <LottieView
+                  source={supportAnimation}
+                  style={styles.lottie}
+                  autoPlay
+                  loop
+                />
+              </View>
+              <View style={styles.helpTextContainer}>
+                <Text style={[styles.helpTitle, { color: theme.colors.text }]}>
+                  Need any help?
+                </Text>
+                <Text style={[styles.helpDescription, { color: theme.colors.textSecondary }]}>
+                  Our expert will help guide you at every step you need help.
+                </Text>
+              </View>
+            </View>
+
+            {/* Contact Cards */}
+            <View style={styles.contactSection}>
+              {/* Call Card */}
+              <Animated.View style={{ transform: [{ scale: callScaleAnim }] }}>
+                <TouchableOpacity
+                  style={styles.contactCard}
+                  onPress={handleCall}
+                  onPressIn={handleCallPressIn}
+                  onPressOut={handleCallPressOut}
+                  activeOpacity={1}
+                >
+                  {/* Gradient Background */}
+                  <View style={[StyleSheet.absoluteFill, { overflow: 'hidden', borderRadius: moderateScale(20) }]}>
+                    <Svg width="100%" height="100%" style={StyleSheet.absoluteFill}>
+                      <Defs>
+                        <LinearGradient id="callGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <Stop offset="0%" stopColor="#E3F2FD" stopOpacity="1" />
+                          <Stop offset="100%" stopColor="#FFFFFF" stopOpacity="1" />
+                        </LinearGradient>
+                      </Defs>
+                      <Rect width="100%" height="100%" fill="url(#callGradient)" rx={moderateScale(20)} />
+                    </Svg>
+                  </View>
+
+                  {/* Content */}
+                  <View style={styles.cardInner}>
+                    <View style={[styles.iconCircle, styles.callIconCircle]}>
+                      <View style={styles.iconCircleInner}>
+                        <SVGIcon name="phone" size={moderateScale(24)} color="#2196F3" />
+                      </View>
+                    </View>
+                    <View style={styles.cardContent}>
+                      <Text style={[styles.cardTitle, { color: theme.colors.text }]}>
+                        Call Us
+                      </Text>
+                      <Text style={[styles.cardSubtitle, { color: theme.colors.textSecondary }]}>
+                        8114532021
+                      </Text>
+                    </View>
+                    <View style={styles.chevronContainer}>
+                      <SVGIcon name="chevron-right" size={moderateScale(20)} color={theme.colors.accent} />
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              </Animated.View>
+
+              {/* WhatsApp Card */}
+              <Animated.View style={{ transform: [{ scale: whatsappScaleAnim }] }}>
+                <TouchableOpacity
+                  style={styles.contactCard}
+                  onPress={handleWhatsApp}
+                  onPressIn={handleWhatsAppPressIn}
+                  onPressOut={handleWhatsAppPressOut}
+                  activeOpacity={1}
+                >
+                  {/* Gradient Background */}
+                  <View style={[StyleSheet.absoluteFill, { overflow: 'hidden', borderRadius: moderateScale(20) }]}>
+                    <Svg width="100%" height="100%" style={StyleSheet.absoluteFill}>
+                      <Defs>
+                        <LinearGradient id="whatsappGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <Stop offset="0%" stopColor="#E8F5E9" stopOpacity="1" />
+                          <Stop offset="100%" stopColor="#FFFFFF" stopOpacity="1" />
+                        </LinearGradient>
+                      </Defs>
+                      <Rect width="100%" height="100%" fill="url(#whatsappGradient)" rx={moderateScale(20)} />
+                    </Svg>
+                  </View>
+
+                  {/* Content */}
+                  <View style={styles.cardInner}>
+                    <View style={[styles.iconCircle, styles.whatsappIconCircle]}>
+                      <View style={styles.iconCircleInner}>
+                        <SVGIcon name="whatsapp" size={moderateScale(24)} color="#4CAF50" />
+                      </View>
+                    </View>
+                    <View style={styles.cardContent}>
+                      <Text style={[styles.cardTitle, { color: theme.colors.text }]}>
+                        WhatsApp
+                      </Text>
+                      <Text style={[styles.cardSubtitle, { color: theme.colors.textSecondary }]}>
+                        Chat with us
+                      </Text>
+                    </View>
+                    <View style={styles.chevronContainer}>
+                      <SVGIcon name="chevron-right" size={moderateScale(20)} color={theme.colors.accent} />
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              </Animated.View>
+            </View>
+          </View>
         </View>
 
         <View style={{ height: 100 }} />
@@ -499,7 +736,7 @@ const styles = StyleSheet.create({
   validityWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 12,
   },
   validityBadge: {
     backgroundColor: '#4CAF50',
@@ -534,6 +771,178 @@ const styles = StyleSheet.create({
   },
   backButtonText: {
     fontFamily: getFontFamily('600'),
+  },
+  faqSection: {
+    marginTop: getSpacing(4),
+    // marginBottom: getSpacing(4),
+  },
+  sectionTitle: {
+    fontSize: moderateScale(20),
+    fontFamily: getFontFamily('700'),
+    marginBottom: getSpacing(1),
+    letterSpacing: -0.3,
+  },
+  faqItem: {
+    borderRadius: moderateScale(12),
+    marginBottom: getSpacing(2),
+    padding: getSpacing(2),
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  faqHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  faqQuestion: {
+    fontSize: moderateScale(13),
+    fontFamily: getFontFamily('600'),
+    flex: 1,
+    marginRight: getSpacing(2),
+    lineHeight: moderateScale(22),
+  },
+  chevronIcon: {
+    transform: [{ rotate: '0deg' }],
+  },
+  chevronIconExpanded: {
+    transform: [{ rotate: '180deg' }],
+  },
+  faqAnswerContainer: {
+    marginTop: getSpacing(2),
+    paddingTop: getSpacing(2),
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  faqAnswer: {
+    fontSize: moderateScale(12),
+    fontFamily: getFontFamily('400'),
+    lineHeight: moderateScale(20),
+  },
+  helpSection: {
+    // marginTop: getSpacing(3),
+    marginBottom: getSpacing(3),
+  },
+  helpIllustrationCard: {
+    flexDirection: 'row',
+    borderRadius: moderateScale(16),
+    padding: getSpacing(2),
+    marginBottom: getSpacing(2.5),
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    alignItems: 'center',
+  },
+  helpIllustrationWrapper: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: moderateScale(110),
+    height: moderateScale(110),
+    marginRight: getSpacing(2),
+  },
+  decorativeCircle1: {
+    position: 'absolute',
+    width: moderateScale(90),
+    height: moderateScale(90),
+    borderRadius: moderateScale(45),
+    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+    top: moderateScale(-8),
+    left: moderateScale(-8),
+  },
+  decorativeCircle2: {
+    position: 'absolute',
+    width: moderateScale(75),
+    height: moderateScale(75),
+    borderRadius: moderateScale(37.5),
+    backgroundColor: 'rgba(255, 215, 0, 0.08)',
+    bottom: moderateScale(-4),
+    right: moderateScale(-4),
+  },
+  lottie: {
+    width: moderateScale(90),
+    height: moderateScale(90),
+    zIndex: 1,
+  },
+  helpTextContainer: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  helpTitle: {
+    fontSize: moderateScale(16),
+    fontFamily: getFontFamily('700'),
+    marginBottom: getSpacing(0.5),
+    letterSpacing: -0.2,
+  },
+  helpDescription: {
+    fontSize: moderateScale(12),
+    fontFamily: getFontFamily('400'),
+    lineHeight: moderateScale(16),
+  },
+  contactSection: {
+    width: '100%',
+    gap: getSpacing(2),
+  },
+  contactCard: {
+    borderRadius: moderateScale(20),
+    overflow: 'hidden',
+   
+    minHeight: moderateScale(60),
+  },
+  cardInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: getSpacing(2),
+    position: 'relative',
+    zIndex: 1,
+  },
+  iconCircle: {
+    width: moderateScale(40),
+    height: moderateScale(40),
+    borderRadius: moderateScale(28),
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: getSpacing(2),
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+  },
+  callIconCircle: {
+    backgroundColor: '#E3F2FD',
+  },
+  whatsappIconCircle: {
+    backgroundColor: '#E8F5E9',
+  },
+  iconCircleInner: {
+    width: moderateScale(48),
+    height: moderateScale(48),
+    borderRadius: moderateScale(24),
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 2,
+  },
+  cardContent: {
+    flex: 1,
+  },
+  cardTitle: {
+    fontSize: moderateScale(15),
+    fontFamily: getFontFamily('700'),
+    letterSpacing: -0.2,
+  },
+  cardSubtitle: {
+    fontSize: moderateScale(14),
+    fontFamily: getFontFamily('400'),
+    lineHeight: moderateScale(20),
+  },
+  chevronContainer: {
+    marginLeft: getSpacing(1),
   },
 });
 

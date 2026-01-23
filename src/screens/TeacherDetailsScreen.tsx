@@ -421,9 +421,10 @@ const TeacherDetailsScreen = () => {
                             contentContainerStyle={styles.coursesScroll}
                         >
                             {teacher.courses.map((course: any) => (
-                                <TouchableOpacity
+                                <TeacherCourseCard 
                                     key={course._id}
-                                    activeOpacity={0.7}
+                                    title={course.name} 
+                                    image={course.courseImage ? { uri: course.courseImage } : undefined}
                                     onPress={() => {
                                         try {
                                             (navigation as any).navigate('CourseDetails', { 
@@ -435,12 +436,7 @@ const TeacherDetailsScreen = () => {
                                             }
                                         }
                                     }}
-                                >
-                                    <TeacherCourseCard 
-                                        title={course.name} 
-                                        image={course.courseImage ? { uri: course.courseImage } : undefined}
-                                    />
-                                </TouchableOpacity>
+                                />
                             ))}
                         </ScrollView>
                     </View>

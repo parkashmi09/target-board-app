@@ -313,19 +313,53 @@ const QRCodePaymentScreen: React.FC = () => {
               <Text style={[styles.retryText, { color: theme.colors.text }]}>Retry</Text>
             </TouchableOpacity>
           ) : (
-            <View style={[styles.qrWrapper, { width: qrWidth, height: qrHeight, backgroundColor: theme.colors.cardBackground }]}>
-              {imageLoading && (
-                <View style={[styles.loadingOverlay, { backgroundColor: theme.colors.cardBackground }]}>
-                  <ActivityIndicator size="large" color={theme.colors.accent} />
+            <View style={[styles.qrCard, { backgroundColor: theme.colors.cardBackground }]}>
+              {/* Powered by Razorpay Section */}
+              <View style={styles.brandingSection}>
+                <Text style={[styles.poweredByText, { color: theme.colors.textSecondary }]}>
+                  Powered by
+                </Text>
+                <Text style={[styles.razorpayText, { color: '#0B2447' }]}>
+                  Razorpay
+                </Text>
+                <View style={styles.upiLogosContainer}>
+                  <Text style={[styles.upiLogoText, { color: theme.colors.textSecondary }]}>
+                    BHIM
+                  </Text>
+                  <View style={styles.logoDivider} />
+                  <Text style={[styles.upiLogoText, { color: theme.colors.textSecondary }]}>
+                    UPI
+                  </Text>
                 </View>
-              )}
-              <Image
-                source={{ uri: qrImageUrl }}
-                style={styles.qrImage}
-                resizeMode="contain"
-                onLoad={() => setImageLoading(false)}
-                onError={() => setImageError(true)}
-              />
+              </View>
+
+              {/* QR Code Image */}
+              <View style={styles.qrImageContainer}>
+                {imageLoading && (
+                  <View style={[styles.loadingOverlay, { backgroundColor: theme.colors.cardBackground }]}>
+                    <ActivityIndicator size="large" color={theme.colors.accent} />
+                  </View>
+                )}
+                <Image
+                  source={{ uri: qrImageUrl }}
+                  style={styles.qrImage}
+                  resizeMode="contain"
+                  onLoad={() => setImageLoading(false)}
+                  onError={() => setImageError(true)}
+                />
+              </View>
+
+              {/* Scan & Pay Text */}
+              <Text style={[styles.scanPayText, { color: theme.colors.text }]}>
+                SCAN & PAY WITH ANY UPI APP
+              </Text>
+
+              {/* UPI Apps Logos */}
+              <View style={styles.upiAppsContainer}>
+                <Text style={[styles.upiAppName, { color: theme.colors.text }]}>G Pay</Text>
+                <Text style={[styles.upiAppName, { color: theme.colors.text }]}>PhonePe</Text>
+                <Text style={[styles.upiAppName, { color: theme.colors.text }]}>Paytm</Text>
+              </View>
             </View>
           )}
         </View>
@@ -340,15 +374,14 @@ const QRCodePaymentScreen: React.FC = () => {
         <View style={styles.note}>
           <Text style={[styles.noteLabel, { color: theme.colors.text }]}>Note:</Text>
           <Text style={[styles.noteText, { color: theme.colors.textSecondary }]}>
-            आप किसी भी फ़ोन से QR Code स्कैन करके फीस भर सकते हैं, आपको तुरंत बैच
-            का Access मिल जायेगा
+            +91 82491 71935
           </Text>
         </View>
       </ScrollView>
 
       <View style={styles.bottomButtons}>
         <TouchableOpacity
-          style={[styles.btn, styles.downloadBtn]}
+          style={[styles.btn, styles.downloadBtn, { backgroundColor: theme.colors.accent || '#9C27B0' }]}
           onPress={handleDownload}
           disabled={downloading}
         >
@@ -359,19 +392,6 @@ const QRCodePaymentScreen: React.FC = () => {
           )}
           <Text style={styles.btnText}>Download</Text>
         </TouchableOpacity>
-
-        {/* <TouchableOpacity
-          style={[styles.btn, styles.shareBtn]}
-          onPress={handleShare}
-          disabled={sharing}
-        >
-          {sharing ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Share2 size={20} color="#fff" />
-          )}
-          <Text style={styles.btnText}>Share</Text>
-        </TouchableOpacity> */}
       </View>
     </GradientBackground>
   );
@@ -387,14 +407,79 @@ const styles = StyleSheet.create({
     marginBottom: getSpacing(2.5),
     width: '100%',
     alignItems: 'center',
+    paddingHorizontal: getSpacing(2),
   },
-  qrWrapper: {
-    borderRadius: moderateScale(12),
-    overflow: 'hidden',
+  qrCard: {
+    borderRadius: moderateScale(16),
+    padding: getSpacing(3),
+    width: '100%',
+    maxWidth: moderateScale(400),
+    alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+  },
+  brandingSection: {
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: getSpacing(2),
+  },
+  poweredByText: {
+    fontSize: moderateScale(11),
+    fontFamily: getFontFamily('400'),
+    marginBottom: getSpacing(0.5),
+  },
+  razorpayText: {
+    fontSize: moderateScale(18),
+    fontFamily: getFontFamily('700'),
+    marginBottom: getSpacing(1.5),
+    letterSpacing: 0.5,
+  },
+  upiLogosContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: getSpacing(1),
+  },
+  upiLogoText: {
+    fontSize: moderateScale(10),
+    fontFamily: getFontFamily('600'),
+  },
+  logoDivider: {
+    width: 1,
+    height: moderateScale(12),
+    backgroundColor: '#E0E0E0',
+    marginHorizontal: getSpacing(0.5),
+  },
+  qrImageContainer: {
+    width: moderateScale(280),
+    height: moderateScale(280),
+    marginVertical: getSpacing(2),
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   qrImage: {
     width: '100%',
     height: '100%',
+  },
+  scanPayText: {
+    fontSize: moderateScale(13),
+    fontFamily: getFontFamily('700'),
+    marginTop: getSpacing(1),
+    marginBottom: getSpacing(2),
+    letterSpacing: 0.5,
+  },
+  upiAppsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: getSpacing(3),
+    width: '100%',
+  },
+  upiAppName: {
+    fontSize: moderateScale(12),
+    fontFamily: getFontFamily('600'),
   },
   descriptionText: {
     fontSize: moderateScale(12),
@@ -444,10 +529,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   downloadBtn: {
-    backgroundColor: '#9C27B0',
-  },
-  shareBtn: {
-    backgroundColor: '#FFC107',
+    // backgroundColor will be set dynamically from theme
   },
   btnText: {
     color: '#fff',
