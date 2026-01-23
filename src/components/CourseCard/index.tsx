@@ -183,7 +183,11 @@ const CourseCard: React.FC<CourseCardProps> = React.memo(
           </View>
 
           <View style={styles.details}>
-            <Text style={[styles.title, { color: '#1A1A1A' }]}>
+            <Text 
+              style={[styles.title, { color: '#1A1A1A' }]}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
               {title}
             </Text>
 
@@ -288,6 +292,7 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(12),
     fontFamily: getFontFamily('600'),
     marginBottom: getSpacing(0.5),
+    flexShrink: 1,
   },
   priceContainer: {
     flexDirection: 'row',
